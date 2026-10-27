@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.1.1
+
+- **`useVariant` starts from the stored value.** It started on its default and read the
+  tab and the link in a layout effect, so the first render of a component had the
+  default. An effect from that render still ran: a redirect that depends on a variant
+  sent the page away and back again, without end. Now the first render has the stored
+  value; only a server render still starts on the default.
+
 ## 4.1.0
 
 The variants pane grows from two controls into a settings pane for prototypes.
