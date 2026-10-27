@@ -8,6 +8,8 @@ A profile on the rail, and Orbit in English.
   icon until then. It opens a small pane with the name feedback goes out under and the
   language. The comment form shows "Als Elwin" instead of the name field once the name is
   set; a press on it brings the field back. The name the form used to keep is taken over.
+  The pane opens on a large monogram, centred, with the name typed straight in under it.
+  Opening it closes everything else: the panel, a popover, the inspector and the variants.
 - **Dutch and English.** `language="en"` on the provider sets where Orbit starts; the
   viewer's choice goes over it. Both are kept in `localStorage` (`@strakzat/orbit:viewer`).
   Every text the components had in Dutch is a label now, relative times included
@@ -16,11 +18,20 @@ A profile on the rail, and Orbit in English.
   follow the switch. Annotations and feedback are not translated.
 - **`labels` per language.** Flat overrides go for every language, as before; keyed by
   language (`{ nl: {…}, en: {…} }`) each follows the switch. `LABELS` is exported.
-- `AnnotationLabels` has new keys (the former inline texts, the profile, the time units,
-  `status`); a few are templates with `{count}`, `{name}`, `{label}` or `{title}`.
-  `AnnotationContextValue` has `language`, `viewer`, `setViewerName` and `setViewerLanguage`.
-  A full labels object or a typed context mock needs them.
+- `AnnotationLabels` has new keys (the former inline texts, the profile with
+  `profileNamePlaceholder`, the time units, `status`); a few are templates with `{count}`,
+  `{name}`, `{label}` or `{title}`. `AnnotationContextValue` has `language`, `viewer`,
+  `setViewerName` and `setViewerLanguage`. A full labels object or a typed context mock
+  needs them.
 - `relativeTime(iso, units)` takes its units from the labels.
+
+## 4.1.1
+
+- **`useVariant` starts from the stored value.** It started on its default and read the
+  tab and the link in a layout effect, so the first render of a component had the
+  default. An effect from that render still ran: a redirect that depends on a variant
+  sent the page away and back again, without end. Now the first render has the stored
+  value; only a server render still starts on the default.
 
 ## 4.1.0
 

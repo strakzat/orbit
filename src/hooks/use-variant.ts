@@ -7,8 +7,9 @@ const PARAM_PREFIX = "orbit.";
 /** The values for this tab, so they hold as the pages change and through a reload. */
 const STORAGE_KEY = "orbit:variants";
 
-// Layout effect in the browser: the stored value is in before the first paint, with no flash of
-// the default. On the server the plain effect, which does not warn there.
+// Layout effect in the browser: it registers the id and follows the other hooks on it, and after a
+// server render it reads the store before the first paint. On the server the plain effect, which
+// does not warn there.
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /** Every value `useVariant` keeps, as a link writes it. Read once, from the tab and the link. */
@@ -79,7 +80,10 @@ export function useVariant(
 ): [OrbitVariantValue, (value: never) => void] {
   const fallback = serializeValue(defaultValue);
   const fallbackCompared = comparableValue(defaultValue);
-  const [raw, setRaw] = useState(fallback);
+  // The stored value from the first render: a hook that started on its default and only then read
+  // the store would let one render of the wrong variant through, and an effect or a redirect it
+  // sets off runs before the sync. On the server there is no store, so the default.
+  const [raw, setRaw] = useState(() => (typeof window === "undefined" ? fallback : (load()[id] ?? fallback)));
 
   useIsomorphicLayoutEffect(() => {
     managed.set(id, fallbackCompared);
