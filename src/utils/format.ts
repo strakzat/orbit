@@ -1,3 +1,5 @@
+import type { AnnotationLabels } from "../types";
+
 /** Small presentational formatters shared by the comment components. */
 
 /** Up to two uppercase initials from a name, for an avatar monogram. */
@@ -23,21 +25,24 @@ export function formatDate(value: string): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+type TimeUnits = Pick<AnnotationLabels, "timeNow" | "timeMinutes" | "timeHours" | "timeDays">;
+
 /**
- * A short relative time — "nu", "5m", "3u", "2d" — falling back to a date once a
- * comment is older than a week, and to the raw string if it will not parse.
+ * A short relative time — "nu", "5m", "3u", "2d" in Dutch, the units from the labels —
+ * falling back to a date once a comment is older than a week, and to the raw string if it
+ * will not parse.
  */
-export function relativeTime(iso: string): string {
+export function relativeTime(iso: string, units: TimeUnits): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return iso;
 
   const seconds = Math.round((Date.now() - then) / 1000);
-  if (seconds < 45) return "nu";
+  if (seconds < 45) return units.timeNow;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 60) return `${minutes}${units.timeMinutes}`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}u`;
+  if (hours < 24) return `${hours}${units.timeHours}`;
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d`;
+  if (days < 7) return `${days}${units.timeDays}`;
   return formatDate(iso);
 }

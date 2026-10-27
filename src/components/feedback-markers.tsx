@@ -6,6 +6,7 @@ import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
 import { getFixedPopoverStyle } from "../utils/popover-position";
 import { matchRoute } from "../utils/route-matching";
+import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
 import { BADGE_GAP, BADGE_OFFSET, POPOVER_MAX_HEIGHT, unplacedBadgeRect } from "./marker-geometry";
@@ -44,6 +45,7 @@ export function FeedbackMarkers() {
     setPanelOpen,
     currentRoute,
     registeredMarkerIds,
+    labels,
   } = useAnnotationsSafe();
 
   const [badges, setBadges] = useState<FeedbackBadgeInfo[]>([]);
@@ -169,8 +171,8 @@ export function FeedbackMarkers() {
         controls: popoverId,
         style: { top: badge.rect.top - offset, left },
         label: badge.allResolved
-          ? `${badge.totalCount} feedback, alles opgelost`
-          : `${badge.openCount} open feedback`,
+          ? fill(labels.feedbackAllResolved, { count: badge.totalCount })
+          : fill(labels.feedbackOpen, { count: badge.openCount }),
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : badge.annotationId);

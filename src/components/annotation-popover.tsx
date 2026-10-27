@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { cx } from "../utils/cx";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { formatDate } from "../utils/format";
 import { TypeBadge } from "./type-badge";
 import { CommentThread } from "./comment-thread";
@@ -44,6 +45,7 @@ export function AnnotationPopover({
   variant = "marker",
   extraProps,
 }: AnnotationPopoverProps) {
+  const { labels, language } = useAnnotationsSafe();
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -66,8 +68,9 @@ export function AnnotationPopover({
         variant === "inspector" && "orbit-popover--inspector"
       ),
       style,
+      lang: language,
       role: "group",
-      "aria-label": annotation ? annotation.title : "Feedback",
+      "aria-label": annotation ? annotation.title : labels.viewFeedback,
       onClick: (e: React.MouseEvent) => e.stopPropagation(),
       ...extraProps,
     },
@@ -80,7 +83,7 @@ export function AnnotationPopover({
         type: "button",
         className: "orbit-icon-button orbit-popover__close",
         onClick: onClose,
-        "aria-label": "Sluiten",
+        "aria-label": labels.close,
       },
       React.createElement(XIcon, { size: 16 })
     ),
@@ -109,7 +112,7 @@ export function AnnotationPopover({
           "div",
           { className: "orbit-section-heading" },
           React.createElement(MessageSquareTextIcon, { size: 12 }),
-          "Feedback",
+          labels.viewFeedback,
           comments.length > 0 &&
             React.createElement("span", { className: "orbit-count" }, comments.length)
         ),

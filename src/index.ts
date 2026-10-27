@@ -14,6 +14,10 @@ export { useComments } from "./hooks/use-comments";
 export { useAllComments } from "./hooks/use-all-comments";
 export { useOrbitFrame } from "./context/frame-context";
 export { useVariant } from "./hooks/use-variant";
+export { useOrbitLanguage } from "./context/use-orbit-language";
+
+// Languages: Orbit's own texts, a set per language.
+export { LABELS } from "./labels";
 
 // Theming — the CSS custom properties are a public contract; see CLAUDE.md.
 export { THEME_ATTR } from "./styles/tokens";
@@ -42,4 +46,6 @@ export type {
   OrbitSwitchVariant,
   OrbitRangeVariant,
   OrbitActionVariant,
+  OrbitLanguage,
+  OrbitViewer,
 } from "./types";

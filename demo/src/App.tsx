@@ -4,6 +4,7 @@ import {
   AnnotationMarker,
   OrbitShell,
   useAnnotations,
+  useOrbitLanguage,
   useVariant,
   type OrbitVariant,
 } from "@strakzat/orbit";
@@ -295,7 +296,8 @@ export function App() {
 
 /**
  * The demo's own variants: one of each kind, so every control shows. The first ones are kept by
- * Orbit (`useVariant`), so "Link kopiëren" carries them; the others are plain state.
+ * Orbit (`useVariant`), so "Link kopiëren" carries them; the others are plain state. Dichtheid
+ * follows the language picked in the rail's profile (`useOrbitLanguage`); the rest is in Dutch.
  */
 function Shell({ children }: { children: React.ReactNode }) {
   const [chart, setChart] = useVariant("chart", "lijn");
@@ -306,6 +308,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [rows, setRows] = useVariant("rijen", 12);
   const [empty, setEmpty] = useState(false);
   const { annotationMode, setAnnotationMode } = useAnnotations();
+  const en = useOrbitLanguage() === "en";
 
   const variants: OrbitVariant[] = [
     {
@@ -338,9 +341,9 @@ function Shell({ children }: { children: React.ReactNode }) {
     {
       type: "choice",
       id: "density",
-      title: "Dichtheid",
+      title: en ? "Density" : "Dichtheid",
       options: [
-        { id: "ruim", label: "Ruim" },
+        { id: "ruim", label: en ? "Comfortable" : "Ruim" },
         { id: "compact", label: "Compact" },
       ],
       value: density,

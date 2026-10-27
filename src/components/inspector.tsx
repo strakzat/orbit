@@ -95,6 +95,7 @@ export function Inspector() {
     commentsConfig,
     inspectorActive: active,
     setInspectorActive: setActive,
+    labels,
   } = useAnnotationsSafe();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -245,7 +246,7 @@ export function Inspector() {
   const announcement = React.createElement(
     "div",
     { key: "status", className: "orbit-root orbit-sr-only", role: "status" },
-    active && !selected ? "Inspectormodus actief. Klik een element aan om feedback te plaatsen, Escape om te stoppen." : ""
+    active && !selected ? labels.inspectorActive : ""
   );
 
   const highlight =

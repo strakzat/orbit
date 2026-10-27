@@ -6,6 +6,7 @@ import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId, showHoverHighlight } from "../utils/find-element";
 import { getFixedPopoverStyle } from "../utils/popover-position";
 import { matchRoute } from "../utils/route-matching";
+import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
 import {
@@ -21,6 +22,7 @@ interface AutoBadgeInfo {
   annotation: Annotation;
   rect: DOMRect;
   openCommentCount: number;
+  commentCount: number;
   hasComments: boolean;
   allResolved: boolean;
   /** No element to sit on; parked in the column top-left instead. */
@@ -48,6 +50,7 @@ export function AutoAnnotationMarkers() {
     commentsConfig,
     currentRoute,
     registeredMarkerIds,
+    labels,
   } = useAnnotationsSafe();
 
   const [badges, setBadges] = useState<AutoBadgeInfo[]>([]);
@@ -113,6 +116,7 @@ export function AutoAnnotationMarkers() {
         annotation,
         rect,
         openCommentCount,
+        commentCount: elementComments.length,
         hasComments: elementComments.length > 0,
         allResolved: elementComments.length > 0 && openCommentCount === 0,
         unplaced,
@@ -127,6 +131,7 @@ export function AutoAnnotationMarkers() {
         return (
           b.annotation.id === n.annotation.id &&
           b.openCommentCount === n.openCommentCount &&
+          b.commentCount === n.commentCount &&
           b.allResolved === n.allResolved &&
           Math.abs(b.rect.top - n.rect.top) < 1 &&
           Math.abs(b.rect.left - n.rect.left) < 1 &&
@@ -203,9 +208,9 @@ export function AutoAnnotationMarkers() {
         key: `auto-${annotation.id}`,
         variant: "annotation",
         type: annotationType,
-        label: badge.unplaced
-          ? `Annotatie: ${annotation.title} (niet aan een element gekoppeld)`
-          : `Annotatie: ${annotation.title}`,
+        label: fill(badge.unplaced ? labels.annotationMarkerUnplaced : labels.annotationMarker, {
+          title: annotation.title,
+        }),
         placement: "fixed",
         unplaced: badge.unplaced,
         style: {
@@ -232,8 +237,8 @@ export function AutoAnnotationMarkers() {
           resolved: badge.allResolved,
           count: badge.openCommentCount,
           label: badge.allResolved
-            ? "Feedback, alles opgelost"
-            : `${badge.openCommentCount} open feedback`,
+            ? fill(labels.feedbackAllResolved, { count: badge.commentCount })
+            : fill(labels.feedbackOpen, { count: badge.openCommentCount }),
           placement: "fixed",
           behind: true,
           style: {

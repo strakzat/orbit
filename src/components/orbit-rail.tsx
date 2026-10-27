@@ -4,9 +4,12 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
 import { matchRoute } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
-import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon } from "../icons";
+import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon } from "../icons";
+import { fill } from "../labels";
+import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
 import { VariantsPane } from "./variants-pane";
+import { ProfilePane } from "./profile-pane";
 import { isChanged, variantsHere } from "../utils/variants";
 import type { OrbitVariant } from "../types";
 
@@ -19,7 +22,7 @@ interface OrbitRailProps {
 /**
  * The rail: Orbit's controls in a bar under the project, in Radial's tertiary buttons. On the left
  * the project's variants, when it has any; on the right the inspector and the panel, under the
- * corner the panel opens in. A toolbar: one stop for Tab, the arrow keys move between its buttons.
+ * corner the panel opens in, and at the end the viewer's profile. A toolbar: one stop for Tab, the arrow keys move between its buttons.
  */
 export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const {
@@ -34,13 +37,17 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     allComments,
     currentAnnotations,
     currentRoute,
+    language,
+    viewer,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [spoken, setSpoken] = useState("");
   const [focusIndex, setFocusIndex] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
   const paneId = useStableId("orbit-variants");
+  const profileId = useStableId("orbit-profile");
 
   // Only when there is something to switch here: variants for other pages alone leave no button.
   const here = variants ? variantsHere(variants, currentRoute) : [];
@@ -49,7 +56,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const changed = here.filter(isChanged).length;
   // The toolbar's one tab stop, kept on a button that is there: the list shrinks when the
   // variants or the comments go.
-  const buttonCount = (hasVariants ? 1 : 0) + (commentsConfig ? 1 : 0) + 1;
+  const buttonCount = (hasVariants ? 1 : 0) + (commentsConfig ? 1 : 0) + 2;
   const tabStop = Math.min(focusIndex, buttonCount - 1);
   const panelExpanded = annotationMode && panelOpen;
 
@@ -64,13 +71,18 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     if (returnFocus) railRef.current?.querySelector<HTMLElement>("[data-orbit-variants-toggle]")?.focus();
   }, []);
 
+  const closeProfile = useCallback((returnFocus: boolean) => {
+    setProfileOpen(false);
+    if (returnFocus) railRef.current?.querySelector<HTMLElement>("[data-orbit-profile-toggle]")?.focus();
+  }, []);
+
   const buttons: React.ReactElement[] = [];
   const item = (
     key: string,
     isOn: boolean,
     extra: Record<string, unknown>,
     icon: React.ReactNode,
-    label: string,
+    label: string | null,
     badge?: number,
     dot?: boolean
   ) => {
@@ -81,10 +93,10 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         {
           key,
           type: "button",
-          className: cx("orbit-rail__item", isOn && "orbit-rail__item--on"),
           tabIndex: index === tabStop ? 0 : -1,
           onFocus: () => setFocusIndex(index),
           ...extra,
+          className: cx("orbit-rail__item", isOn && "orbit-rail__item--on", extra.className as string | undefined),
         },
         icon,
         label,
@@ -134,7 +146,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       // Where the panel gives the focus back when it closes.
       "data-annotation-button": "",
       "aria-expanded": panelExpanded,
-      "aria-label": count > 0 ? `${labels.panelTitle}, ${count} op deze pagina` : undefined,
+      "aria-label": count > 0 ? `${labels.panelTitle}, ${fill(labels.onThisPage, { count })}` : undefined,
       onClick: () => {
         if (!annotationMode) {
           setAnnotationMode(true);
@@ -145,6 +157,25 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     React.createElement(MessageChatSquareIcon, { size: 16 }),
     labels.panelTitle,
     count
+  );
+
+  // The viewer as a monogram once they have a name, the profile icon until then.
+  const name = viewer.name.trim();
+  const profileButton = item(
+    "profile",
+    profileOpen,
+    {
+      className: "orbit-rail__item--avatar",
+      "data-orbit-profile-toggle": "",
+      "aria-expanded": profileOpen,
+      "aria-controls": profileOpen ? profileId : undefined,
+      "aria-label": name ? fill(labels.profileNamed, { name }) : labels.profile,
+      onClick: () => setProfileOpen((open) => !open),
+    },
+    name
+      ? React.createElement("span", { className: "orbit-rail__monogram", "aria-hidden": true }, initials(name))
+      : React.createElement(UserIcon, { size: 16 }),
+    null
   );
 
   // ARIA's toolbar pattern: the arrow keys, Home and End move between the buttons.
@@ -173,13 +204,14 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         ref: railRef,
         role: "toolbar",
         "aria-label": labels.rail,
+        lang: language,
         "aria-orientation": "horizontal",
         [ORBIT_UI_ATTR]: "",
         className: cx("orbit-root", "orbit-rail", overlay && "orbit-rail--overlay"),
         onKeyDown,
       },
       React.createElement("div", { className: "orbit-rail__group" }, variantsButton),
-      React.createElement("div", { className: "orbit-rail__group" }, inspectorButton, panelButton),
+      React.createElement("div", { className: "orbit-rail__group" }, inspectorButton, panelButton, profileButton),
       React.createElement("p", { className: "orbit-sr-only", role: "status" }, spoken)
     ),
     hasVariants && variantsOpen
@@ -189,6 +221,9 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           onClose: closeVariants,
           onAnnounce: setSpoken,
         })
+      : null,
+    profileOpen
+      ? React.createElement(ProfilePane, { id: profileId, onClose: closeProfile, onAnnounce: setSpoken })
       : null
   );
 }

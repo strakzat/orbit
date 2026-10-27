@@ -13,6 +13,7 @@ import { matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching
 import { STATUS_SLUGS } from "../styles/tokens";
 import { XIcon, SearchIcon } from "../icons";
 import { TYPE_ICONS } from "../constants";
+import { fill } from "../labels";
 import { AnnotationCard } from "./annotation-card";
 import { CommentCard } from "./comment-card";
 import type { Comment, AnnotationType } from "../types";
@@ -43,6 +44,7 @@ export function AnnotationPanel() {
     commentsLoading: feedbackLoading,
     commentsError: feedbackError,
     currentRoute,
+    language,
   } = useAnnotations();
 
   // A project that writes no annotations uses Orbit for its feedback: open there.
@@ -137,7 +139,7 @@ export function AnnotationPanel() {
             onClick: () => setView(v),
             "aria-pressed": view === v,
           },
-          v === "annotations" ? "Annotaties" : "Feedback",
+          v === "annotations" ? labels.viewAnnotations : labels.viewFeedback,
           // Both counters are page-filtered, so the two tabs answer the same
           // question: how much is there to look at right here.
           tabCounts[v] > 0 &&
@@ -151,7 +153,7 @@ export function AnnotationPanel() {
         type: "button",
         className: "orbit-icon-button",
         onClick: close,
-        "aria-label": "Sluit paneel",
+        "aria-label": labels.closePanel,
       },
       React.createElement(XIcon, { size: 16 })
     )
@@ -199,7 +201,7 @@ export function AnnotationPanel() {
     React.createElement(
       "label",
       { className: "orbit-sr-only", htmlFor: searchId },
-      view === "feedback" ? "Zoek feedback" : labels.searchPlaceholder
+      view === "feedback" ? labels.searchFeedbackPlaceholder : labels.searchPlaceholder
     ),
     React.createElement(
       "span",
@@ -210,7 +212,7 @@ export function AnnotationPanel() {
       id: searchId,
       className: "orbit-input",
       type: "search",
-      placeholder: view === "feedback" ? "Zoek feedback..." : labels.searchPlaceholder,
+      placeholder: view === "feedback" ? labels.searchFeedbackPlaceholder : labels.searchPlaceholder,
       value: searchQuery,
       onChange: (e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value),
     })
@@ -261,7 +263,7 @@ export function AnnotationPanel() {
                   return next;
                 }),
             },
-            s
+            labels.status[s]
           );
         })
     )
@@ -315,11 +317,11 @@ export function AnnotationPanel() {
 
   const feedbackEmpty =
     feedbackLoading && filteredFeedback.length === 0
-      ? { message: "Feedback laden...", isError: false }
+      ? { message: labels.feedbackLoading, isError: false }
       : feedbackError && filteredFeedback.length === 0
-        ? { message: "Fout bij laden feedback", isError: true }
+        ? { message: labels.feedbackError, isError: true }
         : filteredFeedback.length === 0
-          ? { message: "Nog geen feedback", isError: false }
+          ? { message: labels.feedbackEmpty, isError: false }
           : null;
 
   const feedbackList = React.createElement(
@@ -340,7 +342,9 @@ export function AnnotationPanel() {
             comment: c,
             showLabel: true,
             isActive: !!c.annotationId && c.annotationId === activeAnnotationId,
-            activateLabel: `Feedback van ${c.auteur}${c.label ? ` op ${c.label}` : ""}`,
+            activateLabel: c.label
+              ? fill(labels.feedbackFromOn, { name: c.auteur, label: c.label })
+              : fill(labels.feedbackFrom, { name: c.auteur }),
             // Same model as an annotation card: the panel is the index, and the
             // thread opens on the page next to the element it belongs to.
             onSelect: c.annotationId
@@ -396,6 +400,7 @@ export function AnnotationPanel() {
       style: { width: panelWidth, height: panelHeight },
       role: "complementary",
       "aria-label": labels.panelTitle,
+      lang: language,
     },
     header,
     subTabs,

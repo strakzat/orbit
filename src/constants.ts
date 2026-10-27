@@ -1,4 +1,5 @@
 import type { AnnotationLabels, AnnotationSettings, AnnotationType } from "./types";
+import { LABELS } from "./labels";
 import {
   FileTextIcon, ThumbsUpIcon,
   HelpCircleIcon, ThumbsDownIcon, SparklesIcon, AlertTriangleIcon, EyeIcon,
@@ -14,31 +15,8 @@ export const TYPE_ICONS: Record<AnnotationType, typeof FileTextIcon> = {
   "user-insight": EyeIcon,
 };
 
-export const DEFAULT_LABELS: AnnotationLabels = {
-  toggleShow: "Annotaties tonen",
-  toggleHide: "Annotaties verbergen",
-  tabCurrentPage: "Deze pagina",
-  tabAll: "Alles",
-  searchPlaceholder: "Zoek annotaties...",
-  panelTitle: "Annotaties en feedback",
-  noResults: "Geen resultaten",
-  placeFeedback: "Feedback plaatsen",
-  variants: "Varianten",
-  variantsThisPage: "Deze pagina",
-  variantsEverywhere: "Alle pagina's",
-  variantsThisPageHint: "Verandert alleen wat er op deze pagina staat.",
-  variantsEverywhereHint: "Geldt op elke pagina van het prototype.",
-  variantsEmpty: "Hier valt niets te wisselen.",
-  variantsClose: "Sluit varianten",
-  variantsReset: "Standaard herstellen",
-  variantsCopyLink: "Link kopiëren",
-  variantsLinkCopied: "Link gekopieerd.",
-  variantsChanged: "aangepast",
-  variantsNone: "geen",
-  variantsOn: "aan",
-  variantsOff: "uit",
-  rail: "Orbit",
-};
+/** Orbit's texts in Dutch, the language it starts in. Every language's are in `LABELS`. */
+export const DEFAULT_LABELS: AnnotationLabels = LABELS.nl;
 
 export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   defaultVisible: false,

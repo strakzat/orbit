@@ -1,5 +1,27 @@
 # Changelog
 
+## 4.2.0
+
+A profile on the rail, and Orbit in English.
+
+- **The viewer on the rail.** At the right end, a monogram once there is a name, a profile
+  icon until then. It opens a small pane with the name feedback goes out under and the
+  language. The comment form shows "Als Elwin" instead of the name field once the name is
+  set; a press on it brings the field back. The name the form used to keep is taken over.
+- **Dutch and English.** `language="en"` on the provider sets where Orbit starts; the
+  viewer's choice goes over it. Both are kept in `localStorage` (`@strakzat/orbit:viewer`).
+  Every text the components had in Dutch is a label now, relative times included
+  ("3u" / "3h"). Dates stay "15 Apr 2026" in both.
+- **`useOrbitLanguage()`** for a project's own content: build your variants from it and they
+  follow the switch. Annotations and feedback are not translated.
+- **`labels` per language.** Flat overrides go for every language, as before; keyed by
+  language (`{ nl: {…}, en: {…} }`) each follows the switch. `LABELS` is exported.
+- `AnnotationLabels` has new keys (the former inline texts, the profile, the time units,
+  `status`); a few are templates with `{count}`, `{name}`, `{label}` or `{title}`.
+  `AnnotationContextValue` has `language`, `viewer`, `setViewerName` and `setViewerLanguage`.
+  A full labels object or a typed context mock needs them.
+- `relativeTime(iso, units)` takes its units from the labels.
+
 ## 4.1.0
 
 The variants pane grows from two controls into a settings pane for prototypes.

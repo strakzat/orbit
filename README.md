@@ -504,21 +504,32 @@ const comments = data.results.map(parseNotionComment);
 >
 ```
 
-### Labels (i18n)
+### Language and labels
+
+Orbit speaks Dutch and English. `language` is where it starts; the viewer can switch in the
+profile at the right end of the rail, where they also set the name their feedback goes out
+under. Both are kept in `localStorage`.
+
+```tsx
+<AnnotationProvider annotations={data} currentRoute={pathname} language="en">
+```
+
+Only Orbit's own interface is translated. Annotations, feedback and your variants are your
+content. To give your variants both languages, build them from `useOrbitLanguage()`:
+
+```tsx
+const en = useOrbitLanguage() === "en";
+const variants = [{ type: "switch", id: "leeg", title: en ? "Empty state" : "Lege staat", … }];
+```
+
+`labels` overrides Orbit's texts: flat for every language, or keyed by language so each
+follows the switch. A text in `{braces}` is a template (`"{count} open feedback"`).
 
 ```tsx
 <AnnotationProvider
   annotations={data}
   currentRoute={pathname}
-  labels={{
-    toggleShow: "Show annotations",
-    toggleHide: "Hide annotations",
-    tabCurrentPage: "This page",
-    tabAll: "All",
-    searchPlaceholder: "Search annotations...",
-    panelTitle: "Annotations",
-    noResults: "No results",
-  }}
+  labels={{ nl: { panelTitle: "Notities" }, en: { panelTitle: "Notes" } }}
 >
 ```
 
