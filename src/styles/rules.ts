@@ -159,81 +159,266 @@ const STATUS_BRIDGE = Object.values(STATUS_SLUGS)
   })
   .join("\n");
 
-// ── Floating buttons ─────────────────────────────────────────────────────────
+// ── Shell and rail ───────────────────────────────────────────────────────────
 
-const FAB = `
-.orbit-fab {
-  position: fixed;
-  z-index: calc(var(--orbit-z-base) + var(--orbit-z-toolbar));
+const CHROME = `
+/* The app on top, its corners rounded off at the foot, the rail behind it on black. The
+   frame's transform makes it the containing block of every fixed element inside, so the
+   project's own fixed layers stay in it; its portals go there through useOrbitFrame(). */
+.orbit-shell {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--orbit-border-primary);
-  border-radius: var(--orbit-radius-full);
-  background: var(--orbit-bg-primary);
-  color: var(--orbit-text-secondary);
-  box-shadow: var(--orbit-shadow-sm);
-  transition:
-    background-color var(--orbit-duration) var(--orbit-ease),
-    border-color var(--orbit-duration) var(--orbit-ease),
-    color var(--orbit-duration) var(--orbit-ease),
-    box-shadow var(--orbit-duration) var(--orbit-ease),
-    transform var(--orbit-duration-fast) var(--orbit-ease);
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--orbit-bg-chrome);
 }
 
-.orbit-fab:hover {
-  border-color: var(--orbit-border-input);
+/* Two boxes, so a fixed element stays put while the app scrolls: the frame carries the
+   transform and clips, the box inside it scrolls. A fixed child of a transformed box that
+   scrolls itself would be placed against its scrolled content, and scroll away with it. */
+.orbit-frame {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  transform: translateZ(0);
+  border-radius: 0 0 24px 24px;
+  background: var(--orbit-frame-bg);
+}
+
+.orbit-frame__scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.orbit-rail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orbit-space-2);
+  height: var(--orbit-rail-height);
+  padding: 0 var(--orbit-space-3);
+  background: var(--orbit-bg-chrome);
   color: var(--orbit-text-primary);
-  box-shadow: var(--orbit-shadow-md);
 }
 
-.orbit-fab:active {
-  transform: scale(0.94);
+/* Without a frame: over the foot of the window, the page scrolling under it as before. */
+.orbit-rail--overlay {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-toolbar));
 }
 
-/* The comment/inspector mode changes how the whole page behaves, so its active
-   state is the loud one: the feedback blue, filled. */
-.orbit-fab--active {
-  background: var(--orbit-bg-feedback-solid);
-  border-color: var(--orbit-bg-feedback-solid);
-  color: var(--orbit-text-feedback_on-solid);
-}
-
-.orbit-fab--active:hover {
-  background: var(--orbit-bg-feedback-solid);
-  border-color: var(--orbit-bg-feedback-solid);
-  color: var(--orbit-text-feedback_on-solid);
-}
-
-.orbit-fab--inspector {
-  z-index: calc(var(--orbit-z-base) + var(--orbit-z-inspector-toggle));
-}
-
-.orbit-fab--dragging {
-  cursor: grabbing;
-  transition: none;
-}
-
-.orbit-fab__count {
-  position: absolute;
-  top: -7px;
-  right: -7px;
+.orbit-rail__group {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border: 2px solid var(--orbit-bg-primary);
+  gap: var(--orbit-space-1);
+}
+
+/* Radial's tertiary button: no film at rest, the chip on hover, on it in semibold while on. */
+.orbit-rail__item {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--orbit-space-1-5);
+  height: 32px;
+  padding: 0 var(--orbit-space-3);
   border-radius: var(--orbit-radius-full);
-  background: var(--orbit-bg-feedback-solid);
-  color: var(--orbit-text-feedback_on-solid);
-  font-size: var(--orbit-text-2xs);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color var(--orbit-duration-slow) var(--orbit-ease),
+    box-shadow var(--orbit-duration-slow) var(--orbit-ease),
+    color var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-rail__item svg {
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-rail__item:hover,
+.orbit-rail__item--on {
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+}
+
+.orbit-rail__item--on {
+  font-weight: 600;
+}
+
+.orbit-rail__item--on svg {
+  color: var(--orbit-text-primary);
+}
+
+.orbit-rail__count {
+  min-width: 20px;
+  margin-right: calc(var(--orbit-space-1) * -1);
+  padding: 0 var(--orbit-space-1-5);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+  color: var(--orbit-text-primary_on-brand);
+  font-size: var(--orbit-text-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: var(--orbit-leading-none);
+  line-height: 18px;
+  text-align: center;
+}
+
+/* A pane over the project: Radial's chrome glass, made dense. The panel and the popovers
+   take it too. */
+.orbit-glass-pane {
+  background-color: var(--orbit-glass-pane);
+  background-image: linear-gradient(
+    to bottom,
+    var(--orbit-glass-pane-sheen),
+    transparent 50%,
+    var(--orbit-glass-pane-sheen-foot)
+  );
+  -webkit-backdrop-filter: var(--orbit-glass-blur);
+  backdrop-filter: var(--orbit-glass-blur);
+  box-shadow: var(--orbit-glass-pane-edge), var(--orbit-shadow-pane);
+}
+
+/* The variants pane: as high and as far in from the window's edge as the panel on the
+   other side. Its height is settings.panelHeight, inline. */
+.orbit-variants {
+  position: fixed;
+  bottom: calc(var(--orbit-rail-height) + var(--orbit-space-4));
+  left: var(--orbit-space-4);
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-toolbar));
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - var(--orbit-space-8));
+  max-height: calc(100vh - var(--orbit-rail-height) - var(--orbit-space-8));
+  max-height: calc(100dvh - var(--orbit-rail-height) - var(--orbit-space-8));
+  overflow-y: auto;
+  padding: var(--orbit-space-2);
+  border-radius: var(--orbit-radius-2xl);
+}
+
+.orbit-variants__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-3);
+  padding: var(--orbit-space-2) var(--orbit-space-1) var(--orbit-space-3);
+}
+
+.orbit-variants__group + .orbit-variants__group {
+  padding-top: var(--orbit-space-3);
+  border-top: 1px solid var(--orbit-glass-hairline);
+}
+
+.orbit-variants__heading {
+  padding: 0 var(--orbit-space-2);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-xs);
+  font-weight: 600;
+}
+
+.orbit-variants__choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-1-5);
+}
+
+.orbit-variants__title {
+  padding: 0 var(--orbit-space-3);
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-xs);
+}
+
+/* Radial's pill, the options side by side on it, as its variant switch. */
+.orbit-segments {
+  display: flex;
+  gap: var(--orbit-space-1);
+  padding: var(--orbit-space-1);
+  border-radius: var(--orbit-radius-full);
+  background-color: var(--orbit-glass-film);
+  box-shadow: var(--orbit-glass-edge);
+}
+
+.orbit-segment {
+  flex: 1 1 0;
+  height: 32px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-segment:hover {
+  color: var(--orbit-text-primary);
+}
+
+.orbit-segment[aria-checked="true"] {
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+  font-weight: 600;
+}
+
+.orbit-root .orbit-segment:focus-visible {
+  outline-offset: -2px;
+}
+
+.orbit-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orbit-space-6);
+  padding: var(--orbit-space-1-5) var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  font-weight: 500;
+  text-align: start;
+}
+
+.orbit-switch:hover {
+  color: var(--orbit-text-primary);
+}
+
+.orbit-switch__track {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 36px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-tertiary);
+  box-shadow: inset 0 0 0 1px var(--orbit-glass-hairline);
+  transition: background-color var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-switch__knob {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-text-primary);
+  box-shadow: var(--orbit-shadow-xs);
+  transition: transform var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-switch[aria-checked="true"] .orbit-switch__track {
+  background: var(--orbit-bg-brand-solid);
+}
+
+.orbit-switch[aria-checked="true"] .orbit-switch__knob {
+  transform: translateX(16px);
+  background: var(--orbit-bg-primary);
 }
 `;
 
@@ -369,10 +554,7 @@ const POPOVER = `
      stops a popover from running past the viewport when there is no anchor. */
   max-height: calc(100vh - var(--orbit-space-8));
   overflow-y: auto;
-  border: 1px solid var(--orbit-border-primary);
   border-radius: var(--orbit-radius-2xl);
-  background: var(--orbit-bg-primary);
-  box-shadow: var(--orbit-shadow-lg);
 }
 
 .orbit-popover--inspector {
@@ -391,7 +573,8 @@ const POPOVER = `
   top: var(--orbit-space-3);
   right: var(--orbit-space-2);
   z-index: 2;
-  background: var(--orbit-bg-primary);
+  /* The chip, so it reads over content scrolling under it. */
+  background: var(--orbit-glass-chip);
 }
 
 .orbit-popover__section {
@@ -469,8 +652,8 @@ const POPOVER = `
   height: 18px;
   padding: 0 var(--orbit-space-1-5);
   border-radius: var(--orbit-radius-full);
-  background: var(--orbit-bg-tertiary);
-  color: var(--orbit-text-tertiary);
+  background: var(--orbit-glass-chip);
+  color: var(--orbit-text-primary);
   font-size: var(--orbit-text-2xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -544,51 +727,30 @@ const BADGES = `
 // ── Panel ────────────────────────────────────────────────────────────────────
 
 const PANEL = `
+/* Bottom right above the rail, where its button is; settings.panelWidth and panelHeight are
+   applied inline, and these caps keep it inside a small window. It does not drag: it stays
+   by the button that opens it. */
 .orbit-panel {
+  position: fixed;
+  right: var(--orbit-space-4);
+  bottom: calc(var(--orbit-rail-height) + var(--orbit-space-4));
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-toolbar));
-  /* settings.panelWidth is applied inline; these caps keep it inside a 320px
-     viewport instead of forcing the host page to scroll sideways. */
   max-width: calc(100vw - var(--orbit-space-8));
-  max-height: calc(100vh - var(--orbit-space-8));
+  max-height: calc(100vh - var(--orbit-rail-height) - var(--orbit-space-8));
+  max-height: calc(100dvh - var(--orbit-rail-height) - var(--orbit-space-8));
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--orbit-border-primary);
   border-radius: var(--orbit-radius-2xl);
-  background: var(--orbit-bg-primary);
-  box-shadow: var(--orbit-shadow-xl);
-  transition:
-    top var(--orbit-duration-slow) var(--orbit-ease),
-    left var(--orbit-duration-slow) var(--orbit-ease),
-    right var(--orbit-duration-slow) var(--orbit-ease),
-    bottom var(--orbit-duration-slow) var(--orbit-ease);
 }
 
-.orbit-panel--dragging {
-  cursor: grabbing;
-  transition: none;
-}
-
-/* Grip, tabs and close share one row. align-items: stretch lets the tabs run the
-   full height so their underline lands on the header rule. */
+/* The tabs and the close share one row. */
 .orbit-panel__header {
   display: flex;
-  align-items: stretch;
-  gap: var(--orbit-space-1);
-  padding: 0 var(--orbit-space-2) 0 var(--orbit-space-3);
-  border-bottom: 1px solid var(--orbit-border-secondary);
-}
-
-.orbit-panel__grip {
-  display: flex;
   align-items: center;
-  flex-shrink: 0;
-  cursor: grab;
-  color: var(--orbit-text-disabled);
-}
-
-.orbit-panel__grip:active {
-  cursor: grabbing;
+  gap: var(--orbit-space-1);
+  padding: var(--orbit-space-2);
+  border-bottom: 1px solid var(--orbit-glass-hairline);
 }
 
 .orbit-panel__header .orbit-icon-button {
@@ -603,7 +765,7 @@ const PANEL = `
   flex-shrink: 0;
   width: 28px;
   height: 28px;
-  border-radius: var(--orbit-radius-md);
+  border-radius: var(--orbit-radius-full);
   color: var(--orbit-text-tertiary);
   transition:
     background-color var(--orbit-duration-fast) var(--orbit-ease),
@@ -619,7 +781,7 @@ const PANEL = `
 }
 
 .orbit-icon-button:hover {
-  background: var(--orbit-bg-tertiary);
+  background: var(--orbit-glass-chip);
   color: var(--orbit-text-primary);
 }
 
@@ -629,23 +791,26 @@ const PANEL = `
 
 .orbit-tabs {
   display: flex;
-  flex: 1;
-  gap: var(--orbit-space-3);
-  /* Pulls the active tab's underline down onto the header's own rule. */
-  margin-bottom: -1px;
+  flex: 0 1 auto;
+  gap: var(--orbit-space-1);
+  margin-right: auto;
+  padding: var(--orbit-space-1);
+  border-radius: var(--orbit-radius-full);
+  background-color: var(--orbit-glass-film);
+  box-shadow: var(--orbit-glass-edge);
 }
 
 .orbit-tab {
   display: flex;
   align-items: center;
   gap: var(--orbit-space-1-5);
-  padding: var(--orbit-space-3) 0;
-  border-bottom: 2px solid transparent;
-  color: var(--orbit-text-tertiary);
+  height: 32px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
   font-size: var(--orbit-text-md);
-  transition:
-    color var(--orbit-duration) var(--orbit-ease),
-    border-color var(--orbit-duration) var(--orbit-ease);
+  font-weight: 500;
+  transition: color var(--orbit-duration) var(--orbit-ease);
 }
 
 .orbit-tab:hover {
@@ -653,7 +818,8 @@ const PANEL = `
 }
 
 .orbit-tab--active {
-  border-bottom-color: var(--orbit-text-primary);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
   color: var(--orbit-text-primary);
   font-weight: 600;
 }
@@ -674,24 +840,24 @@ const PANEL = `
   display: flex;
   align-items: center;
   gap: var(--orbit-space-1-5);
-  padding: var(--orbit-space-1) var(--orbit-space-2-5);
-  border-radius: var(--orbit-radius-md);
-  color: var(--orbit-text-tertiary);
-  font-size: var(--orbit-text-sm);
+  height: 32px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
   font-weight: 500;
-  transition:
-    background-color var(--orbit-duration-fast) var(--orbit-ease),
-    color var(--orbit-duration-fast) var(--orbit-ease);
+  transition: color var(--orbit-duration-fast) var(--orbit-ease);
 }
 
 .orbit-subtab:hover {
-  background: var(--orbit-bg-tertiary);
   color: var(--orbit-text-primary);
 }
 
 .orbit-subtab--active {
-  background: var(--orbit-bg-tertiary);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
   color: var(--orbit-text-primary);
+  font-weight: 600;
 }
 
 .orbit-subtab__count {
@@ -739,11 +905,13 @@ const PANEL = `
   display: flex;
   align-items: center;
   gap: var(--orbit-space-1);
-  height: 26px;
-  padding: 0 var(--orbit-space-2-5);
-  border: 1px solid var(--orbit-border-primary);
+  height: 28px;
+  padding: 0 var(--orbit-space-3);
+  border: 1px solid transparent;
   border-radius: var(--orbit-radius-full);
-  color: var(--orbit-text-tertiary);
+  background-color: var(--orbit-glass-film);
+  box-shadow: var(--orbit-glass-edge);
+  color: var(--orbit-text-secondary);
   font-size: var(--orbit-text-xs);
   font-weight: 500;
   transition:
@@ -753,7 +921,6 @@ const PANEL = `
 }
 
 .orbit-filter:hover {
-  border-color: var(--orbit-border-input);
   color: var(--orbit-text-primary);
 }
 
@@ -801,7 +968,7 @@ const CARD = `
   position: relative;
   padding: var(--orbit-space-3);
   border: 1px solid transparent;
-  border-radius: var(--orbit-radius-lg);
+  border-radius: var(--orbit-radius-xl);
   transition:
     background-color var(--orbit-duration-fast) var(--orbit-ease),
     border-color var(--orbit-duration-fast) var(--orbit-ease);
@@ -824,12 +991,12 @@ const CARD = `
 
 .orbit-card:hover,
 .orbit-card--hovered {
-  background: var(--orbit-bg-secondary);
+  background: var(--orbit-glass-film);
 }
 
 .orbit-card--active {
-  border-color: var(--orbit-border-primary);
-  background: var(--orbit-bg-secondary);
+  border-color: var(--orbit-glass-hairline);
+  background: var(--orbit-glass-film);
 }
 
 .orbit-card__head {
@@ -928,17 +1095,17 @@ const COMMENTS = `
    the page. */
 .orbit-comment--clickable {
   padding: var(--orbit-space-3);
-  border: 1px solid var(--orbit-border-secondary);
-  border-radius: var(--orbit-radius-lg);
-  background: var(--orbit-bg-primary);
+  border: 1px solid var(--orbit-glass-hairline);
+  border-radius: var(--orbit-radius-xl);
+  background: var(--orbit-glass-film-faint);
   transition:
     border-color var(--orbit-duration) var(--orbit-ease),
     background-color var(--orbit-duration) var(--orbit-ease);
 }
 
 .orbit-comment--clickable:hover {
-  border-color: var(--orbit-border-input);
-  background: var(--orbit-bg-secondary);
+  border-color: var(--orbit-glass-hairline);
+  background: var(--orbit-glass-film);
 }
 
 .orbit-comment--active {
@@ -1095,11 +1262,12 @@ const FORM = `
   min-height: 38px;
   padding: var(--orbit-space-2) var(--orbit-space-3);
   border: 0;
-  border-radius: var(--orbit-radius-lg);
-  background: var(--orbit-bg-primary);
+  /* Radial's glass field: a faint film with a lit edge. */
+  border-radius: var(--orbit-radius-xl);
+  background: var(--orbit-glass-film-faint);
   color: var(--orbit-text-primary);
   font-size: var(--orbit-text-md);
-  box-shadow: inset 0 0 0 1px var(--orbit-border-input);
+  box-shadow: var(--orbit-glass-field-edge);
   transition: box-shadow var(--orbit-duration-fast) linear;
 }
 
@@ -1108,10 +1276,9 @@ const FORM = `
 }
 
 /* A crisp 1px ring in the interaction blue — Vercel's focus state. */
-.orbit-input:focus {
-  box-shadow:
-    inset 0 0 0 1px var(--orbit-bg-feedback-solid),
-    0 0 0 3px var(--orbit-overlay-ring);
+.orbit-root .orbit-input:focus {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: 0;
 }
 
 .orbit-input[aria-invalid="true"] {
@@ -1146,7 +1313,8 @@ const FORM = `
   align-self: flex-end;
   min-height: 36px;
   padding: 0 var(--orbit-space-4);
-  border-radius: var(--orbit-radius-lg);
+  /* Radial's primary: a near-white pill. */
+  border-radius: var(--orbit-radius-full);
   background: var(--orbit-bg-brand-solid);
   color: var(--orbit-text-primary_on-brand);
   font-size: var(--orbit-text-sm);
@@ -1218,7 +1386,7 @@ export const RULES_CSS = [
   BASE,
   TYPE_BRIDGE,
   STATUS_BRIDGE,
-  FAB,
+  CHROME,
   MARKER,
   POPOVER,
   BADGES,
@@ -1228,3 +1396,16 @@ export const RULES_CSS = [
   FORM,
   OVERLAYS,
 ].join("\n");
+
+/**
+ * The shell's layout alone, rendered with `OrbitShell` itself, so a server-rendered page lays the
+ * app out in the frame from its first paint. The full sheet is only injected once React runs;
+ * without this the page would scroll the window until then, and jump when the frame took over.
+ */
+export const SHELL_LAYOUT_CSS = `
+.orbit-shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+.orbit-frame { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; transform: translateZ(0); }
+.orbit-frame__scroll { height: 100%; overflow-y: auto; }
+.orbit-shell::after { content: ""; flex: none; height: 48px; }
+.orbit-shell:has(.orbit-rail)::after { display: none; }
+`;

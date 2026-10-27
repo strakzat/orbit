@@ -15,7 +15,7 @@ const COLORS = {
   red: "\x1b[31m",
 };
 
-const ANNOTATION_IMPORT = `import { AnnotationProvider, AnnotationButton, AnnotationPanel, Inspector } from '@strakzat/orbit'`;
+const ANNOTATION_IMPORT = `import { AnnotationProvider, OrbitShell } from '@strakzat/orbit'`;
 const DATA_IMPORT = `import { annotations } from './annotations/data'`;
 
 const DATA_FILE_CONTENT = `export const annotations = []\n`;
@@ -424,8 +424,7 @@ function wrapWithProvider(content) {
   // Get the inner JSX content
   const innerJsx = content.slice(afterReturn + 1, closeIndex);
 
-  // Find the last closing tag before the end — we want to insert AnnotationButton + AnnotationPanel
-  // before the outermost closing tag
+  // Find the last closing tag before the end, for where the app's own JSX ends
   const trimmedJsx = innerJsx.trimEnd();
   const lastCloseTagMatch = trimmedJsx.match(/(<\/\w+>)\s*$/);
 
@@ -444,19 +443,17 @@ function wrapWithProvider(content) {
 
     wrappedJsx =
       `\n${indent}<AnnotationProvider annotations={annotations} currentRoute={${locationVar}.pathname} comments={{ enabled: true, apiBase: '', project: 'my-project' }}>\n` +
+      `${indent}<OrbitShell>\n` +
       `${before.trimEnd()}\n` +
-      `${indent}  <AnnotationButton />\n` +
-      `${indent}  <AnnotationPanel />\n` +
-      `${indent}  <Inspector />\n` +
       `${indent}${closingTag}\n` +
+      `${indent}</OrbitShell>\n` +
       `${indent}</AnnotationProvider>\n  `;
   } else {
     wrappedJsx =
       `\n${indent}<AnnotationProvider annotations={annotations} currentRoute={${locationVar}.pathname} comments={{ enabled: true, apiBase: '', project: 'my-project' }}>\n` +
+      `${indent}<OrbitShell>\n` +
       `${innerJsx.trimEnd()}\n` +
-      `${indent}  <AnnotationButton />\n` +
-      `${indent}  <AnnotationPanel />\n` +
-      `${indent}  <Inspector />\n` +
+      `${indent}</OrbitShell>\n` +
       `${indent}</AnnotationProvider>\n  `;
   }
 
@@ -563,10 +560,7 @@ function main() {
     console.log(c("dim", `  ${ANNOTATION_IMPORT}`));
     console.log(c("dim", `  ${DATA_IMPORT}\n`));
     console.log(c("dim", "  <AnnotationProvider annotations={annotations} currentRoute={location.pathname} comments={{ enabled: true, apiBase: '', project: 'my-project' }}>"));
-    console.log(c("dim", "    {/* je app */}"));
-    console.log(c("dim", "    <AnnotationButton />"));
-    console.log(c("dim", "    <AnnotationPanel />"));
-    console.log(c("dim", "    <Inspector />"));
+    console.log(c("dim", "    <OrbitShell>{/* je app */}</OrbitShell>"));
     console.log(c("dim", "  </AnnotationProvider>\n"));
 
     // Still generate CLAUDE.md even without layout file
@@ -608,7 +602,7 @@ function main() {
   console.log(`  ${c("green", "✓")} ${c("bold", layoutRelPath)} aangepast`);
   console.log(c("dim", "    + imports toegevoegd"));
   console.log(c("dim", "    + AnnotationProvider wrapper + comments config toegevoegd"));
-  console.log(c("dim", "    + AnnotationButton, AnnotationPanel & Inspector toegevoegd"));
+  console.log(c("dim", "    + OrbitShell toegevoegd: de rail, het paneel en de inspector"));
 
   // Step 6: CLAUDE.md for AI agents
   console.log("");

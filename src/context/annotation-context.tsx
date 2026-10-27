@@ -1,10 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
-import type {
-  AnnotationContextValue,
-  AnnotationProviderProps,
-  PanelCorner,
-} from "../types";
-import { DEFAULT_LABELS, DEFAULT_SETTINGS, STORAGE_KEY_PANEL_CORNER } from "../constants";
+import type { AnnotationContextValue, AnnotationProviderProps } from "../types";
+import { DEFAULT_LABELS, DEFAULT_SETTINGS } from "../constants";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
 import { matchRoute } from "../utils/route-matching";
@@ -46,15 +42,10 @@ export function AnnotationProvider({
 
   const [annotationMode, setAnnotationMode] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelCorner, setPanelCornerState] = useState<PanelCorner>(settings.togglePosition);
 
-  // Apply defaultVisible and restore panel corner from localStorage after mount
+  // Apply defaultVisible after mount
   useEffect(() => {
     setAnnotationMode(settings.defaultVisible);
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_PANEL_CORNER);
-      if (stored) setPanelCornerState(stored as PanelCorner);
-    } catch {}
   }, []);
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null);
@@ -63,13 +54,6 @@ export function AnnotationProvider({
 
   const contextStackRef = useRef(contextStack);
   contextStackRef.current = contextStack;
-
-  const setPanelCorner = useCallback((corner: PanelCorner) => {
-    setPanelCornerState(corner);
-    try {
-      localStorage.setItem(STORAGE_KEY_PANEL_CORNER, corner);
-    } catch {}
-  }, []);
 
   const pushContext = useCallback((context: string) => {
     setContextStack((prev) => [...prev, context]);
@@ -150,10 +134,16 @@ export function AnnotationProvider({
     forceUpdate();
   }, []);
 
-  const { comments: allComments } = useAllComments({
+  // One poller for the whole module: the rail shows the open count at all times, and the panel,
+  // the markers and the rail all read this one list rather than each fetching their own.
+  const {
+    comments: allComments,
+    isLoading: commentsLoading,
+    error: commentsError,
+  } = useAllComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
-    enabled: !!commentsConfig?.enabled && (annotationMode || inspectorActive),
+    enabled: !!commentsConfig?.enabled,
   });
 
   const currentContext = contextStack.length > 0
@@ -176,8 +166,6 @@ export function AnnotationProvider({
       setAnnotationMode,
       panelOpen,
       setPanelOpen,
-      panelCorner,
-      setPanelCorner,
       activeAnnotationId,
       setActiveAnnotationId,
       hoveredAnnotationId,
@@ -192,6 +180,8 @@ export function AnnotationProvider({
       settings,
       commentsConfig: commentsConfig?.enabled ? commentsConfig : null,
       allComments,
+      commentsLoading,
+      commentsError,
       currentRoute,
       registeredMarkerIds,
       registerMarkerId,
@@ -200,8 +190,6 @@ export function AnnotationProvider({
     [
       annotationMode,
       panelOpen,
-      panelCorner,
-      setPanelCorner,
       activeAnnotationId,
       hoveredAnnotationId,
       inspectorActive,
@@ -213,6 +201,8 @@ export function AnnotationProvider({
       settings,
       commentsConfig,
       allComments,
+      commentsLoading,
+      commentsError,
       currentRoute,
       registeredMarkerIds,
       registerMarkerId,

@@ -61,6 +61,7 @@ export function AnnotationPopover({
       className: cx(
         "orbit-root",
         "orbit-popover",
+        "orbit-glass-pane",
         "orbit-animate-in",
         variant === "inspector" && "orbit-popover--inspector"
       ),

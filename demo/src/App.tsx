@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
   AnnotationProvider,
-  AnnotationButton,
-  AnnotationPanel,
   AnnotationMarker,
+  OrbitShell,
+  useAnnotations,
+  type OrbitVariant,
 } from "@strakzat/orbit";
 import { annotations } from "./annotations";
 
@@ -281,13 +282,48 @@ export function App() {
         project: "demo-dashboard",
       }}
     >
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px" }}>
-        <NavBar route={route} navigate={navigate} />
-        {route === "/instellingen" ? <InstellingenPage /> : <DashboardPage />}
-      </div>
-
-      <AnnotationButton />
-      <AnnotationPanel />
+      <Shell>
+        <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px", background: "#fff", minHeight: "100%" }}>
+          <NavBar route={route} navigate={navigate} />
+          {route === "/instellingen" ? <InstellingenPage /> : <DashboardPage />}
+        </div>
+      </Shell>
     </AnnotationProvider>
   );
+}
+
+/** The demo's own variants: what a project would switch in a demo, one per page and two everywhere. */
+function Shell({ children }: { children: React.ReactNode }) {
+  const [density, setDensity] = useState("ruim");
+  const [chart, setChart] = useState("lijn");
+  const { annotationMode, setAnnotationMode } = useAnnotations();
+
+  const variants: OrbitVariant[] = [
+    {
+      type: "choice",
+      id: "chart",
+      title: "Grafiek",
+      options: [
+        { id: "lijn", label: "Lijn" },
+        { id: "staaf", label: "Staaf" },
+      ],
+      value: chart,
+      onChange: setChart,
+      pages: (route) => route === "/",
+    },
+    {
+      type: "choice",
+      id: "density",
+      title: "Dichtheid",
+      options: [
+        { id: "ruim", label: "Ruim" },
+        { id: "compact", label: "Compact" },
+      ],
+      value: density,
+      onChange: setDensity,
+    },
+    { type: "switch", id: "pins", title: "Feedback-pins tonen", value: annotationMode, onChange: setAnnotationMode },
+  ];
+
+  return <OrbitShell variants={variants}>{children}</OrbitShell>;
 }
