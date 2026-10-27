@@ -10,6 +10,7 @@ import { AnnotationProvider, OrbitShell, AnnotationMarker } from "@strakzat/orbi
 <AnnotationProvider
   annotations={annotations}
   currentRoute={window.location.pathname}
+  language="nl" /* optioneel; de kijker kan wisselen */
   comments={{ enabled: true, apiBase: "", project: "my-project" }}
 >
   <OrbitShell variants={variants /* optioneel */}>
@@ -29,7 +30,8 @@ import { AnnotationProvider, OrbitShell, AnnotationMarker } from "@strakzat/orbi
 AnnotationProvider (context + state, één poller voor alle comments)
 ├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
 │   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
-│   │   └── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
+│   │   ├── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
+│   │   └── ProfilePane     — de avatar rechts op de rail: naam en taal van de kijker
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
 ├── Inspector               — crosshair element picker voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
@@ -78,7 +80,8 @@ interface CommentsConfig {
 | `annotations` | `Annotation[]` | required | Alle annotaties voor het project |
 | `currentRoute` | `string` | `"/"` | Huidige route — nodig voor page filtering |
 | `settings` | `AnnotationSettings` | zie defaults | UI instellingen |
-| `labels` | `Partial<AnnotationLabels>` | Nederlands | UI teksten (volledig overrideable) |
+| `labels` | `Partial<AnnotationLabels>` of `{ nl?, en? }` | per taal | UI teksten: plat voor elke taal, of per taal |
+| `language` | `"nl" \| "en"` | `"nl"` | De taal waarin Orbit begint, tot de kijker kiest |
 | `comments` | `CommentsConfig` | undefined | Feedback systeem config |
 
 ### Settings defaults
@@ -102,7 +105,8 @@ Bestands- en mapnamen zijn `kebab-case`, componentnamen `PascalCase` — `Annota
 src/
 ├── index.ts                          — Public exports
 ├── types.ts                          — Alle TypeScript types
-├── constants.ts                      — Defaults, labels, type-iconen (géén kleuren)
+├── constants.ts                      — Defaults, type-iconen (géén kleuren)
+├── labels.ts                         — LABELS per taal (nl, en), fill() voor {templates}, resolveLabels()
 ├── icons.ts                          — Inline SVG iconen via één createIcon() factory
 ├── vite.ts                           — Vite plugin: annotationsDevApi() voor local dev API
 ├── styles/
@@ -115,11 +119,13 @@ src/
 │   ├── frame-context.ts               — FrameContext + useOrbitFrame(): het frame voor de portals van het project
 │   ├── annotation-context.tsx         — Provider: state, keyboard shortcuts, route tracking, runtime tokens
 │   ├── use-annotations.ts             — Hook (throws als buiten provider)
-│   └── use-annotations-safe.ts        — Hook (geeft defaults terug als buiten provider)
+│   ├── use-annotations-safe.ts        — Hook (geeft defaults terug als buiten provider)
+│   └── use-orbit-language.ts          — useOrbitLanguage(): de taal, voor de content van het project
 ├── components/
 │   ├── orbit-shell.tsx                — Het frame met de app en de rail eronder; rendert het paneel
 │   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
 │   ├── variants-pane.tsx              — Het variantenpaneel: titel, tabs Deze pagina / Alle pagina's
+│   ├── profile-pane.tsx               — Het profiel: naam voor feedback, taal
 │   ├── annotation-panel.tsx           — Side panel: annotation list + feedback list + filters + search
 │   ├── annotation-card.tsx            — Annotation card in panel
 │   ├── annotation-marker.tsx          — Wrapper component: ring + badges + popover
@@ -137,6 +143,7 @@ src/
 ├── hooks/
 │   ├── use-comments.ts                — Fetch + submit comments voor specifiek annotationId (polls 30s)
 │   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
+│   ├── use-viewer.ts                  — Naam en taal van de kijker, in localStorage
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
@@ -287,6 +294,17 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 - **`useVariant(id, default)`** is de enige plek waar Orbit iets bewaart: in `sessionStorage` voor de tab, en uit een link (`?orbit.<id>=…`, gelezen bij de eerste hook en dan van het adres gehaald). Link kopiëren schrijft alleen de varianten die zo bewaard worden, en alleen als ze van hun standaard af staan.
 - **Feedback krijgt de varianten mee.** `OrbitShell` registreert z'n varianten bij de provider (een ref, geen state); `useComments` stuurt bij een POST `varianten` mee: de varianten op deze pagina, een regel elk (`Rol: Administratie`). `CommentCard` toont ze onder de comment.
 
+### Taal en naam
+
+Rechts op de rail staat de kijker: een monogram zodra er een naam is, anders een profielicoon. Het opent een klein paneel (niet-modale `dialog`, zoals Varianten) met de naam en de taal: Nederlands of English, met de segmenten van een `choice`. Bovenin staat het monogram groot en gecentreerd als voorbeeld, met de naam eronder: direct te typen, zonder veldstijl (placeholder "Je naam..."), de focus als een blauwe lijn eronder. Openen sluit al het andere: paneel, popover, inspector en Varianten — elk apart, want de inspector kan aanstaan zonder annotatiemodus.
+
+- **De naam is voor feedback.** Eén keer gezet, gaat elke comment eronder uit; het formulier toont dan "Als Elwin" in plaats van het naamveld, en een klik daarop geeft het veld terug. Zonder naam staat het veld er zoals altijd, en wat je typt wordt het profiel. Annotaties komen uit de data van het project, die schrijft Orbit niet.
+- **De taal is van de kijker.** `language` op de provider is waar Orbit begint; de keuze van de kijker gaat erboven. Naam en taal staan in `localStorage` (`@strakzat/orbit:viewer`), voor elk project op dezelfde origin; de oude sleutel van het formulier (`commentAuteur`) wordt één keer overgenomen. Gelezen na mount, zodat server-HTML en de eerste client-render gelijk zijn.
+- **Orbit vertaalt alleen zichzelf.** Annotaties, feedback en de varianten zijn van het project. Wil een project z'n varianten in beide talen, dan bouwt het ze uit `useOrbitLanguage()`, en ze volgen de wissel. De `varianten` op een comment zijn de tekst die de kijker zag, in de taal van dat moment.
+- **Labels per taal.** `LABELS.nl` en `LABELS.en` in `labels.ts`; een overschrijving is plat (voor elke taal) of per taal (`{ nl: {…}, en: {…} }`). Een tekst met `{count}`, `{name}`, `{label}` of `{title}` is een template, gevuld met `fill()`. Er staat geen Nederlandse tekst meer los in een component.
+- Datums blijven "15 Apr 2026" in beide talen: vaste maandnamen, hetzelfde in elke browser-locale.
+- Rail, paneel, panes en popovers dragen `lang`, zodat een schermlezer Engels als Engels uitspreekt.
+
 ### CSS-variabelen — publieke API
 
 Overschrijf ze op `:root` of op een ancestor. Hernoemen is breaking, dus dat gebeurt met een major bump.
@@ -337,7 +355,7 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Geen externe dependencies buiten de React peer dep.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
-- Het paneel staat vast rechtsonder boven de rail; er wordt niets in localStorage bewaard.
+- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam en taal.
 - Comments worden door de provider gepolled, één keer voor alles, elke 30 seconden zolang comments aanstaan — ook als het paneel dicht is, voor de teller op de rail. Een verborgen tab slaat over; na een fout wordt het twee minuten later opnieuw geprobeerd.
 
 ## Checks

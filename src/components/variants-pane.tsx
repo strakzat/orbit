@@ -108,7 +108,7 @@ function useChoiceDisplay(variant: OrbitChoiceVariant) {
  * they fit; as a list of radios when one does not; as a select when there are many. Whichever it
  * is, it is a radio group to the keyboard and to a screen reader, or a select.
  */
-function Choice({ variant, onAnnounce }: { variant: OrbitChoiceVariant; onAnnounce: Announce }) {
+export function Choice({ variant, onAnnounce }: { variant: OrbitChoiceVariant; onAnnounce: Announce }) {
   const titleId = useStableId("orbit-variant");
   const hintId = useStableId("orbit-variant-hint");
   const { display, fieldRef, probe } = useChoiceDisplay(variant);
@@ -562,7 +562,7 @@ type Scope = "page" | "all";
  * press outside it closes it.
  */
 export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPaneProps) {
-  const { labels, settings, currentRoute } = useAnnotations();
+  const { labels, settings, currentRoute, language } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const titleId = useStableId("orbit-variants-title");
 
@@ -650,6 +650,7 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
       role: "dialog",
       "aria-labelledby": titleId,
       [ORBIT_UI_ATTR]: "",
+      lang: language,
       className: "orbit-root orbit-variants orbit-glass-pane orbit-animate-in",
       // As high and as wide as the panel on the other side.
       style: { width: settings.panelWidth, height: settings.panelHeight },

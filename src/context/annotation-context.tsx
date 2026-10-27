@@ -1,6 +1,8 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
-import type { AnnotationContextValue, AnnotationProviderProps, OrbitVariant } from "../types";
-import { DEFAULT_LABELS, DEFAULT_SETTINGS } from "../constants";
+import type { AnnotationContextValue, AnnotationProviderProps, OrbitLanguage, OrbitVariant } from "../types";
+import { DEFAULT_SETTINGS } from "../constants";
+import { resolveLabels } from "../labels";
+import { useViewer } from "../hooks/use-viewer";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
 import { matchRoute } from "../utils/route-matching";
@@ -17,6 +19,7 @@ export function AnnotationProvider({
   currentRoute = "/",
   settings: settingsOverride,
   labels: labelsOverride,
+  language: projectLanguage = "nl",
   comments: commentsConfig,
   children,
 }: AnnotationProviderProps) {
@@ -29,10 +32,11 @@ export function AnnotationProvider({
     () => ({ ...DEFAULT_SETTINGS, ...settingsOverride }),
     [settingsOverride]
   );
-  const labels = useMemo(
-    () => ({ ...DEFAULT_LABELS, ...labelsOverride }),
-    [labelsOverride]
-  );
+  // The viewer's language when they chose one, else the project's.
+  const { viewer, setViewerName, setViewerLanguage } = useViewer();
+  const language: OrbitLanguage = viewer.language ?? projectLanguage;
+  const labels = useMemo(() => resolveLabels(language, labelsOverride), [language, labelsOverride]);
+
 
   // The settings-driven half of the token layer: one brand colour, plus the label
   // colour that keeps enough contrast on top of it, plus the stacking base.
@@ -204,6 +208,10 @@ export function AnnotationProvider({
       unregisterMarkerId,
       registerVariants,
       describeVariants,
+      language,
+      viewer,
+      setViewerName,
+      setViewerLanguage,
     }),
     [
       annotationMode,
@@ -227,6 +235,10 @@ export function AnnotationProvider({
       unregisterMarkerId,
       registerVariants,
       describeVariants,
+      language,
+      viewer,
+      setViewerName,
+      setViewerLanguage,
     ]
   );
 

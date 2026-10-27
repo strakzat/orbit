@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAnnotationStyles } from "../styles/inject";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { CommentCard } from "./comment-card";
 import type { Comment } from "../types";
 
@@ -11,6 +12,7 @@ interface CommentThreadProps {
 
 export function CommentThread({ comments, isLoading, error }: CommentThreadProps) {
   useAnnotationStyles();
+  const { labels } = useAnnotationsSafe();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -18,10 +20,10 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
 
   if (comments.length === 0) {
     const [message, isError] = isLoading
-      ? ["Comments laden…", false]
+      ? [labels.commentsLoading, false]
       : error
-        ? ["Fout bij laden comments", true]
-        : ["Nog geen comments", false];
+        ? [labels.commentsError, true]
+        : [labels.commentsEmpty, false];
 
     // role changes with the message so a failure interrupts and a status does not.
     return React.createElement(

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useAnnotationStyles } from "../styles/inject";
+import { AnnotationContext } from "../context/annotation-context";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
+import { fill } from "../labels";
 import { useStableId } from "../utils/use-stable-id";
 import { AlertCircleIcon } from "../icons";
-
-const STORAGE_KEY_NAME = "@strakzat/orbit:commentAuteur";
 
 interface CommentFormProps {
   onSubmit: (data: { auteur: string; comment: string }) => Promise<void>;
@@ -11,6 +12,7 @@ interface CommentFormProps {
 
 export function CommentForm({ onSubmit }: CommentFormProps) {
   useAnnotationStyles();
+  const { labels } = useAnnotationsSafe();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -19,24 +21,19 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
   const commentId = useStableId("orbit-comment");
   const errorId = useStableId("orbit-error");
 
-  const [auteur, setAuteur] = useState(() => {
-    if (typeof window === "undefined") return "";
-    try {
-      return localStorage.getItem(STORAGE_KEY_NAME) ?? "";
-    } catch {
-      return "";
-    }
-  });
+  // The name is the viewer's, set once in the rail's profile. Outside the provider there is no
+  // profile, and the form keeps its own.
+  const context = useContext(AnnotationContext);
+  const [ownName, setOwnName] = useState("");
+  const auteur = context ? context.viewer.name : ownName;
+  const setAuteur = context ? context.setViewerName : setOwnName;
+  // With a name, the field gives way to "Als …"; typing one in keeps the field until the form goes.
+  const [showName, setShowName] = useState(false);
+  const nameVisible = showName || !auteur.trim();
+
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!auteur) return;
-    try {
-      localStorage.setItem(STORAGE_KEY_NAME, auteur);
-    } catch {}
-  }, [auteur]);
 
   if (!mounted) return null;
 
@@ -50,7 +47,7 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
       await onSubmit({ auteur: auteur.trim(), comment: comment.trim() });
       setComment("");
     } catch {
-      setError("Versturen mislukt. Probeer het opnieuw.");
+      setError(labels.formError);
     } finally {
       setIsSubmitting(false);
     }
@@ -60,28 +57,47 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
     "form",
     { className: "orbit-root orbit-form", onSubmit: handleSubmit },
 
-    React.createElement("label", { className: "orbit-sr-only", htmlFor: nameId }, "Naam"),
-    React.createElement("input", {
-      id: nameId,
-      className: "orbit-input",
-      type: "text",
-      autoComplete: "name",
-      placeholder: "Naam",
-      value: auteur,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setAuteur(e.target.value),
-      "aria-invalid": error ? true : undefined,
-      "aria-describedby": error ? errorId : undefined,
-    }),
+    nameVisible
+      ? React.createElement(
+          React.Fragment,
+          null,
+          React.createElement("label", { className: "orbit-sr-only", htmlFor: nameId }, labels.formName),
+          React.createElement("input", {
+            id: nameId,
+            className: "orbit-input",
+            type: "text",
+            autoComplete: "name",
+            // Opened from "Als …": the focus follows the button that is gone.
+            autoFocus: showName,
+            placeholder: labels.formName,
+            value: auteur,
+            onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+              setShowName(true);
+              setAuteur(e.target.value);
+            },
+            "aria-invalid": error ? true : undefined,
+            "aria-describedby": error ? errorId : undefined,
+          })
+        )
+      : React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "orbit-link orbit-form__as",
+            onClick: () => setShowName(true),
+          },
+          fill(labels.formAs, { name: auteur.trim() })
+        ),
 
     React.createElement(
       "label",
       { className: "orbit-sr-only", htmlFor: commentId },
-      "Comment"
+      labels.formComment
     ),
     React.createElement("textarea", {
       id: commentId,
       className: "orbit-input orbit-textarea",
-      placeholder: "Schrijf een comment...",
+      placeholder: labels.formCommentPlaceholder,
       value: comment,
       rows: 3,
       onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setComment(e.target.value),
@@ -105,7 +121,7 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
         className: "orbit-button",
         disabled: isSubmitting || !auteur.trim() || !comment.trim(),
       },
-      isSubmitting ? "Versturen..." : "Verstuur"
+      isSubmitting ? labels.formSubmitting : labels.formSubmit
     )
   );
 }

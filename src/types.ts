@@ -61,6 +61,78 @@ export interface AnnotationLabels {
   variantsOff: string;
   /** The rail's own name, for a screen reader. */
   rail: string;
+  /*
+   * A text in {braces} is a template: Orbit fills in the {count}, {name}, {label} or {title}.
+   * An override may move them, and leave out what it does not need.
+   */
+  /** After the rail's panel button, for a screen reader: "{count} op deze pagina". */
+  onThisPage: string;
+  /** The panel's two views. */
+  viewAnnotations: string;
+  viewFeedback: string;
+  /** The close button of the panel, and of a popover. */
+  closePanel: string;
+  close: string;
+  searchFeedbackPlaceholder: string;
+  feedbackLoading: string;
+  feedbackError: string;
+  feedbackEmpty: string;
+  commentsLoading: string;
+  commentsError: string;
+  commentsEmpty: string;
+  /** A feedback card's button: "Feedback van {name}". */
+  feedbackFrom: string;
+  /** The same, in the panel, for feedback on an element: "Feedback van {name} op {label}". */
+  feedbackFromOn: string;
+  /** The admin's reply under a comment. */
+  reply: string;
+  /** A comment's status, as shown on its pill and in the filters. */
+  status: Record<Comment["status"], string>;
+  /** An annotation marker: "Annotatie: {title}". */
+  annotationMarker: string;
+  /** One that hangs on no element, parked top left. */
+  annotationMarkerUnplaced: string;
+  /** A feedback marker: "{count} open feedback". */
+  feedbackOpen: string;
+  /** One with nothing open: "{count} feedback, alles opgelost". */
+  feedbackAllResolved: string;
+  /** Said when the inspector starts. */
+  inspectorActive: string;
+  /** The comment form. */
+  formName: string;
+  formComment: string;
+  formCommentPlaceholder: string;
+  formSubmit: string;
+  formSubmitting: string;
+  formError: string;
+  /** "Als {name}", over the comment field once the name is set: a button that shows the name field. */
+  formAs: string;
+  /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */
+  profile: string;
+  profileNamed: string;
+  /** The profile pane's title. */
+  profileTitle: string;
+  profileClose: string;
+  /** The profile's name field, before there is a name. */
+  profileNamePlaceholder: string;
+  /** Under the name field: what the name is for. */
+  profileNameHint: string;
+  profileLanguage: string;
+  /** A relative time: just now, then minutes, hours and days as a suffix ("5m", "3u", "2d"). */
+  timeNow: string;
+  timeMinutes: string;
+  timeHours: string;
+  timeDays: string;
+}
+
+/** The languages Orbit speaks: its own interface, not the project's content. */
+export type OrbitLanguage = "nl" | "en";
+
+/** Who is looking: their name for feedback, and the language they chose. Kept in localStorage. */
+export interface OrbitViewer {
+  name: string;
+  /** Null until they choose: the project's `language` then. */
+  language: OrbitLanguage | null;
 }
 
 /** One option of a `choice` or a `multi`. */
@@ -193,13 +265,24 @@ export interface AnnotationContextValue {
   registerVariants: (variants: OrbitVariant[] | undefined) => void;
   /** The variants on the current page and their values, a line each, as sent with feedback. */
   describeVariants: () => string;
+  /** The language Orbit is in: the viewer's choice, else the project's. */
+  language: OrbitLanguage;
+  viewer: OrbitViewer;
+  setViewerName: (name: string) => void;
+  setViewerLanguage: (language: OrbitLanguage) => void;
 }
 
 export interface AnnotationProviderProps {
   annotations: Annotation[];
   currentRoute?: string;
   settings?: AnnotationSettings;
-  labels?: Partial<AnnotationLabels>;
+  /**
+   * Overrides of Orbit's texts. Flat, they go for every language; keyed by language
+   * (`{ nl: {…}, en: {…} }`), each follows the viewer's switch.
+   */
+  labels?: Partial<AnnotationLabels> | Partial<Record<OrbitLanguage, Partial<AnnotationLabels>>>;
+  /** The language Orbit starts in, until the viewer picks one. `"nl"` when left out. */
+  language?: OrbitLanguage;
   comments?: CommentsConfig;
   children: React.ReactNode;
 }

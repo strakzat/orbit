@@ -2,6 +2,7 @@ import React from "react";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
+import { fill } from "../labels";
 import { StatusPill } from "./status-pill";
 import type { Comment } from "../types";
 
@@ -61,7 +62,7 @@ export function CommentCard({
         React.createElement(
           "span",
           { className: "orbit-sr-only" },
-          activateLabel ?? `Feedback van ${comment.auteur}`
+          activateLabel ?? fill(labels.feedbackFrom, { name: comment.auteur })
         )
       ),
 
@@ -86,7 +87,7 @@ export function CommentCard({
         React.createElement(
           "span",
           { className: "orbit-comment__time-rel" },
-          relativeTime(comment.aangemaakt)
+          relativeTime(comment.aangemaakt, labels)
         ),
         React.createElement(StatusPill, { status: comment.status })
       ),
@@ -110,7 +111,7 @@ export function CommentCard({
             React.createElement(
               "span",
               { className: "orbit-comment__reply-label" },
-              "Antwoord"
+              labels.reply
             ),
             React.createElement(
               "span",

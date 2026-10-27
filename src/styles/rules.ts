@@ -282,6 +282,28 @@ const CHROME = `
   background: var(--orbit-bg-brand-solid);
 }
 
+/* The profile: the viewer's monogram, a round chip the height of the rail's buttons. */
+.orbit-rail__item--avatar {
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+}
+
+.orbit-rail__monogram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
 /* A pane over the project: Radial's chrome glass, made dense. The panel and the popovers
    take it too. */
 .orbit-glass-pane {
@@ -311,6 +333,94 @@ const CHROME = `
   max-height: calc(100dvh - var(--orbit-rail-height) - var(--orbit-space-8));
   overflow: hidden;
   border-radius: var(--orbit-radius-2xl);
+}
+
+/* The profile pane: over the rail's right end, where its button is, as the variants pane is
+   over the left. Only as high as what it holds. */
+.orbit-profile {
+  position: fixed;
+  right: var(--orbit-space-4);
+  bottom: calc(var(--orbit-rail-height) + var(--orbit-space-4));
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-toolbar));
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  max-width: calc(100vw - var(--orbit-space-8));
+  overflow: hidden;
+  border-radius: var(--orbit-radius-2xl);
+}
+
+.orbit-profile__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-4);
+  /* As the variants pane's body: titles sit in from the controls, on the controls' text. */
+  padding: var(--orbit-space-3) var(--orbit-space-3) var(--orbit-space-4);
+}
+
+/* The monogram, centred, with the name under it: what the rail and a comment will show. */
+.orbit-profile__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--orbit-space-2);
+  padding: var(--orbit-space-2) var(--orbit-space-3) var(--orbit-space-4);
+  border-bottom: 1px solid var(--orbit-glass-hairline);
+}
+
+.orbit-profile__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--orbit-space-1);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-lg);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.orbit-profile__avatar svg {
+  color: var(--orbit-text-tertiary);
+}
+
+/* Typed straight onto the pane, no field around it. Focus shows as a line under the name, in
+   the focus ring's blue, rather than a ring that would make it a field again. */
+.orbit-profile__name {
+  width: 100%;
+  padding: var(--orbit-space-1) 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-lg);
+  font-weight: 600;
+  text-align: center;
+  transition: border-color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-profile__name::placeholder {
+  color: var(--orbit-text-quaternary);
+  font-weight: 500;
+}
+
+.orbit-profile__name:hover {
+  border-bottom-color: var(--orbit-glass-hairline);
+}
+
+.orbit-root .orbit-profile__name:focus-visible {
+  outline: none;
+  border-bottom-color: var(--orbit-outline-focus-ring);
+}
+
+.orbit-profile__hint {
+  color: var(--orbit-text-quaternary);
+  font-size: var(--orbit-text-xs);
+  text-align: center;
 }
 
 /* The pane's name and its close, on one row as the panel's tabs and close are. */
@@ -1445,6 +1555,13 @@ const CARD = `
 
 .orbit-link:hover {
   color: var(--orbit-text-primary);
+}
+
+/* "Als Elwin" over the comment field: the name it goes out under, a press to change it. */
+.orbit-form__as {
+  align-self: flex-start;
+  max-width: 100%;
+  font-size: var(--orbit-text-xs);
 }
 
 /* 12px text would leave a 15px-tall target; WCAG 2.2 asks for 24. Padding would

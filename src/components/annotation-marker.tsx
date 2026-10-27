@@ -5,6 +5,7 @@ import { useAnnotationStyles } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { getAbsolutePopoverStyle } from "../utils/popover-position";
+import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
 import { MARKER_CORNERS, POPOVER_MAX_HEIGHT, feedbackCorner } from "./marker-geometry";
@@ -43,6 +44,7 @@ export function AnnotationMarker({
     allComments,
     registerMarkerId,
     unregisterMarkerId,
+    labels,
   } = useAnnotationsSafe();
 
   // Register this marker so AutoAnnotationMarkers skips it
@@ -120,7 +122,7 @@ export function AnnotationMarker({
           variant: "annotation",
           type: annotationType,
           count: matchingAnnotations.length > 1 ? matchingAnnotations.length : undefined,
-          label: `Annotatie: ${annotationLabel}`,
+          label: fill(labels.annotationMarker, { title: annotationLabel }),
           placement: "absolute",
           style: MARKER_CORNERS[position],
           active: isActive,
@@ -137,8 +139,8 @@ export function AnnotationMarker({
           resolved: allResolved,
           count: openCommentCount,
           label: allResolved
-            ? `${elementComments.length} feedback, alles opgelost`
-            : `${openCommentCount} open feedback`,
+            ? fill(labels.feedbackAllResolved, { count: elementComments.length })
+            : fill(labels.feedbackOpen, { count: openCommentCount }),
           placement: "absolute",
           behind: true,
           style: feedbackCorner(position),
