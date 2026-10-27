@@ -106,8 +106,8 @@ GitHub PAT with at least `read:packages`.
 npx orbit-init
 ```
 
-This finds your root layout, adds the imports, wraps it in `<AnnotationProvider>`
-and drops in `<AnnotationButton />` and `<AnnotationPanel />`. It's idempotent. See
+This finds your root layout, adds the imports and wraps it in `<AnnotationProvider>`
+and `<OrbitShell>`: the app on top, the rail under it with Orbit's controls. It's idempotent. See
 [Manual setup](#manual-setup) if you'd rather wire it up yourself, and enable the
 feedback Inspector by passing a `comments` config (below).
 
@@ -258,14 +258,10 @@ npx orbit-feedback sync --pr 42 && git push
 
 ## Manual setup
 
-### 1. Provider + Button + Panel in your root layout
+### 1. Provider + shell in your root layout
 
 ```tsx
-import {
-  AnnotationProvider,
-  AnnotationButton,
-  AnnotationPanel,
-} from "@strakzat/orbit";
+import { AnnotationProvider, OrbitShell } from "@strakzat/orbit";
 import { useLocation } from "react-router-dom";
 import { annotations } from "@/annotations/data";
 
@@ -274,15 +270,61 @@ export default function RootLayout() {
 
   return (
     <AnnotationProvider annotations={annotations} currentRoute={pathname}>
-      {/* your app content */}
-      <Outlet />
-
-      <AnnotationButton />
-      <AnnotationPanel />
+      <OrbitShell>
+        <Outlet />
+      </OrbitShell>
     </AnnotationProvider>
   );
 }
 ```
+
+`OrbitShell` puts the app in a frame on top and the rail behind it, on black, in the
+studio's Radial look. The app scrolls in the frame: size its root with `100%`, not
+`100vh` or `h-screen`, or it runs 48px under the rail. **Feedback plaatsen** (the inspector) and **Annotaties en
+feedback** (the panel, bottom right above it). It renders the panel itself.
+
+**The app's own popups.** Fixed elements inside the frame stay in it. Dialogs,
+popovers and toasts that portal to `document.body` would cover the rail; point them
+at the frame:
+
+```tsx
+import { useOrbitFrame } from "@strakzat/orbit";
+import { UNSAFE_PortalProvider } from "react-aria"; // or Radix's `container`, a createPortal target
+
+function Portals({ children }) {
+  const frame = useOrbitFrame();
+  return <UNSAFE_PortalProvider getContainer={() => frame}>{children}</UNSAFE_PortalProvider>;
+}
+```
+
+**A site that scrolls the window** (scroll effects, a sticky header on `window`):
+`<OrbitShell frame={false}>` lays the rail over the foot of the window and leaves the
+page as it was.
+
+**Variants (opt-in).** A prototype that compares variants passes them; the rail then
+gets **Varianten** on the left, a pane with what changes the current page under
+*Deze pagina* and the rest under *Overal*:
+
+```tsx
+const variants: OrbitVariant[] = [
+  {
+    type: "choice",
+    id: "tasks",
+    title: "Variant Taken",
+    options: [{ id: "a", label: "In Berichten" }, { id: "b", label: "Los" }],
+    value: tasks,
+    onChange: setTasks,
+    pages: (route) => route.startsWith("/taken"), // left out: under Overal
+  },
+  { type: "switch", id: "pins", title: "Feedback-pins tonen", value: on, onChange: setOn },
+];
+
+<OrbitShell variants={variants}>…</OrbitShell>
+```
+
+Without `variants` there is no Varianten button. Elements of your own that belong to
+Orbit's interface, rather than the page, carry `ORBIT_UI_ATTR` so the inspector lets a
+click on them through.
 
 ### 2. Annotations data in your project
 
@@ -422,11 +464,10 @@ const comments = data.results.map(parseNotionComment);
   annotations={data}
   currentRoute={pathname}
   settings={{
-    togglePosition: "bottom-right",  // button position
     defaultVisible: false,           // start with annotations on/off
     accentColor: "#1567a4",          // accent colour
     panelWidth: 420,                 // panel width in px
-    panelHeight: 640,                // panel height in px
+    panelHeight: 640,                // panel height in px, and the variants pane's
     zIndex: 9000,                    // base z-index
     keyboardShortcut: true,          // Cmd+. / Ctrl+. toggle
   }}

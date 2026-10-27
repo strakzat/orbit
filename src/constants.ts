@@ -20,12 +20,16 @@ export const DEFAULT_LABELS: AnnotationLabels = {
   tabCurrentPage: "Deze pagina",
   tabAll: "Alles",
   searchPlaceholder: "Zoek annotaties...",
-  panelTitle: "Annotaties & Feedback",
+  panelTitle: "Annotaties en feedback",
   noResults: "Geen resultaten",
+  placeFeedback: "Feedback plaatsen",
+  variants: "Varianten",
+  variantsThisPage: "Deze pagina",
+  variantsEverywhere: "Overal",
+  rail: "Orbit",
 };
 
 export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
-  togglePosition: "bottom-right",
   defaultVisible: false,
   // Tints the quiet brand tokens (subtle fill, border, links). The primary button is
   // a theme-aware monochrome constant, so this no longer needs to read on both themes.
@@ -36,7 +40,11 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   keyboardShortcut: true,
 };
 
-export const STORAGE_KEY_PANEL_CORNER = "@strakzat/orbit:panelCorner";
+/**
+ * On an element of a project's own that belongs to Orbit's interface rather than the page: the
+ * inspector lets a click there through instead of taking it as the element to comment on.
+ */
+export const ORBIT_UI_ATTR = "data-annotation-inspector";
 
 // Colours live in src/styles/tokens.ts as CSS custom properties. Nothing here
 // should carry a colour value: the check:tokens script fails the build if it does.

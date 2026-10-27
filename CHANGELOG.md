@@ -1,5 +1,69 @@
 # Changelog
 
+## 4.0.0
+
+Orbit sits in a rail under the project now, in the studio's Radial look, instead of
+floating over it. First built in praktijkdata-app, then moved here.
+
+### Breaking
+
+- **`OrbitShell` replaces `AnnotationButton` and the floating inspector button.** Wrap
+  the app: `<AnnotationProvider …><OrbitShell>{app}</OrbitShell></AnnotationProvider>`.
+  The shell renders the rail and the panel; remove `<AnnotationButton />`,
+  `<AnnotationPanel />` and any `<Inspector />` from the layout. `AnnotationButton` is
+  no longer exported.
+- **The app scrolls in the shell's frame, not the window.** A site that depends on the
+  window's scroll passes `frame={false}`: the rail is then laid over the foot of the
+  window and the page is left as it was.
+- **Dark by default, in Radial's colours**, whatever the OS. `data-orbit-theme="light"`
+  on `<html>` still turns it light (Geist's light values, as before).
+  `prefers-color-scheme` is no longer followed. Inter comes first in the font stack.
+- **The panel no longer drags.** It stays bottom right above the rail.
+  `settings.togglePosition`, `PanelCorner` and `panelCorner` / `setPanelCorner` on the
+  context are gone, and the stored corner is no longer read.
+- **`labels.panelTitle`** defaults to "Annotaties en feedback" (was "Annotaties &
+  Feedback"); it is also the rail button's label.
+- **Size the app's root to `100%`, not `100vh`.** In the frame, `100vh` is the rail's
+  height (48px) taller than the room it has.
+- **Types grew required members.** `AnnotationLabels` has `placeFeedback`, `variants`,
+  `variantsThisPage`, `variantsEverywhere` and `rail`; `AnnotationContextValue` has
+  `commentsLoading` and `commentsError`. A full labels object or a typed context mock
+  needs them. `labels` itself stays partial on the provider.
+- **`Inspector` and `AnnotationPanel` are still exported, but nothing opens them without
+  the shell**: the inspector's toggle and the panel's button are on the rail.
+- **CSS**: the `.orbit-fab*` classes, `.orbit-panel__grip` and `--orbit-z-inspector-toggle`
+  are gone; `--orbit-radius-2xl` is 16px (was 12px); every dark value changed. An
+  override of a dark token may need a second look.
+
+### Added
+
+- **`OrbitShell`**, the frame and the rail: Feedback plaatsen (the inspector) and
+  Annotaties en feedback (the panel) with the open count on the page.
+- **`variants`**, opt-in: a project's own variants and switches in a pane on the rail's
+  left, under Deze pagina (`pages(route)`) and Overal. Controlled values; Orbit keeps
+  nothing.
+- **`useOrbitFrame()`**, the frame element, for the project's own portals.
+- **`ORBIT_UI_ATTR`**, for a project's own element that belongs to Orbit's interface:
+  the inspector lets a click there through.
+- **New labels**: `placeFeedback`, `variants`, `variantsThisPage`, `variantsEverywhere`,
+  `rail`. **New tokens**: `--orbit-bg-chrome`, `--orbit-glass-*`, `--orbit-shadow-pane`,
+  `--orbit-rail-height`, `--orbit-frame-bg`.
+
+### Changed
+
+- **One comments poller, always on.** The provider fetches the list once for the rail, the
+  panel and the markers (`commentsLoading` and `commentsError` on the context), where the
+  button, the panel and the provider each polled before. It now runs whenever comments
+  are on, for the rail's count, every 30 seconds; a hidden tab skips its turn. After a
+  failure it tries again two minutes on, where it used to stop for the whole visit.
+- **The panel opens on Feedback** when the project has no annotations.
+- The panel, the popovers, tabs, filters, fields and the send button take Radial's look:
+  glass panes, items on a pill with the current one on the chip, a near-white primary.
+
+### Fixed
+
+- `orbit-init` no longer adds a second `<Inspector />`: the provider already mounts it.
+
 ## 3.2.0
 
 ### Changed

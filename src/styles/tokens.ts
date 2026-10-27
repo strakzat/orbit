@@ -3,15 +3,17 @@
  *
  * The naming mirrors the Untitled UI semantic layer (`bg-primary`, `text-tertiary`,
  * `border-brand`, `*_hover`, `*_on-brand`) so the vocabulary matches the rest of our
- * projects, even though this package ships plain CSS instead of Tailwind. The *values*
- * are Geist — Vercel's near-monochrome palette: white/near-black surfaces, hairline
- * borders, one blue reserved for interaction, and a big soft popover shadow.
+ * projects, even though this package ships plain CSS instead of Tailwind. The dark
+ * *values*, the default, are Radial's (strakzat/radial): its neutral ladder, white films
+ * with a lit top edge for glass, a near-white primary and its blue focus ring. The light
+ * values are still Geist's, for a project that asks for light.
  *
  * Every variable is prefixed `--orbit-` and lives on `:root`. They are a public API:
  * a consuming project may override any of them. Renaming one is a breaking change.
  *
- * Dark mode follows `prefers-color-scheme`, with `[data-orbit-theme="light" | "dark"]`
- * on `<html>` as a manual override.
+ * Orbit is dark by default, whatever the OS or the project's theme: it is the studio's
+ * chrome around a project, not the project. `[data-orbit-theme="light"]` on `<html>`
+ * turns it light.
  */
 
 import type { AnnotationType, Comment } from "../types";
@@ -126,30 +128,48 @@ const LIGHT: Vars = {
   "--orbit-shadow-xl":
     "0 12px 40px -6px rgba(0, 0, 0, 0.16), 0 4px 10px -4px rgba(0, 0, 0, 0.08)",
   "--orbit-shadow-border": "0 0 0 1px rgba(0, 0, 0, 0.08)",
+
+  // The chrome in light: a pale rail, dark films.
+  "--orbit-bg-chrome": "#EBEBEB",
+  "--orbit-glass-film": "rgba(0, 0, 0, 0.04)",
+  "--orbit-glass-film-strong": "rgba(0, 0, 0, 0.07)",
+  "--orbit-glass-film-faint": "rgba(0, 0, 0, 0.02)",
+  "--orbit-glass-edge": "inset 0 0 0 1px rgba(0, 0, 0, 0.06)",
+  "--orbit-glass-chip": "#FFFFFF",
+  "--orbit-glass-chip-edge": "0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+  "--orbit-glass-field-edge": "inset 0 0 0 1px #E0E0E0",
+  "--orbit-glass-pane": "rgba(255, 255, 255, 0.92)",
+  "--orbit-glass-pane-sheen": "rgba(255, 255, 255, 0)",
+  "--orbit-glass-pane-sheen-foot": "rgba(255, 255, 255, 0)",
+  "--orbit-glass-pane-edge": "inset 0 0 0 1px rgba(0, 0, 0, 0.08)",
+  "--orbit-glass-hairline": "rgba(0, 0, 0, 0.08)",
+  "--orbit-shadow-pane": "0 12px 40px -6px rgba(0, 0, 0, 0.16), 0 4px 10px -4px rgba(0, 0, 0, 0.08)",
+  "--orbit-glass-blur": "blur(24px) saturate(150%)",
 };
 
 // ── Dark ─────────────────────────────────────────────────────────────────────
 
 const DARK: Vars = {
-  "--orbit-bg-primary": "#0A0A0A",
-  "--orbit-bg-primary_hover": "#1A1A1A",
-  "--orbit-bg-secondary": "#000000",
-  "--orbit-bg-secondary_hover": "#1A1A1A",
-  "--orbit-bg-tertiary": "#1F1F1F",
-  "--orbit-bg-quaternary": "#2E2E2E",
-  "--orbit-bg-disabled": "#1A1A1A",
+  // Radial's neutral ladder: 900 for a surface, 800 for its hover and the tertiary fill.
+  "--orbit-bg-primary": "#121926",
+  "--orbit-bg-primary_hover": "#202939",
+  "--orbit-bg-secondary": "#070A10",
+  "--orbit-bg-secondary_hover": "#202939",
+  "--orbit-bg-tertiary": "#202939",
+  "--orbit-bg-quaternary": "#364152",
+  "--orbit-bg-disabled": "#202939",
 
-  "--orbit-text-primary": "#EDEDED",
-  "--orbit-text-secondary": "#A1A1A1",
-  "--orbit-text-tertiary": "#8F8F8F",
-  "--orbit-text-quaternary": "#8F8F8F",
-  "--orbit-text-disabled": "#666666",
+  "--orbit-text-primary": "#F8FAFC",
+  "--orbit-text-secondary": "#E3E8EF",
+  "--orbit-text-tertiary": "#CDD5DF",
+  "--orbit-text-quaternary": "#9AA4B2",
+  "--orbit-text-disabled": "#697586",
 
-  "--orbit-border-primary": "#2E2E2E",
-  "--orbit-border-secondary": "#1F1F1F",
-  "--orbit-border-input": "#333333",
+  "--orbit-border-primary": "#364152",
+  "--orbit-border-secondary": "#202939",
+  "--orbit-border-input": "#4B5565",
 
-  "--orbit-outline-focus-ring": "#3B9EFF",
+  "--orbit-outline-focus-ring": "#3A81FC",
 
   "--orbit-bg-error-primary": "#2A1210",
   "--orbit-border-error": "#7A2420",
@@ -163,13 +183,38 @@ const DARK: Vars = {
 
   "--orbit-bg-feedback": "#0A1B33",
   "--orbit-border-feedback": "#17417A",
-  "--orbit-text-feedback": "#5EA8FF",
-  "--orbit-bg-feedback-solid": "#0070F3",
+  "--orbit-text-feedback": "#669EFF",
+  "--orbit-bg-feedback-solid": "#005BE4",
   "--orbit-text-feedback_on-solid": "#FFFFFF",
 
-  "--orbit-overlay-fill": "rgba(94, 168, 255, 0.10)",
-  "--orbit-overlay-fill-strong": "rgba(94, 168, 255, 0.16)",
-  "--orbit-overlay-ring": "rgba(94, 168, 255, 0.28)",
+  "--orbit-overlay-fill": "rgba(58, 129, 252, 0.10)",
+  "--orbit-overlay-fill-strong": "rgba(58, 129, 252, 0.16)",
+  "--orbit-overlay-ring": "rgba(58, 129, 252, 0.40)",
+
+  // Radial's chrome: the black the rail is, and its glass. A film is a few percent of white
+  // with a lit top edge; the chip is what is on, a shade brighter than the film it sits on.
+  "--orbit-bg-chrome": "#000000",
+  "--orbit-glass-film": "rgba(252, 252, 253, 0.05)",
+  "--orbit-glass-film-strong": "rgba(252, 252, 253, 0.08)",
+  "--orbit-glass-film-faint": "rgba(252, 252, 253, 0.03)",
+  "--orbit-glass-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.04)",
+  "--orbit-glass-chip": "rgba(252, 252, 253, 0.08)",
+  "--orbit-glass-chip-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.11), inset 0 0 0 1px rgba(255, 255, 255, 0.04)",
+  "--orbit-glass-field-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.10), inset 0 0 0 1px rgba(255, 255, 255, 0.08)",
+  // A pane that opens over the project: Radial's chrome glass with its tint made dense. Over a
+  // white page Radial's own 40% would leave light text under 3:1; at 88% it keeps 4.5:1.
+  "--orbit-glass-pane": "rgba(18, 25, 38, 0.88)",
+  "--orbit-glass-pane-sheen": "rgba(255, 255, 255, 0.07)",
+  "--orbit-glass-pane-sheen-foot": "rgba(255, 255, 255, 0.025)",
+  "--orbit-glass-pane-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.06)",
+  "--orbit-glass-hairline": "rgba(252, 252, 253, 0.08)",
+  "--orbit-shadow-pane":
+    "0 12px 16px -4px rgba(0, 0, 0, 0.36), 0 4px 6px -2px rgba(0, 0, 0, 0.2)",
+  "--orbit-glass-blur": "blur(24px) saturate(190%)",
 
   "--orbit-type-documentation-bg": "#1F1F1F",
   "--orbit-type-documentation-border": "#2E2E2E",
@@ -223,15 +268,15 @@ const BRAND_LIGHT = `
 `;
 
 const BRAND_DARK = `
-  --orbit-bg-brand-solid: #EDEDED;
-  --orbit-bg-brand-solid_hover: #FFFFFF;
+  --orbit-bg-brand-solid: #F8FAFC;
+  --orbit-bg-brand-solid_hover: #E3E8EF;
   --orbit-bg-brand-primary: #1F1F1F;
   --orbit-bg-brand-primary: color-mix(in oklab, var(--orbit-brand), black 78%);
   --orbit-border-brand: #8F8F8F;
   --orbit-border-brand: color-mix(in oklab, var(--orbit-brand), white 45%);
   --orbit-text-brand-secondary: #B4B4B4;
   --orbit-text-brand-secondary: color-mix(in oklab, var(--orbit-brand), white 58%);
-  --orbit-text-primary_on-brand: #0A0A0A;
+  --orbit-text-primary_on-brand: #0D121C;
 `;
 
 // ── Scales ───────────────────────────────────────────────────────────────────
@@ -254,12 +299,18 @@ const SCALES = `
   --orbit-radius-md: 6px;
   --orbit-radius-lg: 8px;
   --orbit-radius-xl: 10px;
-  --orbit-radius-2xl: 12px;
+  --orbit-radius-2xl: 16px;
   --orbit-radius-full: 9999px;
 
-  /* Geist first — used when the consuming app has loaded it — then the system stack. */
-  --orbit-font-body: "Geist", "Geist Sans", -apple-system, BlinkMacSystemFont,
+  /* Inter, as Radial, when the consuming app has loaded it; then the system stack. */
+  --orbit-font-body: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* The rail's height; the panel and the variants pane keep clear of it. */
+  --orbit-rail-height: 48px;
+  /* The frame's own ground, behind a project that paints none: the browser's page colour.
+     A project with its own sets it, or paints its root. */
+  --orbit-frame-bg: Canvas;
   --orbit-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     Consolas, "Liberation Mono", monospace;
 
@@ -280,8 +331,6 @@ const SCALES = `
 
   /* Base is rewritten at runtime from settings.zIndex; the rest are offsets on it. */
   --orbit-z-base: 9000;
-  /* The inspector toggle sits below the panel, so the panel can cover it. */
-  --orbit-z-inspector-toggle: 10;
   --orbit-z-badge-feedback: 19;
   --orbit-z-badge: 20;
   --orbit-z-overlay: 40;
@@ -305,16 +354,10 @@ const DARK_DECLS = `${declarations(DARK)}\n${BRAND_DARK.trim()}`;
 export const TOKENS_CSS = `
 :root {
 ${SCALES.trim()}
+${DARK_DECLS}
+}
+
+:root[${THEME_ATTR}="light"] {
 ${LIGHT_DECLS}
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([${THEME_ATTR}="light"]) {
-${DARK_DECLS}
-  }
-}
-
-:root[${THEME_ATTR}="dark"] {
-${DARK_DECLS}
 }
 `;

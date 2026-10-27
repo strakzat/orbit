@@ -1,10 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useAnnotations } from "../context/use-annotations";
-import { useAllComments } from "../hooks/use-all-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
-import { getCornerPosition, snapToCorner } from "../utils/drag";
 import {
   findElementByAnnotationId,
   scrollToAndHighlight,
@@ -13,7 +11,7 @@ import {
 } from "../utils/find-element";
 import { matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching";
 import { STATUS_SLUGS } from "../styles/tokens";
-import { XIcon, SearchIcon, GripVerticalIcon } from "../icons";
+import { XIcon, SearchIcon } from "../icons";
 import { TYPE_ICONS } from "../constants";
 import { AnnotationCard } from "./annotation-card";
 import { CommentCard } from "./comment-card";
@@ -33,8 +31,6 @@ export function AnnotationPanel() {
     annotationMode,
     setAnnotationMode,
     panelOpen,
-    panelCorner,
-    setPanelCorner,
     activeAnnotationId,
     setActiveAnnotationId,
     hoveredAnnotationId,
@@ -43,28 +39,23 @@ export function AnnotationPanel() {
     allAnnotations,
     labels,
     settings,
-    commentsConfig,
+    allComments: allFeedback,
+    commentsLoading: feedbackLoading,
+    commentsError: feedbackError,
     currentRoute,
   } = useAnnotations();
 
-  const [view, setView] = useState<"annotations" | "feedback">("annotations");
+  // A project that writes no annotations uses Orbit for its feedback: open there.
+  const [view, setView] = useState<"annotations" | "feedback">(allAnnotations.length > 0 ? "annotations" : "feedback");
   const [tab, setTab] = useState<"page" | "all">("page");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<Set<AnnotationType>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<Comment["status"]>>(new Set(["Open", "In behandeling"]));
-  const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const dragOffsetRef = useRef({ x: 0, y: 0 });
   const activeCardRef = useRef<HTMLDivElement>(null);
   const searchId = useStableId("orbit-search");
 
   const { panelWidth, panelHeight } = settings;
-
-  const { comments: allFeedback, isLoading: feedbackLoading, error: feedbackError } = useAllComments({
-    apiBase: commentsConfig?.apiBase ?? "",
-    project: commentsConfig?.project ?? "",
-    enabled: !!commentsConfig,
-  });
 
   // Auto-scroll to active annotation card
   useEffect(() => {
@@ -74,8 +65,8 @@ export function AnnotationPanel() {
   }, [activeAnnotationId]);
 
   const close = useCallback(() => {
-    // Move focus out before unmounting, and hand it back to the button that opened
-    // the panel rather than dropping it at the top of the document.
+    // Move focus out before unmounting, and hand it back to the rail's button that
+    // opened the panel rather than dropping it at the top of the document.
     setAnnotationMode(false);
     document.querySelector<HTMLElement>("[data-annotation-button]")?.focus();
   }, [setAnnotationMode]);
@@ -90,38 +81,6 @@ export function AnnotationPanel() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [panelOpen, close]);
-
-  // Drag handling
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      if (!panelRef.current) return;
-      const rect = panelRef.current.getBoundingClientRect();
-      dragOffsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-      setIsDragging(true);
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!panelRef.current) return;
-      const x = e.clientX - dragOffsetRef.current.x + panelWidth / 2;
-      const y = e.clientY - dragOffsetRef.current.y + panelHeight / 2;
-      const corner = snapToCorner(x, y, window.innerWidth, window.innerHeight);
-      setPanelCorner(corner);
-    };
-
-    const handleMouseUp = () => setIsDragging(false);
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isDragging, setPanelCorner, panelWidth, panelHeight]);
 
   if (!mounted || !annotationMode || !panelOpen) return null;
 
@@ -157,23 +116,14 @@ export function AnnotationPanel() {
 
   // No separate title bar: the panel's name lives in aria-label, and repeating
   // "Annotaties & Feedback" above two tabs called Annotaties and Feedback was a
-  // row that said nothing. Grip and close move into the tab row.
+  // row that said nothing. Close moves into the tab row. The panel no longer drags:
+  // it stays above the rail's button that opens it.
   //
   // Two toggle buttons rather than an ARIA tablist: a tablist announces arrow-key
   // navigation, and we would be claiming a keyboard contract we do not implement.
   const header = React.createElement(
     "div",
     { className: "orbit-panel__header" },
-    React.createElement(
-      "div",
-      {
-        className: "orbit-panel__grip",
-        onMouseDown: handleMouseDown,
-        // Drag-to-corner is a mouse convenience; the position is remembered anyway.
-        "aria-hidden": true,
-      },
-      React.createElement(GripVerticalIcon, { size: 16 })
-    ),
     React.createElement(
       "div",
       { className: "orbit-tabs" },
@@ -441,17 +391,9 @@ export function AnnotationPanel() {
     "div",
     {
       ref: panelRef,
-      className: cx(
-        "orbit-root",
-        "orbit-panel",
-        "orbit-animate-in",
-        isDragging && "orbit-panel--dragging"
-      ),
-      style: {
-        ...getCornerPosition(panelCorner, panelWidth, panelHeight),
-        width: panelWidth,
-        height: panelHeight,
-      },
+      className: cx("orbit-root", "orbit-panel", "orbit-glass-pane", "orbit-animate-in"),
+      // Bottom right above the rail, by the stylesheet; only the project's size is inline.
+      style: { width: panelWidth, height: panelHeight },
       role: "complementary",
       "aria-label": labels.panelTitle,
     },

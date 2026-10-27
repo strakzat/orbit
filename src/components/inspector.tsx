@@ -5,14 +5,16 @@ import { useAnnotationStyles, useInspectorCursor } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { getElementLabel, getElementPath } from "../utils/element-id";
-import { getInspectorButtonPosition, snapToCorner } from "../utils/drag";
 import { getOverlapPopoverStyle } from "../utils/popover-position";
 import { AnnotationPopover } from "./annotation-popover";
-import { CrosshairIcon } from "../icons";
+import { ORBIT_UI_ATTR } from "../constants";
 
-const DRAG_THRESHOLD = 5;
+const DATA_INSPECTOR = ORBIT_UI_ATTR;
 
-const DATA_INSPECTOR = "data-annotation-inspector";
+/** On the rail's toggle, so the focus can go back to it. */
+export const INSPECTOR_TOGGLE_ATTR = "data-orbit-inspector-toggle";
+
+const focusToggle = () => document.querySelector<HTMLElement>(`[${INSPECTOR_TOGGLE_ATTR}]`)?.focus();
 
 interface SelectedElement {
   el: HTMLElement;
@@ -91,8 +93,6 @@ export function Inspector() {
 
   const {
     commentsConfig,
-    panelCorner,
-    setPanelCorner,
     inspectorActive: active,
     setInspectorActive: setActive,
   } = useAnnotationsSafe();
@@ -101,9 +101,6 @@ export function Inspector() {
   const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
   const hoveredRef = useRef<HTMLElement | null>(null);
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef({ startX: 0, startY: 0, didDrag: false });
 
   useInspectorCursor(active && !selected);
 
@@ -206,7 +203,7 @@ export function Inspector() {
       } else if (active) {
         setActive(false);
         setHoverRect(null);
-        toggleRef.current?.focus();
+        focusToggle();
       }
     },
     [active, selected, setActive]
@@ -242,63 +239,7 @@ export function Inspector() {
 
   if (!mounted || !commentsConfig) return null;
 
-  const handleButtonMouseDown = (e: React.MouseEvent) => {
-    dragRef.current = { startX: e.clientX, startY: e.clientY, didDrag: false };
-
-    const handleMouseMove = (ev: MouseEvent) => {
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
-      if (!dragRef.current.didDrag && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-        dragRef.current.didDrag = true;
-        setIsDragging(true);
-      }
-      if (dragRef.current.didDrag) {
-        const corner = snapToCorner(ev.clientX, ev.clientY, window.innerWidth, window.innerHeight);
-        setPanelCorner(corner);
-      }
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      requestAnimationFrame(() => setIsDragging(false));
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const toggleLabel = active ? "Inspector sluiten" : "Comment plaatsen";
-
-  const toggleButton = React.createElement(
-    "button",
-    {
-      key: "toggle",
-      type: "button",
-      ref: toggleRef,
-      [DATA_INSPECTOR]: "",
-      className: cx(
-        "orbit-root",
-        "orbit-fab",
-        "orbit-fab--inspector",
-        active && "orbit-fab--active",
-        isDragging && "orbit-fab--dragging"
-      ),
-      style: getInspectorButtonPosition(panelCorner),
-      onClick: () => {
-        if (dragRef.current.didDrag) return;
-        setActive(!active);
-        setSelected(null);
-        setHoverRect(null);
-      },
-      onMouseDown: handleButtonMouseDown,
-      title: toggleLabel,
-      "aria-label": toggleLabel,
-      "aria-pressed": active,
-    },
-    React.createElement(CrosshairIcon, { size: 20 })
-  );
-
+  // The toggle is the rail's (`OrbitShell`); this is the picking itself.
   // Picking mode changes how the whole page behaves, so it is announced rather
   // than left to the button's colour.
   const announcement = React.createElement(
@@ -342,7 +283,7 @@ export function Inspector() {
         selected,
         onClose: () => {
           setSelected(null);
-          toggleRef.current?.focus();
+          focusToggle();
         },
       })
     : null;
@@ -350,7 +291,6 @@ export function Inspector() {
   return React.createElement(
     React.Fragment,
     null,
-    toggleButton,
     announcement,
     highlight,
     selectedOutline,

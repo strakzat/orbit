@@ -5,19 +5,19 @@ Client-facing annotation & feedback engine voor alle projecten. React-based, zer
 ## Quick start (consuming project)
 
 ```tsx
-import { AnnotationProvider, AnnotationButton, AnnotationPanel, AnnotationMarker } from "@strakzat/orbit";
+import { AnnotationProvider, OrbitShell, AnnotationMarker } from "@strakzat/orbit";
 
 <AnnotationProvider
   annotations={annotations}
   currentRoute={window.location.pathname}
   comments={{ enabled: true, apiBase: "", project: "my-project" }}
 >
-  <AnnotationButton />
-  <AnnotationPanel />
-  {/* Wrap specifieke elementen: */}
-  <AnnotationMarker annotationId="my-annotation-id">
-    <MyComponent />
-  </AnnotationMarker>
+  <OrbitShell variants={variants /* optioneel */}>
+    {/* de app; wrap specifieke elementen: */}
+    <AnnotationMarker annotationId="my-annotation-id">
+      <MyComponent />
+    </AnnotationMarker>
+  </OrbitShell>
 </AnnotationProvider>
 ```
 
@@ -26,10 +26,12 @@ import { AnnotationProvider, AnnotationButton, AnnotationPanel, AnnotationMarker
 ### Core data flow
 
 ```
-AnnotationProvider (context + state)
-├── AnnotationButton        — toggle button met counter badge (annotations + open feedback)
-├── AnnotationPanel         — side panel; de tabs Annotaties / Feedback zijn de bovenste rij
-├── Inspector               — crosshair element picker voor feedback comments (eigen toggle-knop)
+AnnotationProvider (context + state, één poller voor alle comments)
+├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
+│   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
+│   │   └── VariantsPane    — de varianten van het project: Deze pagina en Overal
+│   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
+├── Inspector               — crosshair element picker voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
 ├── AutoAnnotationMarkers   — floating badges op auto-discovered elementen met data-annotation-id
 └── AnnotationMarker        — wrapper component voor specifieke elementen (inline badge + popover)
@@ -82,11 +84,10 @@ interface CommentsConfig {
 
 ```typescript
 {
-  togglePosition: "bottom-right",
   defaultVisible: false,
   accentColor: "#171717",
   panelWidth: 420,
-  panelHeight: 640,
+  panelHeight: 640,         // ook de hoogte van het variantenpaneel
   zIndex: 9000,
   keyboardShortcut: true,   // Cmd+. / Ctrl+.
 }
@@ -110,11 +111,14 @@ src/
 │   ├── inject.ts                      — useAnnotationStyles() + useInspectorCursor()
 │   └── brand.ts                       — Luminantie: welke tekstkleur op de brandkleur past
 ├── context/
+│   ├── frame-context.ts               — FrameContext + useOrbitFrame(): het frame voor de portals van het project
 │   ├── annotation-context.tsx         — Provider: state, keyboard shortcuts, route tracking, runtime tokens
 │   ├── use-annotations.ts             — Hook (throws als buiten provider)
 │   └── use-annotations-safe.ts        — Hook (geeft defaults terug als buiten provider)
 ├── components/
-│   ├── annotation-button.tsx          — Floating toggle button met counter
+│   ├── orbit-shell.tsx                — Het frame met de app en de rail eronder; rendert het paneel
+│   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
+│   ├── variants-pane.tsx              — Het variantenpaneel: Deze pagina en Overal
 │   ├── annotation-panel.tsx           — Side panel: annotation list + feedback list + filters + search
 │   ├── annotation-card.tsx            — Annotation card in panel
 │   ├── annotation-marker.tsx          — Wrapper component: ring + badges + popover
@@ -135,7 +139,6 @@ src/
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
     ├── format.ts                      — initials() + relativeTime() voor de comment-UI
-    ├── drag.ts                        — Button/panel positioning + drag-to-corner logic
     ├── element-id.ts                  — getElementPath() CSS selector + getElementLabel() preview
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
@@ -173,7 +176,7 @@ Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 - **Annotations**: gefilterd op `matchRoute(annotation.target, currentRoute)` — supports `:param` wildcards
 - **Feedback**: gefilterd op `comment.pagina === currentRoute || !comment.pagina`
 - **Panel sub-tabs**: "Deze pagina" vs "Alles" — gedeelde tab tussen annotations en feedback views
-- **Panel-header**: geen aparte titelbalk. Sleepgreep, de twee tabs en de sluitknop delen één rij. `labels.panelTitle` is nog steeds de `aria-label` van het paneel, maar staat niet meer als tekst boven twee tabs die al Annotaties en Feedback heten.
+- **Panel-header**: geen aparte titelbalk. De twee tabs en de sluitknop delen één rij; het paneel sleept niet, het blijft boven de knop op de rail die het opent. Een project zonder annotaties opent op Feedback. `labels.panelTitle` is nog steeds de `aria-label` van het paneel, maar staat niet meer als tekst boven twee tabs die al Annotaties en Feedback heten.
 - **Losse annotaties krijgen tóch een marker.** Heeft een annotatie geen element op de pagina — `target: "global"`, of het element is nu niet gerenderd — dan parkeert `AutoAnnotationMarkers` de badge in een kolom linksboven (`unplacedBadgeRect()` in `marker-geometry.ts`), met een streepjesrand als teken dat hij nergens aan hangt. De popover opent daar. Zonder dat waren die annotaties alleen in het paneel te lezen.
 - **Een annotatiekaart selecteert, hij klapt niet uit.** Klikken zet `activeAnnotationId`, waardoor de popover van die annotatie op de pagina opent — daar staat de volledige body. De kaart blijft op twee regels afgekapt: hij is een lijstingang, geen tweede kopie van de annotatie. Nog eens klikken sluit de popover.
   - Zit het element op deze pagina, dan wordt er ook naartoe gescrold en gehighlight.
@@ -181,7 +184,7 @@ Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 - **Een feedbackkaart werkt hetzelfde.** Klikken opent de thread als popover op de pagina, naast het element waar de feedback op zit. `FeedbackMarkers` rendert die popover; de kaart in het paneel blijft afgekapt (comment 3 regels, antwoord 2).
 - **Losse feedback wordt ook geparkeerd.** Is het element van een comment verdwenen, dan krijgt de badge een plek in dezelfde kolom linksboven, onder de losse annotaties. `marker-placement.ts` bepaalt de volgorde, zodat `AutoAnnotationMarkers` en `FeedbackMarkers` niet in hetzelfde vakje tekenen.
 - **Beide tabs tellen hetzelfde soort ding**: annotaties op deze pagina, en niet-opgeloste feedback op deze pagina.
-- **AnnotationButton counter**: `currentAnnotations.length + openFeedbackCount` (page-gefilterd)
+- **Teller op de rail** (Annotaties en feedback): `currentAnnotations.length + openFeedbackCount` (page-gefilterd)
 - **Feedback tab badge**: toont count van niet-opgeloste feedback op huidige pagina
 
 ## Server helpers (voor consuming projects)
@@ -254,13 +257,23 @@ Wat er nog wél doorheen komt: een host-regel met `!important`. Alleen `box-sizi
 
 ### Dark mode
 
-Volgt `prefers-color-scheme`. Handmatig te overrulen op `<html>`:
+Orbit is altijd donker, wat het OS of het project ook doet: het is de chrome van de studio rond een project, niet het project, zoals de site van Radial. Licht is een keuze van het project:
 
 ```js
-document.documentElement.setAttribute("data-orbit-theme", "light"); // of "dark"
+document.documentElement.setAttribute("data-orbit-theme", "light");
 ```
 
-Let op: de module volgt het OS, ook als de host-app zelf alleen licht is. Zet het attribuut op `"light"` als de module mee moet met een app zonder dark mode. De attribuutnaam is geëxporteerd als `THEME_ATTR`.
+De attribuutnaam is geëxporteerd als `THEME_ATTR`.
+
+### De shell, het frame en de popups van het project
+
+`OrbitShell` zet de app in `.orbit-frame`: `flex: 1`, eigen scroll, onderhoeken afgerond, en `transform: translateZ(0)`, waardoor het frame het containing block wordt van elk `position: fixed` element erin. De vaste lagen van het project (een toast-stapel, een sidepanel) blijven zo vanzelf boven de rail. Wat het project naar `document.body` portalt, ontsnapt wel: `useOrbitFrame()` geeft het frame-element, om de portal-container van het project naar te wijzen (react-aria `UNSAFE_PortalProvider`, Radix `container`, een `createPortal`-doel). Orbit kent de UI-library van het project niet, dus dat ene stuk blijft van het project.
+
+`frame={false}` is voor een site die op de scroll van het venster leunt: de rail ligt dan `position: fixed` over de voet van het venster en de pagina blijft zoals ze was.
+
+### Varianten
+
+`variants` op `OrbitShell` is opt-in: zonder is er geen knop. Elke variant is `choice` (opties naast elkaar op Radials pil, de huidige op de chip, een `radiogroup` met pijltjestoetsen) of `switch` (`role="switch"`). Met `pages(route)` staat hij onder Deze pagina op de routes die hij verandert, zonder onder Overal. De waarden zijn van het project (controlled: `value` en `onChange`); Orbit bewaart niets. Een wijziging wordt voorgelezen via de live region van de rail.
 
 ### CSS-variabelen — publieke API
 
@@ -281,8 +294,9 @@ Overschrijf ze op `:root` of op een ancestor. Hernoemen is breaking, dus dat geb
 | Schaal | `--orbit-space-*`, `--orbit-radius-*`, `--orbit-text-*`, `--orbit-shadow-*`, `--orbit-font-body`, `--orbit-font-mono` |
 | Motion | `--orbit-duration-fast`, `--orbit-duration`, `--orbit-duration-slow`, `--orbit-ease` |
 | Stapeling | `--orbit-z-base` (uit `settings.zIndex`) plus vaste offsets |
+| Chrome | `--orbit-bg-chrome`, `--orbit-glass-*` (film, chip, edge, pane, hairline, blur), `--orbit-shadow-pane`, `--orbit-rail-height`, `--orbit-frame-bg` |
 
-De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-tertiary`, `*_hover`, `*_on-brand`), zodat het vocabulaire hetzelfde is als in onze Tailwind-projecten. De *waarden* zijn Geist: Vercels bijna-monochrome palet — witte/bijna-zwarte vlakken, hairline randen, één blauw voor de comment-laag, en een grote zachte schaduw op alles wat zweeft. Het lettertype is Geist eerst in de stack, met een val terug op het systeem (geen fontbestanden gebundeld). Tailwind zelf zit hier niet in: dat zou elke consumer een buildstap opleggen.
+De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-tertiary`, `*_hover`, `*_on-brand`), zodat het vocabulaire hetzelfde is als in onze Tailwind-projecten. De donkere *waarden*, de standaard, zijn die van Radial (strakzat/radial): de neutrale ladder van de site, glas als een paar procent wit met een belichte bovenrand (`--orbit-glass-*`), een bijna-witte primaire knop en Radials blauwe focusring. Een paneel dat over het project opent is Radials chrome-glas met een dichte tint (88%), zodat lichte tekst boven een witte pagina 4.5:1 houdt. De lichte waarden zijn nog die van Geist. Het lettertype is Inter eerst in de stack, zoals Radial, met een val terug op het systeem (geen fontbestanden gebundeld). Tailwind zelf zit hier niet in: dat zou elke consumer een buildstap opleggen.
 
 **`accentColor` tint, hij kleurt de primaire knop niet.** Eén kleur in `settings.accentColor` voedt `--orbit-brand`; daaruit worden de stille brand-tokens afgeleid met `color-mix()` — de subtiele vulling, de rand, de secundaire tekst. De solide brandknop (`--orbit-bg-brand-solid`) is bewust *niet* van de accent afgeleid: hij is een theme-aware constante — bijna-zwart in licht, bijna-wit in donker, Vercels omgekeerde primaire knop — zodat hij in beide thema's leesbaar blijft wat een consumer ook instelt. `onBrandTextColor()` blijft geëxporteerd voor wie zelf een brandknop bouwt.
 
@@ -295,9 +309,10 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 
 ## Accessibility
 
-- Elk interactief element heeft een zichtbare `:focus-visible` outline van 2px in `--orbit-outline-focus-ring` — de Vercel-blauw `#0070F3`.
-- Content-grijstinten blijven ≥ 4.5:1 op `bg-primary`. `--orbit-text-quaternary` is `#737373` (4.74:1) — die tint draagt echte inhoud (auteurs, datums, breadcrumbs) en moet door WCAG 1.4.3. `--orbit-text-disabled` (`#A1A1A1`) is bewust decoratief.
-- **Uitzondering:** `--orbit-border-input` is een hairline (`#E0E0E0`) en haalt de 3:1 van WCAG 1.4.11 niet op zichzelf. Bewuste keuze voor de Vercel-look; de focusring draagt de last. Overschrijf de token om de rand te verzwaren.
+- Elk interactief element heeft een zichtbare `:focus-visible` outline van 2px in `--orbit-outline-focus-ring` — Radials blauw `#3A81FC` in donker.
+- De rail is een `toolbar`: één tabstop, pijltjes, Home en End tussen de knoppen. Het variantenpaneel is een niet-modale `dialog`: openen zet de focus op de eerste keuze, Escape sluit en geeft de focus terug aan Varianten, klikken ernaast sluit.
+- Content-grijstinten blijven ≥ 4.5:1 op `bg-primary`. In donker, de standaard, is `--orbit-text-quaternary` `#9AA4B2` (ongeveer 7:1 op `#121926`) — die tint draagt echte inhoud (auteurs, datums, breadcrumbs) en moet door WCAG 1.4.3. `--orbit-text-disabled` (`#697586`) is bewust decoratief. In licht zijn het `#737373` (4.74:1) en `#A1A1A1`.
+- **Uitzondering:** `--orbit-border-input` is een hairline (`#4B5565` in donker, `#E0E0E0` in licht) en haalt de 3:1 van WCAG 1.4.11 niet op zichzelf; velden dragen daarom ook Radials belichte rand (`--orbit-glass-field-edge`), en de focusring draagt de last. Overschrijf de token om de rand te verzwaren.
 - Elk veld heeft een `<label>`; visueel verborgen met `.orbit-sr-only` waar het ontwerp er geen ruimte voor heeft.
 - Kaarten met twee acties gebruiken een uitgerekte overlay-knop plus een link erboven, want een `<button>` mag geen `<button>` bevatten.
 - Escape sluit paneel, popover en inspector, en geeft de focus terug aan de knop die ze opende.
@@ -310,8 +325,8 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Geen externe dependencies buiten de React peer dep.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
-- Panel corner positie wordt opgeslagen in localStorage (`@strakzat/orbit:panelCorner`).
-- Comments worden gepolled elke 30 seconden wanneer annotation mode of inspector actief is.
+- Het paneel staat vast rechtsonder boven de rail; er wordt niets in localStorage bewaard.
+- Comments worden door de provider gepolled, één keer voor alles, elke 30 seconden zolang comments aanstaan — ook als het paneel dicht is, voor de teller op de rail. Een verborgen tab slaat over; na een fout wordt het twee minuten later opnieuw geprobeerd.
 
 ## Checks
 
