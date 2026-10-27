@@ -30,6 +30,8 @@ export interface FeedbackItem {
   status: CommentStatus;
   antwoord: string | null;
   pr: string;
+  /** The variants the feedback was given in, a line each; empty when there were none. */
+  varianten: string;
   /** Notion `created_time`. */
   aangemaakt: string;
 }

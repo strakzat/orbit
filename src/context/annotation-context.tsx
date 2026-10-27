@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
-import type { AnnotationContextValue, AnnotationProviderProps } from "../types";
+import type { AnnotationContextValue, AnnotationProviderProps, OrbitVariant } from "../types";
 import { DEFAULT_LABELS, DEFAULT_SETTINGS } from "../constants";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
@@ -8,6 +8,7 @@ import { Inspector } from "../components/inspector";
 import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
+import { describeVariants as describe } from "../utils/variants";
 
 export const AnnotationContext = createContext<AnnotationContextValue | null>(null);
 
@@ -134,6 +135,21 @@ export function AnnotationProvider({
     forceUpdate();
   }, []);
 
+  // The shell's variants, kept for the moment feedback is sent rather than in state: a variant
+  // changing re-renders the shell, not every consumer of this context.
+  const variantsRef = useRef<OrbitVariant[]>([]);
+  const routeRef = useRef(currentRoute);
+  routeRef.current = currentRoute;
+  const labelsRef = useRef(labels);
+  labelsRef.current = labels;
+  const registerVariants = useCallback((variants: OrbitVariant[] | undefined) => {
+    variantsRef.current = variants ?? [];
+  }, []);
+  const describeVariants = useCallback(
+    () => describe(variantsRef.current, routeRef.current, labelsRef.current),
+    []
+  );
+
   // One poller for the whole module: the rail shows the open count at all times, and the panel,
   // the markers and the rail all read this one list rather than each fetching their own.
   const {
@@ -186,6 +202,8 @@ export function AnnotationProvider({
       registeredMarkerIds,
       registerMarkerId,
       unregisterMarkerId,
+      registerVariants,
+      describeVariants,
     }),
     [
       annotationMode,
@@ -207,6 +225,8 @@ export function AnnotationProvider({
       registeredMarkerIds,
       registerMarkerId,
       unregisterMarkerId,
+      registerVariants,
+      describeVariants,
     ]
   );
 

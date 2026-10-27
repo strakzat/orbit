@@ -160,3 +160,19 @@ export const MessagePlusSquareIcon = createIcon([
 export const MessageChatSquareIcon = createIcon([
   ["path", { d: "m10 15-3.075 3.114c-.43.434-.644.651-.828.666a.5.5 0 0 1-.421-.172c-.12-.14-.12-.446-.12-1.056v-1.56c0-.548-.449-.944-.99-1.024v0a3 3 0 0 1-2.534-2.533C2 12.219 2 11.96 2 11.445V6.8c0-1.68 0-2.52.327-3.162a3 3 0 0 1 1.311-1.311C4.28 2 5.12 2 6.8 2h7.4c1.68 0 2.52 0 3.162.327a3 3 0 0 1 1.311 1.311C19 4.28 19 5.12 19 6.8V11m0 11-2.176-1.513c-.306-.213-.46-.32-.626-.395a2.002 2.002 0 0 0-.462-.145c-.18-.033-.367-.033-.74-.033H13.2c-1.12 0-1.68 0-2.108-.218a2 2 0 0 1-.874-.874C10 18.394 10 17.834 10 16.714V14.2c0-1.12 0-1.68.218-2.108a2 2 0 0 1 .874-.874C11.52 11 12.08 11 13.2 11h5.6c1.12 0 1.68 0 2.108.218a2 2 0 0 1 .874.874C22 12.52 22 13.08 22 14.2v2.714c0 .932 0 1.398-.152 1.766a2 2 0 0 1-1.083 1.082c-.367.152-.833.152-1.765.152V22Z" }],
 ]);
+
+/** chevron-down: a select's arrow. */
+export const ChevronDownIcon = createIcon([["path", { d: "m6 9 6 6 6-6" }]]);
+
+/** check: a ticked checkbox, a copied link. */
+export const CheckIcon = createIcon([["path", { d: "M20 6 9 17l-5-5" }]]);
+
+/** refresh-ccw-01: back to the defaults. */
+export const RefreshIcon = createIcon([
+  ["path", { d: "M2 10s2.005-2.732 3.634-4.362A9 9 0 1 1 3.36 14.5M2 10V4m0 6h6" }],
+]);
+
+/** link-01: a link to the prototype in its variants. */
+export const LinkIcon = createIcon([
+  ["path", { d: "m12.708 18.364-1.415 1.414a5 5 0 1 1-7.07-7.07l1.413-1.415m12.728 1.414 1.415-1.414a5 5 0 0 0-7.071-7.071l-1.415 1.414M8.5 15.5l7-7" }],
+]);

@@ -4,6 +4,7 @@ import {
   AnnotationMarker,
   OrbitShell,
   useAnnotations,
+  useVariant,
   type OrbitVariant,
 } from "@strakzat/orbit";
 import { annotations } from "./annotations";
@@ -292,10 +293,18 @@ export function App() {
   );
 }
 
-/** The demo's own variants: what a project would switch in a demo, one per page and two everywhere. */
+/**
+ * The demo's own variants: one of each kind, so every control shows. The first ones are kept by
+ * Orbit (`useVariant`), so "Link kopiëren" carries them; the others are plain state.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
-  const [density, setDensity] = useState("ruim");
-  const [chart, setChart] = useState("lijn");
+  const [chart, setChart] = useVariant("chart", "lijn");
+  const [density, setDensity] = useVariant("density", "ruim");
+  const [role, setRole] = useVariant("rol", "regie");
+  const [period, setPeriod] = useVariant("periode", "maand");
+  const [modules, setModules] = useVariant("modules", ["omzet", "orders"]);
+  const [rows, setRows] = useVariant("rijen", 12);
+  const [empty, setEmpty] = useState(false);
   const { annotationMode, setAnnotationMode } = useAnnotations();
 
   const variants: OrbitVariant[] = [
@@ -306,9 +315,24 @@ function Shell({ children }: { children: React.ReactNode }) {
       options: [
         { id: "lijn", label: "Lijn" },
         { id: "staaf", label: "Staaf" },
+        { id: "taart", label: "Taart", disabled: true },
       ],
       value: chart,
+      defaultValue: "lijn",
       onChange: setChart,
+      pages: (route) => route === "/",
+    },
+    {
+      type: "range",
+      id: "rijen",
+      title: "Activiteiten",
+      hint: "Hoeveel regels de lijst toont: leeg, normaal of overvol.",
+      min: 0,
+      max: 200,
+      value: rows,
+      defaultValue: 12,
+      onChange: setRows,
+      format: (n) => `${n} regels`,
       pages: (route) => route === "/",
     },
     {
@@ -320,9 +344,57 @@ function Shell({ children }: { children: React.ReactNode }) {
         { id: "compact", label: "Compact" },
       ],
       value: density,
+      defaultValue: "ruim",
       onChange: setDensity,
     },
+    {
+      // Three options, but long ones: they do not fit the pill, so they become a list.
+      type: "choice",
+      id: "rol",
+      title: "Rol",
+      options: [
+        { id: "regie", label: "Regiebehandelaar" },
+        { id: "mede", label: "Medebehandelaar" },
+        { id: "admin", label: "Administratie" },
+      ],
+      value: role,
+      defaultValue: "regie",
+      onChange: setRole,
+    },
+    {
+      type: "choice",
+      id: "periode",
+      title: "Periode",
+      options: [
+        { id: "dag", label: "Vandaag" },
+        { id: "week", label: "Deze week" },
+        { id: "maand", label: "Deze maand" },
+        { id: "kwartaal", label: "Dit kwartaal" },
+        { id: "jaar", label: "Dit jaar" },
+        { id: "vorig", label: "Vorig jaar" },
+        { id: "alles", label: "Alles" },
+      ],
+      value: period,
+      defaultValue: "maand",
+      onChange: setPeriod,
+    },
+    {
+      type: "multi",
+      id: "modules",
+      title: "Modules",
+      options: [
+        { id: "omzet", label: "Omzet" },
+        { id: "orders", label: "Orders" },
+        { id: "klanten", label: "Klanten" },
+        { id: "voorraad", label: "Voorraad", disabled: true },
+      ],
+      value: modules,
+      defaultValue: ["omzet", "orders"],
+      onChange: setModules,
+    },
+    { type: "switch", id: "leeg", title: "Lege staat", hint: "Alsof het account net is aangemaakt.", value: empty, defaultValue: false, onChange: setEmpty },
     { type: "switch", id: "pins", title: "Feedback-pins tonen", value: annotationMode, onChange: setAnnotationMode },
+    { type: "action", id: "toast", title: "Toon een melding", onRun: () => window.alert("Opgeslagen") },
   ];
 
   return <OrbitShell variants={variants}>{children}</OrbitShell>;

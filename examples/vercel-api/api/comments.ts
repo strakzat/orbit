@@ -55,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === "POST") {
-    const { project, annotationId, auteur, comment, pagina, label } = req.body ?? {};
+    const { project, annotationId, auteur, comment, pagina, label, varianten } = req.body ?? {};
 
     if (!project || !annotationId || !auteur || !comment) {
       return res.status(400).json({ error: "project, annotationId, auteur, and comment are required" });
@@ -94,6 +94,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? {
                 "Label": {
                   rich_text: [{ text: { content: label } }],
+                },
+              }
+            : {}),
+          ...(varianten
+            ? {
+                "Varianten": {
+                  rich_text: [{ text: { content: String(varianten).slice(0, 2000) } }],
                 },
               }
             : {}),

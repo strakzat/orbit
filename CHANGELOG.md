@@ -1,5 +1,33 @@
 # Changelog
 
+## 4.1.0
+
+The variants pane grows from two controls into a settings pane for prototypes.
+
+- **More kinds of variant.** Next to `choice` and `switch`: `multi` (checkboxes),
+  `range` (a slider, with `format`) and `action` (a button that runs something). Every
+  variant takes a `hint`; options can be `disabled`.
+- **A `choice` picks its own control.** Segments while every option fits an equal
+  share of the pill, measured rather than counted, so three long labels become radios;
+  a native select from 7 options. `display: "segments" | "radios" | "select"` forces one.
+  A stretched segment now centres its label, and the pane is as wide as the panel.
+- **`defaultValue`, and Standaard herstellen.** The Varianten button carries a dot while
+  a variant on the page is off its default.
+- **`useVariant(id, default)`** keeps a value for the tab and reads it from a link;
+  *Link kopiëren* writes the variants it keeps onto the address (`?orbit.<id>=…`).
+- **Feedback carries its variants.** `Comment.varianten`, a line each, shown under the
+  comment. `buildNotionCommentProperties` writes it to a `Varianten` text column only
+  when there are any; add that column to the Notion database once a project has
+  variants. The Vite dev API sends the comment without them if the column is missing,
+  and `orbit-feedback init --check` mentions it.
+- **The pane has a title, and tabs.** "Varianten" with a close button on top, then
+  *Deze pagina* and *Alle pagina's* (was the heading *Overal*) as tabs with a count and
+  a line on what each holds, as the annotations panel has them. Only the list scrolls.
+- `AnnotationLabels` has `variantsThisPageHint`, `variantsEverywhereHint`,
+  `variantsEmpty`, `variantsClose`, `variantsReset`, `variantsCopyLink`, `variantsLinkCopied`,
+  `variantsChanged`, `variantsNone`, `variantsOn` and `variantsOff`; `AnnotationContextValue` has `registerVariants`
+  and `describeVariants`. A full labels object or a typed context mock needs them.
+
 ## 4.0.0
 
 Orbit sits in a rail under the project now, in the studio's Radial look, instead of

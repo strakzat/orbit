@@ -20,6 +20,7 @@ function item(overrides: Partial<FeedbackItem>): FeedbackItem {
     status: "In behandeling",
     antwoord: null,
     pr: "",
+    varianten: "",
     aangemaakt: "2026-09-09T10:00:00.000Z",
     ...overrides,
   };

@@ -202,6 +202,7 @@ The Feedback database needs these properties (Dutch names, exactly):
 | `Bron` | Text | `file:line` of the element (when available) |
 | `Antwoord` | Text | Reply shown back to the client |
 | `PR` | URL | Link to the feedback PR |
+| `Varianten` | Text | The variants the feedback was given in, a line each. Only needed once the project has variants: without the column Notion refuses a comment that carries them |
 
 `npx orbit-feedback init --check` validates all of this.
 
@@ -302,25 +303,54 @@ function Portals({ children }) {
 page as it was.
 
 **Variants (opt-in).** A prototype that compares variants passes them; the rail then
-gets **Varianten** on the left, a pane with what changes the current page under
-*Deze pagina* and the rest under *Overal*:
+gets **Varianten** on the left: a pane titled Varianten with two tabs, *Deze pagina*
+for what changes the current page and *Alle pagina's* for the rest:
 
 ```tsx
+const [tasks, setTasks] = useVariant("tasks", "a"); // kept by Orbit, and on a shared link
+const [rows, setRows] = useVariant("rows", 12);
+
 const variants: OrbitVariant[] = [
   {
     type: "choice",
     id: "tasks",
     title: "Variant Taken",
+    hint: "Waar de taken staan.",
     options: [{ id: "a", label: "In Berichten" }, { id: "b", label: "Los" }],
     value: tasks,
+    defaultValue: "a",
     onChange: setTasks,
-    pages: (route) => route.startsWith("/taken"), // left out: under Overal
+    pages: (route) => route.startsWith("/taken"), // left out: under Alle pagina's
   },
-  { type: "switch", id: "pins", title: "Feedback-pins tonen", value: on, onChange: setOn },
+  { type: "multi", id: "mods", title: "Modules", options, value: mods, onChange: setMods },
+  { type: "switch", id: "empty", title: "Lege staat", value: empty, onChange: setEmpty },
+  { type: "range", id: "rows", title: "Berichten", min: 0, max: 200, value: rows, onChange: setRows,
+    format: (n) => `${n} berichten` },
+  { type: "action", id: "toast", title: "Toon een melding", onRun: () => toast("Opgeslagen") },
 ];
 
 <OrbitShell variants={variants}>…</OrbitShell>
 ```
+
+| Type | Drawn as | For |
+|---|---|---|
+| `choice` | Segments while every option fits its equal share of the pill, radios when one does not, a select from 7 options. `display` forces one | One of a few |
+| `multi` | Checkboxes | Any number at once |
+| `switch` | A switch | One thing on or off |
+| `range` | A slider, its value (`format`) beside the title | How many, how long |
+| `action` | A button, held while a returned promise runs | Something the prototype does |
+
+Every variant takes a `hint`; an option of a `choice` or `multi` can be `disabled`.
+
+- **`defaultValue`** makes a variant resettable: *Standaard herstellen* puts every variant
+  on the page back, and the Varianten button carries a dot while one is off its default.
+- **`useVariant(id, default)`** keeps the value for the tab (through reloads and page
+  changes) and reads it from a link: *Link kopiëren* writes those variants onto the
+  address as `?orbit.<id>=<value>`, and Orbit takes them off again once read. Without
+  `useVariant` the values stay the project's alone and there is no link button.
+- **Feedback carries the variants.** A comment sent while there are variants gets them
+  as `varianten`, a line each (`Rol: Administratie`), shown under the comment and saved
+  in Notion's `Varianten` column.
 
 Without `variants` there is no Varianten button. Elements of your own that belong to
 Orbit's interface, rather than the page, carry `ORBIT_UI_ATTR` so the inspector lets a

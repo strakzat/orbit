@@ -26,6 +26,7 @@ export const PROPS = {
   bron: "Bron",
   antwoord: "Antwoord",
   pr: "PR",
+  varianten: "Varianten",
 } as const;
 
 function auth() {
@@ -56,6 +57,11 @@ function richText(prop: any): string {
   return prop?.rich_text?.[0]?.plain_text ?? "";
 }
 
+/** Every run of a rich-text property: a long value is split over several. */
+function fullText(prop: any): string {
+  return (prop?.rich_text ?? []).map((t: any) => t.plain_text).join("");
+}
+
 function pageToItem(page: any, project: string): FeedbackItem {
   const p = page.properties ?? {};
   return {
@@ -71,6 +77,7 @@ function pageToItem(page: any, project: string): FeedbackItem {
     status: (p[PROPS.status]?.select?.name as CommentStatus) ?? "Open",
     antwoord: richText(p[PROPS.antwoord]) || null,
     pr: p[PROPS.pr]?.url ?? "",
+    varianten: fullText(p[PROPS.varianten]),
     aangemaakt: page.created_time ?? "",
   };
 }

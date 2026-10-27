@@ -42,6 +42,7 @@ export async function fetchCommand(args: Args): Promise<void> {
     out_lines.push(`- \`${item.id}\` **${item.auteur}**: "${item.comment}"`);
     if (where) out_lines.push(`  - ${where}`);
     if (item.annotationId) out_lines.push(`  - selector: \`${item.annotationId}\``);
+    if (item.varianten) out_lines.push(`  - varianten: ${item.varianten.split("\n").join(" · ")}`);
   }
   process.stdout.write(out_lines.join("\n") + "\n");
 }

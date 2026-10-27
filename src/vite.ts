@@ -137,22 +137,38 @@ export function annotationsDevApi(): {
 
             if (req.method === "POST") {
               const body = await parseJsonBody(req);
-              const { annotationId, auteur, comment, pagina, label } = body;
+              const { annotationId, auteur, comment, pagina, label, varianten } = body;
               const properties = buildNotionCommentProperties(
-                { annotationId, auteur, comment, pagina, label },
+                { annotationId, auteur, comment, pagina, label, varianten },
                 process.env.NOTION_PROJECT_ID!
               );
 
-              const response = await fetch(`${NOTION_BASE}/pages`, {
-                method: "POST",
-                headers: notionHeaders(),
-                body: JSON.stringify({
-                  parent: {
-                    database_id: process.env.NOTION_DATABASE_ID,
-                  },
-                  properties,
-                }),
-              });
+              const createPage = (props: Record<string, unknown>) =>
+                fetch(`${NOTION_BASE}/pages`, {
+                  method: "POST",
+                  headers: notionHeaders(),
+                  body: JSON.stringify({
+                    parent: {
+                      database_id: process.env.NOTION_DATABASE_ID,
+                    },
+                    properties: props,
+                  }),
+                });
+
+              let response = await createPage(properties);
+              // A database from before variants has no Varianten column: the comment is sent
+              // without them rather than lost.
+              if (!response.ok && "Varianten" in properties) {
+                const text = await response.clone().text();
+                if (text.includes("Varianten")) {
+                  console.warn(
+                    '[annotations-dev-api] De Notion-database heeft geen kolom "Varianten" (tekst). ' +
+                      "De feedback is opgeslagen zonder de varianten."
+                  );
+                  const { Varianten: _dropped, ...rest } = properties;
+                  response = await createPage(rest);
+                }
+              }
               const page = await response.json();
 
               res.writeHead(201, { "Content-Type": "application/json" });

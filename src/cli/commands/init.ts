@@ -93,6 +93,16 @@ async function checkSchema(): Promise<boolean> {
     }
   }
 
+  // Optional: only a project with variants sends it, and then Notion refuses a page without it.
+  const variantenProp = props[PROPS.varianten];
+  if (!variantenProp) {
+    process.stdout.write(
+      `Let op: geen property "${PROPS.varianten}" (rich_text). Nodig zodra het project varianten heeft.\n`
+    );
+  } else if (variantenProp.type !== "rich_text") {
+    problems.push(`Property "${PROPS.varianten}" heeft type ${variantenProp.type}, verwacht rich_text.`);
+  }
+
   const statusProp = props[PROPS.status];
   if (statusProp?.type === "select") {
     const options = new Set(

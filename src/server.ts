@@ -11,17 +11,23 @@ interface CommentInput {
   comment: string;
   pagina?: string;
   label?: string;
+  /** The variants the feedback was given in, a line each. Sent by Orbit when the project has any. */
+  varianten?: string;
 }
 
 /**
  * Builds Notion page properties for creating a comment.
  * Use this in your POST /api/comments handler to ensure all fields are included.
+ *
+ * `Varianten` is only written when the comment carries variants, so a database without that
+ * column keeps working for a project without variants. A project with variants needs the column
+ * (rich text), or Notion refuses the page.
  */
 export function buildNotionCommentProperties(
   input: CommentInput,
   projectId: string
 ): Record<string, unknown> {
-  return {
+  const properties: Record<string, unknown> = {
     Naam: {
       title: [{ text: { content: input.comment } }],
     },
@@ -47,6 +53,11 @@ export function buildNotionCommentProperties(
       rich_text: [{ text: { content: input.pagina || "" } }],
     },
   };
+  if (input.varianten) {
+    // Notion takes at most 2000 characters in one text object.
+    properties.Varianten = { rich_text: [{ text: { content: input.varianten.slice(0, 2000) } }] };
+  }
+  return properties;
 }
 
 /**
@@ -64,6 +75,7 @@ export function parseNotionComment(page: any): Comment {
     aangemaakt: page.properties["Aangemaakt"]?.created_time ?? page.created_time,
     antwoord: getPlainText(page.properties["Antwoord"]),
     pagina: getPlainText(page.properties["Pagina"]),
+    varianten: getPlainText(page.properties["Varianten"]) || undefined,
   };
 }
 
