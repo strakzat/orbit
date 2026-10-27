@@ -28,6 +28,8 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   registeredMarkerIds: new Set(),
   registerMarkerId: () => {},
   unregisterMarkerId: () => {},
+  registerVariants: () => {},
+  describeVariants: () => "",
 };
 
 export function useAnnotationsSafe(): AnnotationContextValue {

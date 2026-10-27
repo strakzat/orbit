@@ -29,7 +29,7 @@ import { AnnotationProvider, OrbitShell, AnnotationMarker } from "@strakzat/orbi
 AnnotationProvider (context + state, één poller voor alle comments)
 ├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
 │   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
-│   │   └── VariantsPane    — de varianten van het project: Deze pagina en Overal
+│   │   └── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
 ├── Inspector               — crosshair element picker voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
@@ -61,6 +61,7 @@ interface Comment {
   pagina?: string;         // Route waar feedback is geplaatst (window.location.pathname)
   label?: string;          // Element label ("<button> Submit...")
   annotationId?: string;   // Element reference (data-annotation-id, id, of CSS selector path)
+  varianten?: string;      // De varianten waarin de feedback is gegeven, een regel elk
 }
 
 interface CommentsConfig {
@@ -118,7 +119,7 @@ src/
 ├── components/
 │   ├── orbit-shell.tsx                — Het frame met de app en de rail eronder; rendert het paneel
 │   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
-│   ├── variants-pane.tsx              — Het variantenpaneel: Deze pagina en Overal
+│   ├── variants-pane.tsx              — Het variantenpaneel: titel, tabs Deze pagina / Alle pagina's
 │   ├── annotation-panel.tsx           — Side panel: annotation list + feedback list + filters + search
 │   ├── annotation-card.tsx            — Annotation card in panel
 │   ├── annotation-marker.tsx          — Wrapper component: ring + badges + popover
@@ -135,6 +136,7 @@ src/
 │   └── type-badge.tsx                 — Annotatietype
 ├── hooks/
 │   ├── use-comments.ts                — Fetch + submit comments voor specifiek annotationId (polls 30s)
+│   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
@@ -143,6 +145,7 @@ src/
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
     ├── route-matching.ts              — Route matching, breadcrumb en navigatie
+    ├── variants.ts                    — Groepen, standaardwaarden, beschrijving en link-serialisatie van varianten
     └── use-stable-id.ts               — DOM-id voor label/veld-koppeling (React 17-safe)
 ```
 
@@ -166,7 +169,7 @@ Het opgeslagen `annotationId` in een Comment wordt later opgezocht via `findElem
 ```
 GET  {apiBase}/api/comments?project={project}                         → Comment[]
 GET  {apiBase}/api/comments?project={project}&annotationId={id}       → Comment[]
-POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label }
+POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten? }
 ```
 
 Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
@@ -208,6 +211,8 @@ await fetch(`https://api.notion.com/v1/pages`, {
 // GET handler — parsed Notion page → Comment object
 const comments = data.results.map(parseNotionComment);
 ```
+
+`varianten` gaat alleen naar Notion als de comment varianten heeft: een database zonder kolom `Varianten` blijft werken voor een project zonder varianten. Heeft het project ze wél, dan moet de kolom (tekst) bestaan, anders weigert Notion de pagina. De Vite-plugin vangt dat op door zonder varianten opnieuw te sturen.
 
 ## Vite plugin (voor local dev)
 
@@ -273,7 +278,14 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 
 ### Varianten
 
-`variants` op `OrbitShell` is opt-in: zonder is er geen knop. Elke variant is `choice` (opties naast elkaar op Radials pil, de huidige op de chip, een `radiogroup` met pijltjestoetsen) of `switch` (`role="switch"`). Met `pages(route)` staat hij onder Deze pagina op de routes die hij verandert, zonder onder Overal. De waarden zijn van het project (controlled: `value` en `onChange`); Orbit bewaart niets. Een wijziging wordt voorgelezen via de live region van de rail.
+`variants` op `OrbitShell` is opt-in: zonder is er geen knop. Het paneel heeft een titel (Varianten, ook z'n `aria-labelledby`) met een sluitknop, en daaronder twee tabs zoals het annotatiepaneel: **Deze pagina** en **Alle pagina's**, met een telling en een regel die zegt wat erin staat. Niet "Alles" zoals in het annotatiepaneel: daar betekent het "ook van andere pagina's", hier "geldt op elke pagina". Met `pages(route)` staat een variant onder Deze pagina op de routes die hij verandert, zonder onder Alle pagina's. Het paneel opent op Deze pagina als die varianten heeft, anders op Alle pagina's, en kiest opnieuw na een routewissel. Alleen de lijst scrolt; titel, tabs en voet blijven staan. De waarden zijn van het project (controlled: `value` en `onChange`). Een wijziging wordt voorgelezen via de live region van de rail. Het paneel is zo hoog en breed als het annotatiepaneel (`panelHeight`, `panelWidth`). De besturing is die van Radial, nagebouwd in CSS — Radials componenten zelf leunen op react-aria en Untitled UI, en die dependencies neemt Orbit niet.
+
+- **`choice`** — één van een paar. Zonder `display` kiest Orbit: segmenten (Radials pil, `radiogroup` met pijltjes, `disabled` wordt overgeslagen) zolang elke optie in een gelijk deel van de pil past, anders radio's, vanaf 7 opties een native `<select>`. Dat passen wordt *gemeten*, niet geteld: een onzichtbare kopie van de pil (`.orbit-probe`, een grid met `1fr`-kolommen op `max-content`, dus elke kolom zo breed als de breedste) wordt tegen de beschikbare breedte gehouden, met een `ResizeObserver`, in een layout effect zodat er niets flitst.
+- **`multi`** — checkboxes. **`switch`** — één ding aan of uit; een losse checkbox bestaat bewust niet, want alles in dit paneel werkt meteen, en dat zegt een switch. **`range`** — native slider, `format` voor de waarde naast de titel. **`action`** — een knop, die wacht op een teruggegeven promise.
+- Radio's en checkboxes zijn native inputs, onzichtbaar over hun eigen merkteken: klik, toetsenbord en groep komen van de browser.
+- **`defaultValue`** maakt een variant herstelbaar (Standaard herstellen, onderaan) en geeft de Varianten-knop een stip zolang er op deze pagina een variant van z'n standaard af staat.
+- **`useVariant(id, default)`** is de enige plek waar Orbit iets bewaart: in `sessionStorage` voor de tab, en uit een link (`?orbit.<id>=…`, gelezen bij de eerste hook en dan van het adres gehaald). Link kopiëren schrijft alleen de varianten die zo bewaard worden, en alleen als ze van hun standaard af staan.
+- **Feedback krijgt de varianten mee.** `OrbitShell` registreert z'n varianten bij de provider (een ref, geen state); `useComments` stuurt bij een POST `varianten` mee: de varianten op deze pagina, een regel elk (`Rol: Administratie`). `CommentCard` toont ze onder de comment.
 
 ### CSS-variabelen — publieke API
 

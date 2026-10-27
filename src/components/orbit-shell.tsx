@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FrameContext } from "../context/frame-context";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useAnnotationStyles } from "../styles/inject";
 import { SHELL_LAYOUT_CSS } from "../styles/rules";
 import { AnnotationPanel } from "./annotation-panel";
@@ -19,6 +20,14 @@ import type { OrbitShellProps } from "../types";
  */
 export function OrbitShell({ children, variants, frame = true }: OrbitShellProps) {
   useAnnotationStyles();
+
+  // Feedback says which variants it was written in: the provider reads them as it is sent.
+  const { registerVariants } = useAnnotationsSafe();
+  useEffect(() => {
+    registerVariants(variants);
+    // Gone with the shell: later feedback is not said to be in variants that are no longer there.
+    return () => registerVariants(undefined);
+  });
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);

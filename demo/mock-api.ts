@@ -10,6 +10,7 @@ interface MockComment {
   aangemaakt: string;
   pagina: string;
   label: string;
+  varianten?: string;
 }
 
 const comments: MockComment[] = [
@@ -86,6 +87,7 @@ export function mockCommentsApi(): Plugin {
               aangemaakt: new Date().toISOString(),
               pagina: data.pagina ?? "/",
               label: data.label ?? "",
+              varianten: data.varianten,
             };
             comments.push(newComment);
             res.statusCode = 201;

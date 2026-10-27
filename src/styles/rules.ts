@@ -273,6 +273,15 @@ const CHROME = `
   text-align: center;
 }
 
+/* On the Varianten button while a variant is off its default: the prototype is not as it starts. */
+.orbit-rail__dot {
+  width: 6px;
+  height: 6px;
+  margin-right: calc(var(--orbit-space-1) * -1);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+}
+
 /* A pane over the project: Radial's chrome glass, made dense. The panel and the popovers
    take it too. */
 .orbit-glass-pane {
@@ -300,40 +309,171 @@ const CHROME = `
   max-width: calc(100vw - var(--orbit-space-8));
   max-height: calc(100vh - var(--orbit-rail-height) - var(--orbit-space-8));
   max-height: calc(100dvh - var(--orbit-rail-height) - var(--orbit-space-8));
-  overflow-y: auto;
-  padding: var(--orbit-space-2);
+  overflow: hidden;
   border-radius: var(--orbit-radius-2xl);
 }
 
-.orbit-variants__group {
+/* The pane's name and its close, on one row as the panel's tabs and close are. */
+.orbit-variants__header {
   display: flex;
-  flex-direction: column;
-  gap: var(--orbit-space-3);
-  padding: var(--orbit-space-2) var(--orbit-space-1) var(--orbit-space-3);
-}
-
-.orbit-variants__group + .orbit-variants__group {
-  padding-top: var(--orbit-space-3);
-  border-top: 1px solid var(--orbit-glass-hairline);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orbit-space-2);
+  min-height: 48px;
+  padding: var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-4);
+  border-bottom: 1px solid var(--orbit-glass-hairline);
 }
 
 .orbit-variants__heading {
-  padding: 0 var(--orbit-space-2);
   color: var(--orbit-text-primary);
-  font-size: var(--orbit-text-xs);
+  font-size: var(--orbit-text-md);
   font-weight: 600;
 }
 
-.orbit-variants__choice {
+.orbit-variants__tabs {
+  flex: none;
+}
+
+/* The tab's variants scroll; the title, the tabs and the foot stay. */
+.orbit-variants__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--orbit-space-4);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--orbit-space-2) var(--orbit-space-3) var(--orbit-space-4);
+}
+
+/* What the tab holds, in a line, before what it holds. */
+.orbit-variants__intro {
+  padding: 0 var(--orbit-space-3);
+  color: var(--orbit-text-quaternary);
+  font-size: var(--orbit-text-xs);
+}
+
+.orbit-variants__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-4);
+}
+
+.orbit-variants__empty {
+  padding: var(--orbit-space-6) var(--orbit-space-3);
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-sm);
+  text-align: center;
+}
+
+.orbit-variants__field {
   display: flex;
   flex-direction: column;
   gap: var(--orbit-space-1-5);
 }
 
-.orbit-variants__title {
+/* The title, and what stands beside it: a slider's value. */
+.orbit-variants__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orbit-space-3);
   padding: 0 var(--orbit-space-3);
+}
+
+.orbit-variants__title {
   color: var(--orbit-text-tertiary);
   font-size: var(--orbit-text-xs);
+}
+
+.orbit-variants__hint {
+  margin-top: calc(var(--orbit-space-1) * -1);
+  padding: 0 var(--orbit-space-3);
+  color: var(--orbit-text-quaternary);
+  font-size: var(--orbit-text-xs);
+  line-height: var(--orbit-leading-normal);
+}
+
+/* Under a switch, whose row carries its own padding. */
+.orbit-variants__hint--switch {
+  margin-top: calc(var(--orbit-space-1-5) * -1);
+}
+
+/* Holds the measuring copy of a choice's pill. */
+.orbit-variants__measure {
+  position: relative;
+}
+
+/* A box of no size: what is in it is laid out and measured, never seen, and widens nothing. */
+.orbit-probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Every option as wide as the widest, the grid's way: the pill's width at equal shares. Two
+   classes, so it outweighs the pill's own flex, which comes later in the sheet. */
+.orbit-segments.orbit-segments--probe {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  width: max-content;
+}
+
+.orbit-segments--probe .orbit-segment {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+/* The pane's foot: back to the defaults, a link to this state. */
+.orbit-variants__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--orbit-space-1);
+  padding: var(--orbit-space-2);
+  border-top: 1px solid var(--orbit-glass-hairline);
+}
+
+/* Radial's tertiary button, as on the rail, a size down. */
+.orbit-variants__footer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orbit-space-1-5);
+  height: 32px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color var(--orbit-duration-slow) var(--orbit-ease),
+    color var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-variants__footer-button svg {
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-variants__footer-button:hover:not(:disabled) {
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+}
+
+.orbit-variants__footer-button:disabled {
+  color: var(--orbit-text-disabled);
+}
+
+.orbit-variants__footer-button:disabled svg {
+  color: var(--orbit-text-disabled);
 }
 
 /* Radial's pill, the options side by side on it, as its variant switch. */
@@ -354,12 +494,19 @@ const CHROME = `
   color: var(--orbit-text-secondary);
   font-size: var(--orbit-text-md);
   font-weight: 500;
+  /* The reset sets every element to start; a stretched segment centres its label. */
+  text-align: center;
   white-space: nowrap;
   transition: color var(--orbit-duration-slow) var(--orbit-ease);
 }
 
 .orbit-segment:hover {
   color: var(--orbit-text-primary);
+}
+
+.orbit-segment[aria-disabled="true"] {
+  color: var(--orbit-text-disabled);
+  cursor: not-allowed;
 }
 
 .orbit-segment[aria-checked="true"] {
@@ -419,6 +566,243 @@ const CHROME = `
 .orbit-switch[aria-checked="true"] .orbit-switch__knob {
   transform: translateX(16px);
   background: var(--orbit-bg-primary);
+}
+
+/* Radios and checkboxes, a row each, as Untitled UI's in Radial: a ring, filled near-white when
+   on, a dark dot or tick on it. */
+.orbit-options {
+  display: flex;
+  flex-direction: column;
+}
+
+.orbit-option {
+  display: flex;
+  align-items: center;
+  gap: var(--orbit-space-2-5);
+  min-height: 32px;
+  padding: var(--orbit-space-1) var(--orbit-space-3);
+  border-radius: var(--orbit-radius-lg);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-option:hover {
+  color: var(--orbit-text-primary);
+}
+
+.orbit-option:has(:checked) {
+  color: var(--orbit-text-primary);
+}
+
+.orbit-option--disabled,
+.orbit-option--disabled:hover {
+  color: var(--orbit-text-disabled);
+  cursor: not-allowed;
+}
+
+.orbit-option__mark {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--orbit-glass-film);
+  box-shadow: inset 0 0 0 1px var(--orbit-border-input), var(--orbit-glass-field-edge);
+  transition:
+    background-color var(--orbit-duration) var(--orbit-ease),
+    box-shadow var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-option__mark--radio {
+  border-radius: var(--orbit-radius-full);
+}
+
+.orbit-option__mark--checkbox {
+  border-radius: var(--orbit-radius-xs);
+}
+
+/* The native input, over its mark: the click, the keyboard and the state are the browser's. */
+.orbit-root .orbit-option__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.orbit-option:has(:checked) .orbit-option__mark {
+  background: var(--orbit-bg-brand-solid);
+  box-shadow: none;
+}
+
+.orbit-option--disabled .orbit-option__mark {
+  background: var(--orbit-bg-disabled);
+}
+
+.orbit-option:has(:focus-visible) .orbit-option__mark {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: 2px;
+}
+
+.orbit-option__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-text-primary_on-brand);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.orbit-option__check {
+  display: flex;
+  color: var(--orbit-text-primary_on-brand);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.orbit-option:has(:checked) .orbit-option__dot,
+.orbit-option:has(:checked) .orbit-option__check {
+  opacity: 1;
+}
+
+/* A native select in Radial's glass field, its own arrow over the browser's. */
+.orbit-select {
+  position: relative;
+}
+
+.orbit-root .orbit-select__field {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: var(--orbit-space-8);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.orbit-select__field option {
+  background: var(--orbit-bg-primary);
+  color: var(--orbit-text-primary);
+}
+
+.orbit-select__chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--orbit-space-3);
+  display: flex;
+  color: var(--orbit-text-quaternary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Radial's slider: a rounded track filled near-white up to the value, a knob on it. */
+.orbit-variants__label .orbit-range__value {
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-root .orbit-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: calc(100% - var(--orbit-space-6));
+  height: 24px;
+  margin: 0 var(--orbit-space-3);
+  background: transparent;
+  cursor: pointer;
+}
+
+.orbit-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--orbit-radius-full);
+  background: linear-gradient(
+    to right,
+    var(--orbit-bg-brand-solid) var(--orbit-range-progress, 0%),
+    var(--orbit-bg-quaternary) var(--orbit-range-progress, 0%)
+  );
+}
+
+.orbit-range::-moz-range-track {
+  height: 6px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-quaternary);
+}
+
+.orbit-range::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+}
+
+.orbit-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+  box-shadow: 0 0 0 2px var(--orbit-bg-primary), var(--orbit-shadow-sm);
+}
+
+.orbit-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+  box-shadow: 0 0 0 2px var(--orbit-bg-primary), var(--orbit-shadow-sm);
+}
+
+.orbit-root .orbit-range:focus-visible {
+  outline: 0;
+}
+
+.orbit-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: 2px;
+}
+
+.orbit-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Radial's secondary button: the glass film and its lit edge, a pill the width of the pane. */
+.orbit-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 var(--orbit-space-4);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-glass-film);
+  box-shadow: var(--orbit-glass-edge);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-sm);
+  font-weight: 600;
+  text-align: center;
+  transition:
+    background-color var(--orbit-duration) var(--orbit-ease),
+    transform var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-action:hover:not(:disabled) {
+  background: var(--orbit-glass-film-strong);
+}
+
+.orbit-action:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.orbit-action:disabled {
+  color: var(--orbit-text-disabled);
+  cursor: progress;
 }
 `;
 
@@ -1175,6 +1559,18 @@ const COMMENTS = `
   color: var(--orbit-text-secondary);
   white-space: pre-wrap;
   text-wrap: pretty;
+}
+
+.orbit-comment__variants {
+  margin-top: var(--orbit-space-1);
+  font-size: var(--orbit-text-xs);
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-comment--clickable .orbit-comment__variants {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* A comment in the panel list stays clamped: it is the entry, not the thread. */

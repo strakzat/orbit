@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import type { Comment } from "../types";
 
 interface UseCommentsProps {
@@ -31,6 +32,7 @@ export function useComments({
   }, [apiBaseProp]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { describeVariants } = useAnnotationsSafe();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const failedRef = useRef(false);
   const warnedRef = useRef(false);
@@ -76,6 +78,8 @@ export function useComments({
   const submitComment = useCallback(
     async (data: { auteur: string; comment: string }) => {
       const url = `${apiBase}/api/comments`;
+      // The variants the comment was written in, as they stand when it is sent.
+      const varianten = describeVariants();
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,12 +90,13 @@ export function useComments({
           comment: data.comment,
           pagina: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
           label,
+          ...(varianten ? { varianten } : {}),
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchComments();
     },
-    [apiBase, project, annotationId, fetchComments]
+    [apiBase, project, annotationId, label, describeVariants, fetchComments]
   );
 
   return { comments, isLoading, error, submitComment };

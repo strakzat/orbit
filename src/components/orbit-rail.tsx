@@ -6,7 +6,8 @@ import { matchRoute } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
 import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon } from "../icons";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
-import { VariantsPane, variantGroups } from "./variants-pane";
+import { VariantsPane } from "./variants-pane";
+import { isChanged, variantsHere } from "../utils/variants";
 import type { OrbitVariant } from "../types";
 
 interface OrbitRailProps {
@@ -42,7 +43,10 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const paneId = useStableId("orbit-variants");
 
   // Only when there is something to switch here: variants for other pages alone leave no button.
-  const hasVariants = !!variants && variantGroups(variants, currentRoute, labels).length > 0;
+  const here = variants ? variantsHere(variants, currentRoute) : [];
+  const hasVariants = here.length > 0;
+  // Off their defaults here: the prototype is not in the state it starts in.
+  const changed = here.filter(isChanged).length;
   // The toolbar's one tab stop, kept on a button that is there: the list shrinks when the
   // variants or the comments go.
   const buttonCount = (hasVariants ? 1 : 0) + (commentsConfig ? 1 : 0) + 1;
@@ -61,7 +65,15 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   }, []);
 
   const buttons: React.ReactElement[] = [];
-  const item = (key: string, isOn: boolean, extra: Record<string, unknown>, icon: React.ReactNode, label: string, badge?: number) => {
+  const item = (
+    key: string,
+    isOn: boolean,
+    extra: Record<string, unknown>,
+    icon: React.ReactNode,
+    label: string,
+    badge?: number,
+    dot?: boolean
+  ) => {
     const index = buttons.length;
     buttons.push(
       React.createElement(
@@ -76,7 +88,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         },
         icon,
         label,
-        badge ? React.createElement("span", { className: "orbit-rail__count", "aria-hidden": true }, badge) : null
+        badge ? React.createElement("span", { className: "orbit-rail__count", "aria-hidden": true }, badge) : null,
+        dot ? React.createElement("span", { className: "orbit-rail__dot", "aria-hidden": true }) : null
       )
     );
     return buttons[index];
@@ -90,10 +103,13 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           "data-orbit-variants-toggle": "",
           "aria-expanded": variantsOpen,
           "aria-controls": variantsOpen ? paneId : undefined,
+          "aria-label": changed > 0 ? `${labels.variants}, ${changed} ${labels.variantsChanged}` : undefined,
           onClick: () => setVariantsOpen((open) => !open),
         },
         React.createElement(SlidersIcon, { size: 16 }),
-        labels.variants
+        labels.variants,
+        undefined,
+        changed > 0
       )
     : null;
 

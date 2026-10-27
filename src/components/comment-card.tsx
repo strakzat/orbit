@@ -1,4 +1,5 @@
 import React from "react";
+import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { StatusPill } from "./status-pill";
@@ -35,6 +36,7 @@ export function CommentCard({
   onMouseEnter,
   onMouseLeave,
 }: CommentCardProps) {
+  const { labels } = useAnnotationsSafe();
   return React.createElement(
     "div",
     {
@@ -90,6 +92,16 @@ export function CommentCard({
       ),
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
+
+      // The variants it was written in, on one line: a list entry is no place for more.
+      comment.varianten
+        ? React.createElement(
+            "div",
+            { className: "orbit-comment__variants" },
+            React.createElement("span", { className: "orbit-sr-only" }, `${labels.variants}: `),
+            comment.varianten.split("\n").join(" · ")
+          )
+        : null,
 
       comment.antwoord
         ? React.createElement(

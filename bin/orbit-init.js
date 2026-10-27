@@ -79,9 +79,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { annotationId, auteur, comment, pagina, label } = req.body
+    const { annotationId, auteur, comment, pagina, label, varianten } = req.body
     const properties = buildNotionCommentProperties(
-      { annotationId, auteur, comment, pagina, label },
+      { annotationId, auteur, comment, pagina, label, varianten },
       NOTION_PROJECT_ID
     )
     const response = await fetch(\`\${NOTION_BASE}/pages\`, {
