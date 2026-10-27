@@ -296,7 +296,7 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 
 ### Taal en naam
 
-Rechts op de rail staat de kijker: een monogram zodra er een naam is, anders een profielicoon. Het opent een klein paneel (niet-modale `dialog`, zoals Varianten) met de naam en de taal: Nederlands of English, met de segmenten van een `choice`.
+Rechts op de rail staat de kijker: een monogram zodra er een naam is, anders een profielicoon. Het opent een klein paneel (niet-modale `dialog`, zoals Varianten) met de naam en de taal: Nederlands of English, met de segmenten van een `choice`. Bovenin staat het monogram groot en gecentreerd als voorbeeld, met de naam eronder: direct te typen, zonder veldstijl (placeholder "Je naam..."), de focus als een blauwe lijn eronder. Openen sluit al het andere: paneel, popover, inspector en Varianten — elk apart, want de inspector kan aanstaan zonder annotatiemodus.
 
 - **De naam is voor feedback.** Eén keer gezet, gaat elke comment eronder uit; het formulier toont dan "Als Elwin" in plaats van het naamveld, en een klik daarop geeft het veld terug. Zonder naam staat het veld er zoals altijd, en wat je typt wordt het profiel. Annotaties komen uit de data van het project, die schrijft Orbit niet.
 - **De taal is van de kijker.** `language` op de provider is waar Orbit begint; de keuze van de kijker gaat erboven. Naam en taal staan in `localStorage` (`@strakzat/orbit:viewer`), voor elk project op dezelfde origin; de oude sleutel van het formulier (`commentAuteur`) wordt één keer overgenomen. Gelezen na mount, zodat server-HTML en de eerste client-render gelijk zijn.

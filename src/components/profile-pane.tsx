@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { LABELS, LANGUAGE_NAMES } from "../labels";
-import { XIcon } from "../icons";
+import { UserIcon, XIcon } from "../icons";
+import { initials } from "../utils/format";
 import { useStableId } from "../utils/use-stable-id";
 import { Choice } from "./variants-pane";
 import type { OrbitChoiceVariant, OrbitLanguage } from "../types";
@@ -15,9 +16,11 @@ interface ProfilePaneProps {
 }
 
 /**
- * Who is looking: the name their feedback goes out under, and the language Orbit is in. Over
- * the rail's right end, where its button is. A non-modal dialog, as the variants pane: the focus
- * on the name when it opens, Escape and a press outside close it.
+ * Who is looking: the name their feedback goes out under, and the language Orbit is in. Over the
+ * rail's right end, where its button is; opening it closes everything else Orbit has open (the
+ * rail does that). The monogram is a preview, centred, with the name typed straight in under it.
+ * A non-modal dialog, as the variants pane: the focus on the name when it opens, Escape and a
+ * press outside close it.
  */
 export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const { labels, language, viewer, setViewerName, setViewerLanguage } = useAnnotations();
@@ -25,6 +28,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const titleId = useStableId("orbit-profile-title");
   const nameId = useStableId("orbit-profile-name");
   const nameHintId = useStableId("orbit-profile-name-hint");
+  const name = viewer.name.trim();
 
   useEffect(() => {
     paneRef.current?.querySelector<HTMLElement>("input")?.focus();
@@ -88,24 +92,29 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
     React.createElement(
       "div",
       { className: "orbit-profile__body" },
+      // Who they are, as the rail and a comment will show them: the monogram over the name. The
+      // name is typed straight in, on the pane rather than in a field.
       React.createElement(
         "div",
-        { className: "orbit-variants__field" },
+        { className: "orbit-profile__identity" },
         React.createElement(
-          "div",
-          { className: "orbit-variants__label" },
-          React.createElement("label", { htmlFor: nameId, className: "orbit-variants__title" }, labels.formName)
+          "span",
+          { className: "orbit-profile__avatar", "aria-hidden": true },
+          name ? initials(name) : React.createElement(UserIcon, { size: 28 })
         ),
-        React.createElement("p", { id: nameHintId, className: "orbit-variants__hint" }, labels.profileNameHint),
+        React.createElement("label", { htmlFor: nameId, className: "orbit-sr-only" }, labels.formName),
         React.createElement("input", {
           id: nameId,
-          className: "orbit-input",
+          className: "orbit-profile__name",
           type: "text",
           autoComplete: "name",
+          spellCheck: false,
+          placeholder: labels.profileNamePlaceholder,
           value: viewer.name,
           "aria-describedby": nameHintId,
           onChange: (e: React.ChangeEvent<HTMLInputElement>) => setViewerName(e.target.value),
-        })
+        }),
+        React.createElement("p", { id: nameHintId, className: "orbit-profile__hint" }, labels.profileNameHint)
       ),
       React.createElement(Choice, { variant: languageChoice, onAnnounce })
     )

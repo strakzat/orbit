@@ -113,6 +113,8 @@ export interface AnnotationLabels {
   /** The profile pane's title. */
   profileTitle: string;
   profileClose: string;
+  /** The profile's name field, before there is a name. */
+  profileNamePlaceholder: string;
   /** Under the name field: what the name is for. */
   profileNameHint: string;
   profileLanguage: string;

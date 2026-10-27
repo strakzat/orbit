@@ -358,6 +358,71 @@ const CHROME = `
   padding: var(--orbit-space-3) var(--orbit-space-3) var(--orbit-space-4);
 }
 
+/* The monogram, centred, with the name under it: what the rail and a comment will show. */
+.orbit-profile__identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--orbit-space-2);
+  padding: var(--orbit-space-2) var(--orbit-space-3) var(--orbit-space-4);
+  border-bottom: 1px solid var(--orbit-glass-hairline);
+}
+
+.orbit-profile__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--orbit-space-1);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-lg);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.orbit-profile__avatar svg {
+  color: var(--orbit-text-tertiary);
+}
+
+/* Typed straight onto the pane, no field around it. Focus shows as a line under the name, in
+   the focus ring's blue, rather than a ring that would make it a field again. */
+.orbit-profile__name {
+  width: 100%;
+  padding: var(--orbit-space-1) 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-lg);
+  font-weight: 600;
+  text-align: center;
+  transition: border-color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-profile__name::placeholder {
+  color: var(--orbit-text-quaternary);
+  font-weight: 500;
+}
+
+.orbit-profile__name:hover {
+  border-bottom-color: var(--orbit-glass-hairline);
+}
+
+.orbit-root .orbit-profile__name:focus-visible {
+  outline: none;
+  border-bottom-color: var(--orbit-outline-focus-ring);
+}
+
+.orbit-profile__hint {
+  color: var(--orbit-text-quaternary);
+  font-size: var(--orbit-text-xs);
+  text-align: center;
+}
+
 /* The pane's name and its close, on one row as the panel's tabs and close are. */
 .orbit-variants__header {
   display: flex;

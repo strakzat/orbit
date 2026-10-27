@@ -39,6 +39,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     currentRoute,
     language,
     viewer,
+    setActiveAnnotationId,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -170,7 +171,16 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       "aria-expanded": profileOpen,
       "aria-controls": profileOpen ? profileId : undefined,
       "aria-label": name ? fill(labels.profileNamed, { name }) : labels.profile,
-      onClick: () => setProfileOpen((open) => !open),
+      onClick: () => {
+        if (profileOpen) return setProfileOpen(false);
+        // The profile has the stage to itself: the panel, a popover, the inspector and the
+        // variants all close. Each one by itself: the inspector can be on without annotation mode.
+        setAnnotationMode(false);
+        setInspectorActive(false);
+        setActiveAnnotationId(null);
+        setVariantsOpen(false);
+        setProfileOpen(true);
+      },
     },
     name
       ? React.createElement("span", { className: "orbit-rail__monogram", "aria-hidden": true }, initials(name))
