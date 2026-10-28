@@ -352,7 +352,9 @@ Every variant takes a `hint`; an option of a `choice` or `multi` can be `disable
   as `varianten`, a line each (`Rol: Administratie`), shown under the comment and saved
   in Notion's `Varianten` column.
 
-Without `variants` there is no Varianten button. Elements of your own that belong to
+Without `variants` there is no Varianten button. With it, the button is on every page,
+in the same place, also where the array is empty or nothing in it applies; the pane then
+says there is nothing to switch. Elements of your own that belong to
 Orbit's interface, rather than the page, carry `ORBIT_UI_ATTR` so the inspector lets a
 click on them through.
 

@@ -557,7 +557,8 @@ type Scope = "page" | "all";
  * The project's variants, over the foot of the window on the rail's left, as high and as wide as
  * the panel on its right. A title and its close, then two tabs as the panel has them: "Deze
  * pagina", what changes the current route (`pages`), and "Alle pagina's", the rest, each with a
- * line on what it holds. It opens on this page's when there are any. A non-modal dialog: it opens
+ * line on what it holds. It opens on this page's when there are any. With nothing to switch on
+ * this page, only a line that says so. A non-modal dialog: it opens
  * with the focus on its first control, Escape closes it and gives the focus back to the rail, and a
  * press outside it closes it.
  */
@@ -567,6 +568,8 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
   const titleId = useStableId("orbit-variants-title");
 
   const { page: pageItems, all: allItems } = variantScopes(variants, currentRoute);
+  // Nothing on this page and nothing for every page: no tabs to choose between, no footer.
+  const nothingHere = pageItems.length + allItems.length === 0;
   const [scope, setScope] = useState<Scope>(() => (pageItems.length > 0 ? "page" : "all"));
   // On another page, the tab it opens on again: this page's when it has any.
   const hasPageItems = pageItems.length > 0;
@@ -578,7 +581,11 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
   }, [currentRoute, hasPageItems]);
 
   useEffect(() => {
-    paneRef.current?.querySelector<HTMLElement>(FIRST_CONTROL)?.focus();
+    // With no control, the close: the focus is in the dialog either way.
+    (
+      paneRef.current?.querySelector<HTMLElement>(FIRST_CONTROL) ??
+      paneRef.current?.querySelector<HTMLElement>(".orbit-icon-button")
+    )?.focus();
 
     // Only its own Escape: one in the project's dialog, or for the inspector, is theirs.
     const onKeyDown = (e: KeyboardEvent) => {
@@ -652,15 +659,15 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
       [ORBIT_UI_ATTR]: "",
       lang: language,
       className: "orbit-root orbit-variants orbit-glass-pane orbit-animate-in",
-      // As high and as wide as the panel on the other side.
-      style: { width: settings.panelWidth, height: settings.panelHeight },
+      // As high and as wide as the panel on the other side; only as high as its line when empty.
+      style: { width: settings.panelWidth, height: nothingHere ? undefined : settings.panelHeight },
     },
     header,
-    tabRow,
+    nothingHere ? null : tabRow,
     React.createElement(
       "div",
       { className: "orbit-variants__body" },
-      React.createElement("p", { className: "orbit-variants__intro" }, shown.hint),
+      nothingHere ? null : React.createElement("p", { className: "orbit-variants__intro" }, shown.hint),
       shown.items.length > 0
         ? React.createElement(
             "div",
@@ -669,6 +676,6 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
           )
         : React.createElement("p", { className: "orbit-variants__empty" }, labels.variantsEmpty)
     ),
-    React.createElement(Footer, { variants, onAnnounce })
+    nothingHere ? null : React.createElement(Footer, { variants, onAnnounce })
   );
 }
