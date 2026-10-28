@@ -113,8 +113,9 @@ export function annotationsDevApi(): {
                 ],
               };
               if (annotationId) {
+                // The column buildNotionCommentProperties writes and parseNotionComment reads.
                 filter.and.push({
-                  property: "AnnotationId",
+                  property: "Annotatie ID",
                   rich_text: { equals: annotationId },
                 });
               }
@@ -128,6 +129,11 @@ export function annotationsDevApi(): {
                 }
               );
               const data = await response.json();
+              if (!response.ok) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: (data as any).message }));
+                return;
+              }
               const comments = (data as any).results.map(parseNotionComment);
 
               res.setHeader("Content-Type", "application/json");

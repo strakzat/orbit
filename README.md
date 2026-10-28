@@ -462,9 +462,22 @@ await fetch(`https://api.notion.com/v1/pages`, {
 });
 ```
 
-**GET handler**: parses Notion pages into Comment objects:
+**GET handler**: filters on the project, and on the element when the overlay asks with
+`?annotationId=` (it does when a comment's thread opens), then parses Notion pages into
+Comment objects. The element's column is `Annotatie ID`:
 
 ```ts
+const filter = {
+  and: [
+    { property: "Project", relation: { contains: NOTION_PROJECT_ID } },
+    ...(annotationId ? [{ property: "Annotatie ID", rich_text: { equals: annotationId } }] : []),
+  ],
+};
+const response = await fetch(`https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify({ filter }),
+});
 const data = await response.json();
 const comments = data.results.map(parseNotionComment);
 ```
