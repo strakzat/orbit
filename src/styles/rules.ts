@@ -1862,6 +1862,11 @@ const FORM = `
 // ── Overlays drawn over host elements ────────────────────────────────────────
 
 const OVERLAYS = `
+/* While the screenshot for a comment is taken: the page without Orbit on it. */
+[data-orbit-capturing] .orbit-root {
+  visibility: hidden;
+}
+
 .orbit-overlay {
   position: fixed;
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-overlay));

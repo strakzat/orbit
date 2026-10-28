@@ -11,6 +11,7 @@ interface MockComment {
   pagina: string;
   label: string;
   varianten?: string;
+  screenshot?: string;
 }
 
 const comments: MockComment[] = [
@@ -88,7 +89,11 @@ export function mockCommentsApi(): Plugin {
               pagina: data.pagina ?? "/",
               label: data.label ?? "",
               varianten: data.varianten,
+              screenshot: data.screenshot,
             };
+            if (data.screenshot) {
+              console.log(`[mock-api] screenshot bij comment ${newComment.id}: ${Math.round(data.screenshot.length / 1024)} KB`);
+            }
             comments.push(newComment);
             res.statusCode = 201;
             res.end(JSON.stringify({ ok: true }));

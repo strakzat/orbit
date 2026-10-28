@@ -301,10 +301,38 @@ export interface Comment {
   varianten?: string;
 }
 
+/**
+ * Size and style for the render, in the shape html-to-image and modern-screenshot take: pass
+ * them along. They lay the app's scroll container out at its full height, since a copy of the
+ * DOM forgets where it was scrolled; Orbit cuts out what the viewer saw.
+ */
+export interface ScreenshotOptions {
+  width: number;
+  height: number;
+  style: Record<string, string>;
+}
+
+/**
+ * A renderer of a project's own, in place of the html-to-image Orbit bundles. Renders `target`
+ * with `options` as an image: a canvas, an image `Blob` or a data URL, at any pixel ratio.
+ * Orbit's interface is hidden while it runs; Orbit crops the result to what the viewer saw and
+ * outlines `element`. `null` sends the feedback without a screenshot.
+ */
+export type ScreenshotCapture = (context: {
+  target: HTMLElement;
+  options: ScreenshotOptions;
+  element: HTMLElement | null;
+}) => Promise<HTMLCanvasElement | Blob | string | null>;
+
 export interface CommentsConfig {
   enabled: boolean;
   apiBase: string;
   project: string;
+  /**
+   * A screenshot with every new comment, the element outlined. On by default, rendered with
+   * the html-to-image Orbit bundles; `false` sends none; a function renders it the project's way.
+   */
+  screenshot?: boolean | ScreenshotCapture;
 }
 
 export interface AnnotationConfig {
