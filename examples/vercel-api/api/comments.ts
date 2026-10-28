@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { buildNotionCommentProperties, parseNotionComment } from "@strakzat/orbit/server";
+import {
+  buildNotionCommentChildren,
+  buildNotionCommentProperties,
+  parseNotionComment,
+} from "@strakzat/orbit/server";
 
 const { NOTION_API_KEY, NOTION_DATABASE_ID, NOTION_PROJECT_ID } = process.env;
 
@@ -45,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === "POST") {
-    const { annotationId, auteur, comment, pagina, label, varianten } = req.body ?? {};
+    const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = req.body ?? {};
 
     if (!annotationId || !comment) {
       return res.status(400).json({ error: "annotationId and comment are required" });
@@ -55,10 +59,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { annotationId, auteur, comment, pagina, label, varianten },
       NOTION_PROJECT_ID!
     );
+    // The screenshot of the spot, as the page's body.
+    const children = await buildNotionCommentChildren(
+      { annotationId, comment, screenshot },
+      NOTION_API_KEY!
+    );
     const response = await fetch(`${NOTION_BASE}/pages`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties }),
+      body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties, children }),
     });
     const page = await response.json();
     if (!response.ok) return res.status(502).json({ error: page.message });

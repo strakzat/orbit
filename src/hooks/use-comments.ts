@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
+import { renderWithHtmlToImage, screenshotFeedback } from "../utils/screenshot";
 import type { Comment } from "../types";
 
 interface UseCommentsProps {
@@ -32,7 +33,9 @@ export function useComments({
   }, [apiBaseProp]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { describeVariants } = useAnnotationsSafe();
+  const { describeVariants, commentsConfig } = useAnnotationsSafe();
+  const setting = commentsConfig?.screenshot ?? true;
+  const capture = setting === false ? null : setting === true ? renderWithHtmlToImage : setting;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const failedRef = useRef(false);
   const warnedRef = useRef(false);
@@ -77,26 +80,34 @@ export function useComments({
 
   const submitComment = useCallback(
     async (data: { auteur: string; comment: string }) => {
+      // First, while the page is still as the viewer saw it.
+      const shooting = capture ? screenshotFeedback(annotationId, capture) : Promise.resolve(null);
       const url = `${apiBase}/api/comments`;
       // The variants the comment was written in, as they stand when it is sent.
       const varianten = describeVariants();
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project,
-          annotationId,
-          auteur: data.auteur,
-          comment: data.comment,
-          pagina: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
-          label,
-          ...(varianten ? { varianten } : {}),
-        }),
-      });
+      const screenshot = await shooting;
+      const send = (withScreenshot: boolean) =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project,
+            annotationId,
+            auteur: data.auteur,
+            comment: data.comment,
+            pagina: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
+            label,
+            ...(varianten ? { varianten } : {}),
+            ...(withScreenshot && screenshot ? { screenshot } : {}),
+          }),
+        });
+      let res = await send(true);
+      // A route with a body limit (Next.js: 1 MB) refuses the screenshot; the comment goes without.
+      if (res.status === 413 && screenshot) res = await send(false);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchComments();
     },
-    [apiBase, project, annotationId, label, describeVariants, fetchComments]
+    [apiBase, project, annotationId, label, describeVariants, capture, fetchComments]
   );
 
   return { comments, isLoading, error, submitComment };

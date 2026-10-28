@@ -1,5 +1,29 @@
 # Changelog
 
+## 4.4.0
+
+- **A screenshot with every comment.** When feedback is sent, Orbit takes a screenshot of
+  the app: its own interface hidden, cropped to what the viewer saw, the element outlined
+  in blue. The comments API gets it as `screenshot` (a JPEG data URL), and the new server
+  helper `buildNotionCommentChildren()` uploads it to Notion and returns the image block
+  for the page's body (`children`). The dev API and the route `orbit-init` writes do this
+  already.
+- **Nothing to install.** Orbit renders it with html-to-image (MIT), bundled into `dist`
+  and loaded only when feedback is sent; `package.json` still has no dependencies. It
+  rebuilds the page from the DOM, so there is no browser prompt, and a scrolled page comes
+  out as scrolled, without the frame's rounded corners. Cross-origin images without CORS
+  headers, iframes and video stay blank.
+- **`comments.screenshot`** is `false` to turn it off, or a function to render with a
+  library of the project's own (`ScreenshotCapture`).
+- **Nothing stops the feedback.** A render that fails, a route that answers 413 to the
+  larger body (Orbit sends again without it), or an upload Notion refuses: the comment
+  lands, without a screenshot.
+
+> **Optional, for a route of your own (from `orbit-init` or the Vercel example).** To get
+> the screenshot in Notion, add `screenshot` to what the POST reads, and pass
+> `children: await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY)`
+> next to `properties`. Without it the route works as before.
+
 ## 4.3.0
 
 > **Action needed in projects set up with `orbit-init` (3.0 and up).** Updating Orbit is

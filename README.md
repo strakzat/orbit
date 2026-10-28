@@ -436,19 +436,22 @@ The package exports server-side helpers for your Notion comments API:
 
 ```ts
 import {
+  buildNotionCommentChildren,
   buildNotionCommentProperties,
   parseNotionComment,
 } from "@strakzat/orbit/server";
 ```
 
-**POST handler**: builds all the Notion properties (including the `pagina` field):
+**POST handler**: builds all the Notion properties (including the `pagina` field), and the
+page's body: the screenshot of the spot, uploaded to Notion.
 
 ```ts
-const { annotationId, auteur, comment, pagina, label, varianten } = req.body;
+const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = req.body;
 const properties = buildNotionCommentProperties(
   { annotationId, auteur, comment, pagina, label, varianten },
   NOTION_PROJECT_ID
 );
+const children = await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY);
 
 await fetch(`https://api.notion.com/v1/pages`, {
   method: "POST",
@@ -460,9 +463,35 @@ await fetch(`https://api.notion.com/v1/pages`, {
   body: JSON.stringify({
     parent: { database_id: NOTION_DATABASE_ID },
     properties,
+    children,
   }),
 });
 ```
+
+### The screenshot with each comment
+
+Every new comment carries a screenshot of the app: Orbit's own interface hidden, cropped to
+what the viewer saw, the commented element outlined in blue. It lands in the body of the
+comment's Notion page as an image. Nothing to install or configure: Orbit renders it with
+[html-to-image](https://github.com/bubkoo/html-to-image), bundled in and loaded only when
+feedback is sent.
+
+- html-to-image rebuilds the page from the DOM rather than taking the screen's pixels, so
+  no browser prompt. What it can't rebuild stays blank: cross-origin images without CORS
+  headers, iframes, video.
+- `comments.screenshot: false` turns it off. A function renders it with a library of the
+  project's own; it gets the `target` (the app's scroll container, or `document.body` with
+  `frame={false}`) and `options` (`width`, `height`, `style`, as html-to-image and
+  modern-screenshot take them) and returns a canvas, an image `Blob` or a data URL:
+
+  ```tsx
+  comments={{ enabled: true, apiBase: "", project, screenshot: ({ target, options }) => myRender(target, options) }}
+  ```
+- It is a JPEG of at most 1600px wide, sent as a data URL in the POST (`screenshot`). A
+  route that refuses the body as too large (413; Next.js API routes stop at 1 MB) gets the
+  comment again without it. An upload Notion refuses is left out with a warning: the
+  comment still lands.
+- A route without `buildNotionCommentChildren` keeps working; it just has no screenshot.
 
 **GET handler**: filters on the project, and on the element when the overlay asks with
 `?annotationId=` (it does when a comment's thread opens), then parses Notion pages into

@@ -10,7 +10,11 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { parse as parseQueryString } from "querystring";
-import { buildNotionCommentProperties, parseNotionComment } from "./server";
+import {
+  buildNotionCommentChildren,
+  buildNotionCommentProperties,
+  parseNotionComment,
+} from "./server";
 
 const NOTION_BASE = "https://api.notion.com/v1";
 
@@ -143,10 +147,15 @@ export function annotationsDevApi(): {
 
             if (req.method === "POST") {
               const body = await parseJsonBody(req);
-              const { annotationId, auteur, comment, pagina, label, varianten } = body;
+              const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = body;
               const properties = buildNotionCommentProperties(
                 { annotationId, auteur, comment, pagina, label, varianten },
                 process.env.NOTION_PROJECT_ID!
+              );
+              // The screenshot of the spot, as the page's body.
+              const children = await buildNotionCommentChildren(
+                { annotationId, comment, screenshot },
+                process.env.NOTION_API_KEY!
               );
 
               const createPage = (props: Record<string, unknown>) =>
@@ -158,6 +167,7 @@ export function annotationsDevApi(): {
                       database_id: process.env.NOTION_DATABASE_ID,
                     },
                     properties: props,
+                    ...(children.length ? { children } : {}),
                   }),
                 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@strakzat/orbit",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "description": "Orbit — client-facing annotation & feedback engine voor alle projecten",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -31,7 +31,8 @@
     "dist",
     "bin",
     "templates",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "scripts": {
     "build": "tsup",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@types/node": "^25.9.5",
     "@types/react": "^18",
+    "html-to-image": "1.11.13",
     "tsup": "^8",
     "typescript": "~5.6",
     "vitest": "^2"

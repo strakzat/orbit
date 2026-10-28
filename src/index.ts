@@ -36,6 +36,8 @@ export type {
   MarkerPosition,
   Comment,
   CommentsConfig,
+  ScreenshotCapture,
+  ScreenshotOptions,
   OrbitShellProps,
   OrbitVariant,
   OrbitVariantOption,

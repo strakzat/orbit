@@ -1,6 +1,6 @@
 # Orbit (`@strakzat/orbit`)
 
-Client-facing annotation & feedback engine voor alle projecten. React-based, zero runtime dependencies buiten React.
+Client-facing annotation & feedback engine voor alle projecten. React-based, zero runtime dependencies buiten React (html-to-image zit gebundeld in `dist`, zie De screenshot).
 
 ## Quick start (consuming project)
 
@@ -70,6 +70,7 @@ interface CommentsConfig {
   enabled: boolean;
   apiBase: string;         // Leeg string = window.location.origin
   project: string;         // Project identifier voor API calls
+  screenshot?: boolean | ScreenshotCapture; // standaard aan (gebundelde html-to-image); false of eigen renderer
 }
 ```
 
@@ -153,6 +154,7 @@ src/
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
     ├── route-matching.ts              — Route matching, breadcrumb en navigatie
     ├── variants.ts                    — Groepen, standaardwaarden, beschrijving en link-serialisatie van varianten
+    ├── screenshot.ts                  — De screenshot bij feedback: vastleggen, bijsnijden, element omlijnen
     └── use-stable-id.ts               — DOM-id voor label/veld-koppeling (React 17-safe)
 ```
 
@@ -176,7 +178,7 @@ Het opgeslagen `annotationId` in een Comment wordt later opgezocht via `findElem
 ```
 GET  {apiBase}/api/comments?project={project}                         → Comment[]
 GET  {apiBase}/api/comments?project={project}&annotationId={id}       → Comment[]
-POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten? }
+POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten?, screenshot? }
 ```
 
 Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
@@ -202,22 +204,25 @@ Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 Het package exporteert server-side helpers via `@strakzat/orbit/server` voor gebruik in API routes. **Gebruik deze altijd** bij het bouwen van een comments API — ze garanderen dat alle velden (inclusief `pagina`) correct worden opgeslagen.
 
 ```typescript
-import { buildNotionCommentProperties, parseNotionComment } from "@strakzat/orbit/server";
+import { buildNotionCommentChildren, buildNotionCommentProperties, parseNotionComment } from "@strakzat/orbit/server";
 
-// POST handler — bouwt alle Notion properties inclusief Pagina
+// POST handler — bouwt alle Notion properties inclusief Pagina, en de body: de screenshot
 const properties = buildNotionCommentProperties(
   { annotationId, auteur, comment, pagina, label },
   NOTION_PROJECT_ID
 );
+const children = await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY);
 await fetch(`https://api.notion.com/v1/pages`, {
   method: "POST",
   headers: { Authorization: `Bearer ${NOTION_API_KEY}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-  body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties }),
+  body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties, children }),
 });
 
 // GET handler — parsed Notion page → Comment object
 const comments = data.results.map(parseNotionComment);
 ```
+
+**De screenshot.** Elke nieuwe comment krijgt een screenshot mee: de app zonder Orbit erop (`data-orbit-capturing` op `<html>` verbergt elke `.orbit-root`), bijgesneden tot wat de kijker zag, het element blauw omlijnd (`utils/screenshot.ts`). Orbit rendert hem met html-to-image, gebundeld (devDependency, door tsup ingelijfd; de licentie staat in `THIRD-PARTY-NOTICES.md`) en via een dynamische `import()` pas geladen als er feedback verstuurd wordt: in ESM een eigen chunk. html-to-image bouwt de pagina na uit de DOM, dus geen prompt van de browser; wat hij niet na kan bouwen (cross-origin beelden zonder CORS, iframes, video) blijft leeg. `comments.screenshot: false` zet het uit; een functie (`ScreenshotCapture`) rendert met een library van het project. De renderer krijgt `target`, de scroll-container van het frame (of `document.body` zonder frame), en `options` (`width`, `height`, `style`) die hem op volle hoogte neerleggen, want een kopie van de DOM vergeet waar hij gescrold stond; Orbit snijdt het zichtbare stuk eruit. Zo blijven ook de ronde hoeken van het frame buiten beeld. Transparante delen krijgen de eerste achtergrond eronder. Een JPEG van maximaal 1600px breed, als data-URL in de POST. `buildNotionCommentChildren` uploadt hem via Notions File Upload API en geeft een image-blok voor `children`. Niets hiervan houdt de feedback tegen: een fout, een 413 van de route (dan opnieuw zonder) of een mislukte upload, en de comment gaat zonder screenshot.
 
 `varianten` gaat alleen naar Notion als de comment varianten heeft: een database zonder kolom `Varianten` blijft werken voor een project zonder varianten. Heeft het project ze wél, dan moet de kolom (tekst) bestaan, anders weigert Notion de pagina. De Vite-plugin vangt dat op door zonder varianten opnieuw te sturen.
 
@@ -352,7 +357,7 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 ## Code patterns
 
 - Alle components gebruiken `React.createElement()` — geen JSX.
-- Geen externe dependencies buiten de React peer dep.
+- Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image) is een devDependency die tsup in `dist` bundelt, met de licentie in `THIRD-PARTY-NOTICES.md`.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
 - Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam en taal.
