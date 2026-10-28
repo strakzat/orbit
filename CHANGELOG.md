@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.2.2
+
+- **The dev API finds a comment's thread.** `annotationsDevApi()` filtered `?annotationId=`
+  on a column called `AnnotationId`; the column is `Annotatie ID`, the name the server
+  helpers write and read. Notion refused the query, so a comment opened from the panel showed
+  no thread. A refused query now answers 502 with Notion's message.
+- **The README's GET handler shows the filter**, column name included, for projects that
+  write their own comments API.
+
 ## 4.2.1
 
 - **The profile pane without a title.** The close floats in the top right; the pane's name
