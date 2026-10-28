@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.2.1
+
+- **The profile pane without a title.** The close floats in the top right; the pane's name
+  stays as its `aria-label`.
+- **Name fields kept away from password managers.** The profile's and the comment form's
+  name fields carry `NO_AUTOFILL`: `autocomplete="off"` plus the ignore attributes of
+  1Password, LastPass, Bitwarden and Dashlane. It is a name for feedback, not a login.
+
 ## 4.2.0
 
 A profile on the rail, and Orbit in English.
