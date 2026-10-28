@@ -176,6 +176,11 @@ export function annotationsDevApi(): {
                 }
               }
               const page = await response.json();
+              if (!response.ok) {
+                res.writeHead(502, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: (page as any).message }));
+                return;
+              }
 
               res.writeHead(201, { "Content-Type": "application/json" });
               res.end(JSON.stringify(parseNotionComment(page)));

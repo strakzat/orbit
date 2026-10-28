@@ -442,9 +442,9 @@ import {
 **POST handler**: builds all the Notion properties (including the `pagina` field):
 
 ```ts
-const { annotationId, auteur, comment, pagina, label } = req.body;
+const { annotationId, auteur, comment, pagina, label, varianten } = req.body;
 const properties = buildNotionCommentProperties(
-  { annotationId, auteur, comment, pagina, label },
+  { annotationId, auteur, comment, pagina, label, varianten },
   NOTION_PROJECT_ID
 );
 

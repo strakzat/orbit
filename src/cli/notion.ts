@@ -15,6 +15,7 @@ export const STATUSES: CommentStatus[] = [
 
 /** Property names in the Notion database (Dutch, must match the schema exactly). */
 export const PROPS = {
+  naam: "Naam",
   project: "Project",
   annotationId: "Annotatie ID",
   comment: "Comment",
@@ -53,12 +54,8 @@ async function notionFetch(path: string, init: RequestInit, key: string): Promis
   return res.json();
 }
 
-function richText(prop: any): string {
-  return prop?.rich_text?.[0]?.plain_text ?? "";
-}
-
 /** Every run of a rich-text property: a long value is split over several. */
-function fullText(prop: any): string {
+function richText(prop: any): string {
   return (prop?.rich_text ?? []).map((t: any) => t.plain_text).join("");
 }
 
@@ -66,7 +63,8 @@ function pageToItem(page: any, project: string): FeedbackItem {
   const p = page.properties ?? {};
   return {
     id: page.id,
-    project: richText(p[PROPS.project]) || project,
+    // Project is a relation, so the row holds the related page's id: the one that was queried.
+    project,
     annotationId: richText(p[PROPS.annotationId]),
     label: richText(p[PROPS.label]),
     pagina: richText(p[PROPS.pagina]),
@@ -77,7 +75,7 @@ function pageToItem(page: any, project: string): FeedbackItem {
     status: (p[PROPS.status]?.select?.name as CommentStatus) ?? "Open",
     antwoord: richText(p[PROPS.antwoord]) || null,
     pr: p[PROPS.pr]?.url ?? "",
-    varianten: fullText(p[PROPS.varianten]),
+    varianten: richText(p[PROPS.varianten]),
     aangemaakt: page.created_time ?? "",
   };
 }
