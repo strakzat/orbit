@@ -2,17 +2,16 @@
 
 ## 4.3.0
 
+> **Action needed in projects set up with `orbit-init` (3.0 and up).** Updating Orbit is
+> not enough. In the project's own `api/comments` file, replace `'AnnotationId'` with
+> `'Annotatie ID'`, then deploy. Until then, a comment or annotation opened on the page
+> shows no thread. Placing feedback, the panel and the rail's counter keep working, and no
+> feedback is lost. This works on 3.x as well; no upgrade is needed for it.
+
 - **The Varianten button stays on the rail.** Passing `variants` is the opt-in: the
   button is on every page, in the same place, where it used to show only on a page with
   variants that apply there. On a page with none, the pane holds one line, "Hier valt
   niets te wisselen.", without tabs, hint or footer, and the focus lands on its close.
-- **Projects set up with `orbit-init` need a one-word fix in their own `api/comments`.**
-  The route `orbit-init` generated (since 3.0) filtered a comment's thread on a column
-  called `AnnotationId`, as the dev API did. Notion refuses that query, so a
-  comment or annotation opened on the page showed no thread; placing feedback, the panel
-  and the rail's counter kept working, and no feedback was lost. The file belongs to the
-  project, so updating Orbit does not change it: replace `'AnnotationId'` with
-  `'Annotatie ID'` in it. Works on 3.x as well; no upgrade needed.
 - **`orbit-init` writes `Annotatie ID`**, and its route answers 502 with Notion's message
   when Notion refuses a query or a page, as the dev API now does for a page too.
 - **The Vercel example uses the server helpers.** It wrote `Project` as text and `Status` as
