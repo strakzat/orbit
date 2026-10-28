@@ -350,12 +350,20 @@ const CHROME = `
   border-radius: var(--orbit-radius-2xl);
 }
 
+/* No title row: the close floats in the corner, over the monogram's padding. */
+.orbit-profile .orbit-profile__close {
+  position: absolute;
+  top: var(--orbit-space-2);
+  right: var(--orbit-space-2);
+  z-index: 1;
+}
+
 .orbit-profile__body {
   display: flex;
   flex-direction: column;
   gap: var(--orbit-space-4);
   /* As the variants pane's body: titles sit in from the controls, on the controls' text. */
-  padding: var(--orbit-space-3) var(--orbit-space-3) var(--orbit-space-4);
+  padding: var(--orbit-space-5) var(--orbit-space-3) var(--orbit-space-4);
 }
 
 /* The monogram, centred, with the name under it: what the rail and a comment will show. */

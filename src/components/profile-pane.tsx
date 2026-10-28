@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useAnnotations } from "../context/use-annotations";
-import { ORBIT_UI_ATTR } from "../constants";
+import { NO_AUTOFILL, ORBIT_UI_ATTR } from "../constants";
 import { LABELS, LANGUAGE_NAMES } from "../labels";
 import { UserIcon, XIcon } from "../icons";
 import { initials } from "../utils/format";
@@ -18,14 +18,14 @@ interface ProfilePaneProps {
 /**
  * Who is looking: the name their feedback goes out under, and the language Orbit is in. Over the
  * rail's right end, where its button is; opening it closes everything else Orbit has open (the
- * rail does that). The monogram is a preview, centred, with the name typed straight in under it.
+ * rail does that). The monogram is a preview, centred, with the name typed straight in under it;
+ * no title over it, only the close floating in the corner.
  * A non-modal dialog, as the variants pane: the focus on the name when it opens, Escape and a
  * press outside close it.
  */
 export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const { labels, language, viewer, setViewerName, setViewerLanguage } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
-  const titleId = useStableId("orbit-profile-title");
   const nameId = useStableId("orbit-profile-name");
   const nameHintId = useStableId("orbit-profile-name-hint");
   const name = viewer.name.trim();
@@ -69,25 +69,20 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       ref: paneRef,
       id,
       role: "dialog",
-      "aria-labelledby": titleId,
+      "aria-label": labels.profileTitle,
       lang: language,
       [ORBIT_UI_ATTR]: "",
       className: "orbit-root orbit-profile orbit-glass-pane orbit-animate-in",
     },
     React.createElement(
-      "div",
-      { className: "orbit-variants__header" },
-      React.createElement("h2", { id: titleId, className: "orbit-variants__heading" }, labels.profileTitle),
-      React.createElement(
-        "button",
-        {
-          type: "button",
-          className: "orbit-icon-button",
-          "aria-label": labels.profileClose,
-          onClick: () => onClose(true),
-        },
-        React.createElement(XIcon, { size: 16 })
-      )
+      "button",
+      {
+        type: "button",
+        className: "orbit-icon-button orbit-profile__close",
+        "aria-label": labels.profileClose,
+        onClick: () => onClose(true),
+      },
+      React.createElement(XIcon, { size: 16 })
     ),
     React.createElement(
       "div",
@@ -107,7 +102,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
           id: nameId,
           className: "orbit-profile__name",
           type: "text",
-          autoComplete: "name",
+          ...NO_AUTOFILL,
           spellCheck: false,
           placeholder: labels.profileNamePlaceholder,
           value: viewer.name,

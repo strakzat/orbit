@@ -5,6 +5,7 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { fill } from "../labels";
 import { useStableId } from "../utils/use-stable-id";
 import { AlertCircleIcon } from "../icons";
+import { NO_AUTOFILL } from "../constants";
 
 interface CommentFormProps {
   onSubmit: (data: { auteur: string; comment: string }) => Promise<void>;
@@ -66,7 +67,7 @@ export function CommentForm({ onSubmit }: CommentFormProps) {
             id: nameId,
             className: "orbit-input",
             type: "text",
-            autoComplete: "name",
+            ...NO_AUTOFILL,
             // Opened from "Als …": the focus follows the button that is gone.
             autoFocus: showName,
             placeholder: labels.formName,
