@@ -35,5 +35,18 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
  */
 export const ORBIT_UI_ATTR = "data-annotation-inspector";
 
+/**
+ * On the name fields: a name for feedback, not a login. `autocomplete="off"` keeps the browser's
+ * own autofill away; the password managers each read their own attribute (1Password, LastPass,
+ * Bitwarden, Dashlane) and ignore the standard one.
+ */
+export const NO_AUTOFILL = {
+  autoComplete: "off",
+  "data-1p-ignore": "",
+  "data-lpignore": "true",
+  "data-bwignore": "",
+  "data-form-type": "other",
+} as const;
+
 // Colours live in src/styles/tokens.ts as CSS custom properties. Nothing here
 // should carry a colour value: the check:tokens script fails the build if it does.
