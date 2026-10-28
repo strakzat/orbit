@@ -50,9 +50,10 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const paneId = useStableId("orbit-variants");
   const profileId = useStableId("orbit-profile");
 
-  // Only when there is something to switch here: variants for other pages alone leave no button.
+  // Passing `variants` is the opt-in: the button stays in its place on every page, also where
+  // there is nothing to switch.
+  const hasVariants = variants !== undefined;
   const here = variants ? variantsHere(variants, currentRoute) : [];
-  const hasVariants = here.length > 0;
   // Off their defaults here: the prototype is not in the state it starts in.
   const changed = here.filter(isChanged).length;
   // The toolbar's one tab stop, kept on a button that is there: the list shrinks when the

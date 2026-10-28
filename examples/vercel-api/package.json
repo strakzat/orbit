@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@notionhq/client": "^2",
+    "@strakzat/orbit": "^4",
     "@vercel/node": "^3"
   }
 }

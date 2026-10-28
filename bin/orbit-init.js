@@ -65,7 +65,8 @@ export default async function handler(req, res) {
       ],
     }
     if (annotationId) {
-      filter.and.push({ property: 'AnnotationId', rich_text: { equals: annotationId } })
+      // The column buildNotionCommentProperties writes and parseNotionComment reads.
+      filter.and.push({ property: 'Annotatie ID', rich_text: { equals: annotationId } })
     }
 
     const response = await fetch(\`\${NOTION_BASE}/databases/\${NOTION_DATABASE_ID}/query\`, {
@@ -74,6 +75,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({ filter }),
     })
     const data = await response.json()
+    if (!response.ok) return res.status(502).json({ error: data.message })
     const comments = data.results.map(parseNotionComment)
     return res.json(comments)
   }
@@ -90,6 +92,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties }),
     })
     const page = await response.json()
+    if (!response.ok) return res.status(502).json({ error: page.message })
     return res.status(201).json(parseNotionComment(page))
   }
 

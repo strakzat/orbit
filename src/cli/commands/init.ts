@@ -71,6 +71,8 @@ async function checkSchema(): Promise<boolean> {
   const problems: string[] = [];
 
   const required: Array<{ name: string; type: string }> = [
+    // Every database has one title column; Notion names it "Name" until it is renamed.
+    { name: PROPS.naam, type: "title" },
     { name: PROPS.project, type: "relation" },
     { name: PROPS.annotationId, type: "rich_text" },
     { name: PROPS.comment, type: "rich_text" },

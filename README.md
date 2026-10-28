@@ -352,7 +352,9 @@ Every variant takes a `hint`; an option of a `choice` or `multi` can be `disable
   as `varianten`, a line each (`Rol: Administratie`), shown under the comment and saved
   in Notion's `Varianten` column.
 
-Without `variants` there is no Varianten button. Elements of your own that belong to
+Without `variants` there is no Varianten button. With it, the button is on every page,
+in the same place, also where the array is empty or nothing in it applies; the pane then
+says there is nothing to switch. Elements of your own that belong to
 Orbit's interface, rather than the page, carry `ORBIT_UI_ATTR` so the inspector lets a
 click on them through.
 
@@ -442,9 +444,9 @@ import {
 **POST handler**: builds all the Notion properties (including the `pagina` field):
 
 ```ts
-const { annotationId, auteur, comment, pagina, label } = req.body;
+const { annotationId, auteur, comment, pagina, label, varianten } = req.body;
 const properties = buildNotionCommentProperties(
-  { annotationId, auteur, comment, pagina, label },
+  { annotationId, auteur, comment, pagina, label, varianten },
   NOTION_PROJECT_ID
 );
 
@@ -462,9 +464,22 @@ await fetch(`https://api.notion.com/v1/pages`, {
 });
 ```
 
-**GET handler**: parses Notion pages into Comment objects:
+**GET handler**: filters on the project, and on the element when the overlay asks with
+`?annotationId=` (it does when a comment's thread opens), then parses Notion pages into
+Comment objects. The element's column is `Annotatie ID`:
 
 ```ts
+const filter = {
+  and: [
+    { property: "Project", relation: { contains: NOTION_PROJECT_ID } },
+    ...(annotationId ? [{ property: "Annotatie ID", rich_text: { equals: annotationId } }] : []),
+  ],
+};
+const response = await fetch(`https://api.notion.com/v1/databases/${NOTION_DATABASE_ID}/query`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify({ filter }),
+});
 const data = await response.json();
 const comments = data.results.map(parseNotionComment);
 ```

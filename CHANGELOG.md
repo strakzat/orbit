@@ -1,5 +1,34 @@
 # Changelog
 
+## 4.3.0
+
+> **Action needed in projects set up with `orbit-init` (3.0 and up).** Updating Orbit is
+> not enough. In the project's own `api/comments` file, replace `'AnnotationId'` with
+> `'Annotatie ID'`, then deploy. Until then, a comment or annotation opened on the page
+> shows no thread. Placing feedback, the panel and the rail's counter keep working, and no
+> feedback is lost. This works on 3.x as well; no upgrade is needed for it.
+
+- **The Varianten button stays on the rail.** Passing `variants` is the opt-in: the
+  button is on every page, in the same place, where it used to show only on a page with
+  variants that apply there. On a page with none, the pane holds one line, "Hier valt
+  niets te wisselen.", without tabs, hint or footer, and the focus lands on its close.
+- **`orbit-init` writes `Annotatie ID`**, and its route answers 502 with Notion's message
+  when Notion refuses a query or a page, as the dev API now does for a page too.
+- **The Vercel example uses the server helpers.** It wrote `Project` as text and `Status` as
+  a status, sorted on an `Aangemaakt` column the schema does not have, and answered 400
+  to the overlay's poll without `annotationId`. It now builds and parses with
+  `@strakzat/orbit/server`, like the route `orbit-init` writes.
+- **`orbit-feedback init --check` checks the title column.** It has to be called `Naam`:
+  a database with Notion's default `Name` refused every comment.
+- **`orbit-feedback fetch` reads long comments whole.** Notion splits a long text into
+  runs; the comment, the reply and the other text columns were read from the first only.
+- **The dev API finds a comment's thread.** `annotationsDevApi()` filtered `?annotationId=`
+  on a column called `AnnotationId`; the column is `Annotatie ID`, the name the server
+  helpers write and read. Notion refused the query, so a comment opened from the panel showed
+  no thread. A refused query now answers 502 with Notion's message.
+- **The README's GET handler shows the filter**, column name included, for projects that
+  write their own comments API.
+
 ## 4.2.1
 
 - **The profile pane without a title.** The close floats in the top right; the pane's name
