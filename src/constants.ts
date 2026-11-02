@@ -41,6 +41,9 @@ export const ORBIT_UI_ATTR = "data-annotation-inspector";
  */
 export const COMPONENT_ATTR = "data-orbit-component";
 
+/** The author of feedback from a viewer who set no name in the profile. */
+export const ANONYMOUS = "Anonymous";
+
 /**
  * On the name fields: a name for feedback, not a login. `autocomplete="off"` keeps the browser's
  * own autofill away; the password managers each read their own attribute (1Password, LastPass,

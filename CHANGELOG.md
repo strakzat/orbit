@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.7.0
+
+- **A comment bubble instead of a popover.** After picking an element, a message bubble opens
+  under it (above it when there is no room): its top-left corner square on the element's, the
+  rest rounded. It holds only the comment: one line with a round send button, which opens up to
+  three lines with the button below once you type, and grows with the text. Enter sends,
+  Shift + Enter is a new line. No focus ring, no annotation, thread or close button; Escape or a
+  click beside it lets go. The tag above the spotlight stays, naming what the comment is on.
+- **The composer everywhere.** `CommentForm` is that composer in the popovers of pins and
+  annotations too.
+- **No name field.** Feedback goes out under the name in the profile, or as `Anonymous`.
+- **Component ❖ or Instance ◇.** Inside a component, the choice is a small segmented control
+  in the bubble, icons only, before the send button. Component is the default and comes first.
+  Each option has a tooltip saying what it means. New labels: `scopeComponentHint`,
+  `scopeInstanceHint`.
+- Labels: `formAs` is gone; `formOn` ("Feedback op {label}") names the bubble for a screen reader.
+
 ## 4.6.0
 
 - **Feedback on a component.** Mark a component with `data-orbit-component="Sidebar"`

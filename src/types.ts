@@ -111,12 +111,16 @@ export interface AnnotationLabels {
   placeFeedbackShortcut: string;
   /** Announced once feedback from the inspector is sent and its popover has closed. */
   feedbackPlaced: string;
-  /** "Als {name}", over the comment field once the name is set: a button that shows the name field. */
-  formAs: string;
-  /** The inspector's scope choice, for an element inside a component: what the feedback is on. */
+  /** The inspector's comment bubble, for a screen reader: "Feedback op {label}". */
+  formOn: string;
+  /** The bubble's scope choice, for an element inside a component: what the feedback is on. */
   scopeLabel: string;
   scopeInstance: string;
+  /** Also before a component's name for a screen reader. */
   scopeComponent: string;
+  /** The scope choice's tooltips, under its name: what feedback on {name} or on this one means. */
+  scopeComponentHint: string;
+  scopeInstanceHint: string;
   /** "Component: {name}", for a screen reader: the component a comment or the popover is about. */
   componentNamed: string;
   /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */

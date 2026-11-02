@@ -58,6 +58,11 @@ export const XIcon = createIcon([
   ["path", { d: "m6 6 12 12" }],
 ]);
 
+export const ArrowUpIcon = createIcon([
+  ["path", { d: "m5 12 7-7 7 7" }],
+  ["path", { d: "M12 19V5" }],
+]);
+
 export const SearchIcon = createIcon([
   ["circle", { cx: 11, cy: 11, r: 8 }],
   ["path", { d: "m21 21-4.3-4.3" }],
@@ -183,6 +188,9 @@ export const LinkIcon = createIcon([
 ]);
 
 /** Figma's component mark: four diamonds. What a component of the project's is, in purple. */
+/** Figma's instance: one diamond, the component's four as an outline. */
+export const InstanceIcon = createIcon([["path", { d: "M12 3.5 20.5 12 12 20.5 3.5 12Z" }]]);
+
 export const ComponentIcon = createIcon([
   ["path", { d: "M12 2.5 15 5.5 12 8.5 9 5.5Z" }],
   ["path", { d: "M18.5 9 21.5 12 18.5 15 15.5 12Z" }],
