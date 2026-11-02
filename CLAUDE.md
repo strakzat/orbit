@@ -33,7 +33,7 @@ AnnotationProvider (context + state, één poller voor alle comments)
 │   │   ├── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
 │   │   └── ProfilePane     — de avatar rechts op de rail: naam en taal van de kijker
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
-├── Inspector               — crosshair element picker voor feedback comments (de knop staat op de rail)
+├── Inspector               — element picker met spotlight voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
 ├── AutoAnnotationMarkers   — floating badges op auto-discovered elementen met data-annotation-id
 └── AnnotationMarker        — wrapper component voor specifieke elementen (inline badge + popover)
@@ -94,7 +94,7 @@ interface CommentsConfig {
   panelWidth: 420,
   panelHeight: 640,         // ook de hoogte van het variantenpaneel
   zIndex: 9000,
-  keyboardShortcut: true,   // Cmd+. / Ctrl+.
+  keyboardShortcut: true,   // Cmd+. / Ctrl+. (annotatiemodus), C (feedback plaatsen)
 }
 ```
 
@@ -111,6 +111,7 @@ src/
 ├── icons.ts                          — Inline SVG iconen via één createIcon() factory
 ├── vite.ts                           — Vite plugin: annotationsDevApi() voor local dev API
 ├── styles/
+│   ├── font.ts                        — Inter en Geist Mono als @font-face, gebundeld (fonts/*.woff2)
 │   ├── tokens.ts                      — CSS-variabelen: light, dark, type- en statuskleuren
 │   ├── rules.ts                       — Component-regels, reset eerst
 │   ├── sheet.ts                       — Stelt de stylesheet samen
@@ -133,7 +134,7 @@ src/
 │   ├── annotation-popover.tsx         — Gedeelde popover (marker, auto-marker én inspector)
 │   ├── auto-annotation-markers.tsx    — Auto-discovers data-annotation-id elementen
 │   ├── feedback-markers.tsx           — Floating feedback badges op elementen met comments
-│   ├── inspector.tsx                  — Element picker: crosshair cursor, click-to-comment
+│   ├── inspector.tsx                  — Element picker: spotlight, ↑/↓ niveaus, click-to-comment
 │   ├── comment-thread.tsx             — Comment lijst
 │   ├── comment-card.tsx               — Eén comment (thread én panel-lijst)
 │   ├── comment-form.tsx               — Feedback submit formulier
@@ -149,7 +150,8 @@ src/
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
     ├── format.ts                      — initials() + relativeTime() voor de comment-UI
-    ├── element-id.ts                  — getElementPath() CSS selector + getElementLabel() preview
+    ├── element-id.ts                  — getLocator() selector vanaf een anker + getElementLabel() preview
+    ├── pick-element.ts                — levelsFrom(): de elementen onder de cursor die de inspector aanbiedt
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
     ├── route-matching.ts              — Route matching, breadcrumb en navigatie
@@ -160,18 +162,21 @@ src/
 
 ## Inspector element snap logic
 
-Wanneer een gebruiker een element klikt in inspector mode, wordt het element geidentificeerd via een 3-pass walk-up:
+Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, krijgt de feedback.
 
-1. **data-annotation-id** — Loopt DOM tree op, zoekt eerste ancestor met `data-annotation-id` attribuut (voorgedefinieerde annotation markers). Skipt full-page containers (>90% viewport).
-2. **id** — Als geen annotation_id gevonden, loopt opnieuw op zoekend naar `id` attribuut. Skipt full-page containers.
-3. **CSS selector path** — Fallback: genereert pad als `#root > div > section:nth-of-type(2) > button`.
+1. **Niveaus.** `levelsFrom(hit)` loopt vanaf het element onder de cursor omhoog en houdt alleen elementen die iemand zou aanwijzen: interactief (`button`, `a`, `input`, `[role]`, …), semantisch (`p`, `li`, `h1`–`h6`, `img`, `section`, …), met een `data-annotation-id`, `data-testid` of `id`, of met een eigen tekst of eigen box (achtergrond, rand, schaduw). Een `span` in een zin telt niet; containers die ≥90% van het frame vullen ook niet. Elementen met precies dezelfde box zijn één niveau, genoemd naar de sterkste (annotatie-id > test-id > id > interactief > semantisch).
+2. **↑/↓** stappen tijdens hoveren door die niveaus; het label boven de ring toont het element en `1/3 ↑↓`. Bewegen zet hem terug op het binnenste.
+3. **De locator** (`getLocator()` in `element-id.ts`): een element met een `data-annotation-id` of `id` is die id. Al het andere is een selector vanaf de dichtstbijzijnde naam erboven: `#activiteit > div:nth-of-type(2)`, `[data-annotation-id="2"] > p`, met `aria-label`, `name`, `role` of `type` vóór een positie.
+4. **Terugvinden** (`findElementByAnnotationId(id, label?)`): `getElementById`, dan `[data-annotation-id]`, dan de selector. Met het `label` van de comment (tag + begin van de tekst, zonder Orbits eigen badges) wordt de selector gecontroleerd: leest het element daar anders, dan wint het ene element onder het anker dat nog zo leest. Zo overleeft feedback een rij erbij of een wrapper erom. Twee kandidaten is geen antwoord; dan blijft de selector staan.
 
-**Annotatie en feedback delen één id per component.** `AnnotationMarker` stempelt `data-annotation-id={annotationId}` op z'n wrapper. Klik je zo'n element aan in inspector mode, dan vindt pass 1 díe id — niet de element-`id` eronder of een CSS-pad. Zo landt nieuwe feedback in dezelfde bak als de annotatie, toont de annotatie-popover die feedback in z'n eigen sectie, en verschijnt er geen tweede losse feedback-pin (`FeedbackMarkers` slaat geregistreerde marker-id's over). Eén kaart, één thread.
+**De spotlight.** Zolang de inspector aanstaat, dimt een scrim (`--orbit-scrim`) het frame rond het opgelichte element, met een witte ring (`--orbit-spotlight-ring`). De scrim is de schaduw van een uitsparing, geknipt op het frame, dus de rail blijft licht. De popover komt naast het element (`getBesidePopoverStyle()`), erboven of eronder, en er alleen overheen als er nergens anders plek is.
 
-Het opgeslagen `annotationId` in een Comment wordt later opgezocht via `findElementByAnnotationId()`:
-1. `document.getElementById(id)`
-2. `document.querySelector('[data-annotation-id="..."]')`
-3. `document.querySelector(cssPath)` — als het path `>` of `:nth-of-type` bevat
+**De knop zegt hoe je stopt.** Zolang de inspector aanstaat, groeit er rechts in Feedback plaatsen een × bij, met de tooltip "Stoppen (C of Esc)". `.orbit-rail__close` is altijd gerenderd: z'n kolom gaat van `minmax(0, 0fr)` naar `minmax(0, 1fr)`, zodat de knop vloeiend breder wordt in plaats van te springen, en de × draait erin (`opacity`, `transform`), 200 ms `--orbit-ease`. Dicht is hij precies zo breed als zonder ×.
+
+**Tijdens het kiezen geen andere markers.** Zolang de inspector aanstaat, tonen `AnnotationMarker`, `AutoAnnotationMarkers` en `FeedbackMarkers` niets, ook in annotatiemodus: de spotlight gaat over het ene element waar de feedback op komt. Is de comment verstuurd, dan sluiten popover én inspector, haalt `refreshComments()` (op de context) de lijst meteen opnieuw op zodat pin en teller er direct zijn, en meldt de status-regio "Feedback geplaatst.". Mislukt het versturen, dan blijft alles open met de foutmelding van het formulier.
+
+**Annotatie en feedback delen één id per component.** `AnnotationMarker` stempelt `data-annotation-id={annotationId}` op z'n wrapper, en wrapper en component hebben één box, dus het niveau van de kaart heet naar de annotatie. Kies je dat niveau (klik op de rand, of ↑ vanuit de inhoud), dan landt de feedback in dezelfde bak als de annotatie en toont de popover beide; `FeedbackMarkers` slaat geregistreerde marker-id's over. Klik je iets ín de kaart aan, het bedrag, dan krijgt dat element eigen feedback met een eigen pin, onder het anker van de annotatie.
+
 
 ## API endpoints (verwacht door consuming project)
 
@@ -325,13 +330,14 @@ Overschrijf ze op `:root` of op een ancestor. Hernoemen is breaking, dus dat geb
 | Status | `--orbit-bg-{error,warning,success}-primary`, `--orbit-border-{…}`, `--orbit-text-{…}-primary` |
 | Feedback | `--orbit-bg-feedback`, `--orbit-border-feedback`, `--orbit-text-feedback`, `--orbit-bg-feedback-solid` |
 | Overlay | `--orbit-overlay-fill`, `-fill-strong`, `--orbit-overlay-ring` |
+| Spotlight | `--orbit-scrim`, `--orbit-spotlight-ring`, `--orbit-spotlight-glow`, `--orbit-spotlight-edge`, `--orbit-spotlight-tag`, `-tag-text` |
 | Type | `--orbit-type-{documentation,pro,question,con,suggestion,critical,user-insight}-{bg,border,fg}` |
 | Schaal | `--orbit-space-*`, `--orbit-radius-*`, `--orbit-text-*`, `--orbit-shadow-*`, `--orbit-font-body`, `--orbit-font-mono` |
 | Motion | `--orbit-duration-fast`, `--orbit-duration`, `--orbit-duration-slow`, `--orbit-ease` |
 | Stapeling | `--orbit-z-base` (uit `settings.zIndex`) plus vaste offsets |
 | Chrome | `--orbit-bg-chrome`, `--orbit-glass-*` (film, chip, edge, pane, hairline, blur), `--orbit-shadow-pane`, `--orbit-rail-height`, `--orbit-frame-bg` |
 
-De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-tertiary`, `*_hover`, `*_on-brand`), zodat het vocabulaire hetzelfde is als in onze Tailwind-projecten. De donkere *waarden*, de standaard, zijn die van Radial (strakzat/radial): de neutrale ladder van de site, glas als een paar procent wit met een belichte bovenrand (`--orbit-glass-*`), een bijna-witte primaire knop en Radials blauwe focusring. Een paneel dat over het project opent is Radials chrome-glas met een dichte tint (88%), zodat lichte tekst boven een witte pagina 4.5:1 houdt. De lichte waarden zijn nog die van Geist. Het lettertype is Inter eerst in de stack, zoals Radial, met een val terug op het systeem (geen fontbestanden gebundeld). Tailwind zelf zit hier niet in: dat zou elke consumer een buildstap opleggen.
+De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-tertiary`, `*_hover`, `*_on-brand`), zodat het vocabulaire hetzelfde is als in onze Tailwind-projecten. De donkere *waarden*, de standaard, zijn die van Radial (strakzat/radial): de neutrale ladder van de site, glas als een paar procent wit met een belichte bovenrand (`--orbit-glass-*`), een bijna-witte primaire knop en Radials blauwe focusring. Een paneel dat over het project opent is Radials chrome-glas met een dichte tint (88%), zodat lichte tekst boven een witte pagina 4.5:1 houdt. De lichte waarden zijn nog die van Geist. Beide lettertypes zitten gebundeld (`styles/font.ts`), zodat Orbit op elke site hetzelfde oogt: Inter, zoals Radial, als variabel font (gewicht 100–900 in één woff2, Latin, ~48 KB), en Geist Mono voor mono (Latin, gewicht 400, ~10 KB). tsup lijft ze in als data-URL (`loader` in `tsup.config.ts`), als `@font-face` vooraan in de sheet. De familienamen zijn `"Orbit Inter"` en `"Orbit Geist Mono"`, zodat ze nooit botsen met een `Inter` of `Geist Mono` van het project; daarna volgen die van het project en het systeem. Geen Google Fonts: dat zou op elke klantsite een verzoek naar Google doen (AVG) en strandt op een strikte CSP. Satoshi kan niet: de ITF Free Font License verbiedt herdistributie via een publieke repo of package. De licenties (OFL) staan in `THIRD-PARTY-NOTICES.md`. Tailwind zelf zit hier niet in: dat zou elke consumer een buildstap opleggen.
 
 **`accentColor` tint, hij kleurt de primaire knop niet.** Eén kleur in `settings.accentColor` voedt `--orbit-brand`; daaruit worden de stille brand-tokens afgeleid met `color-mix()` — de subtiele vulling, de rand, de secundaire tekst. De solide brandknop (`--orbit-bg-brand-solid`) is bewust *niet* van de accent afgeleid: hij is een theme-aware constante — bijna-zwart in licht, bijna-wit in donker, Vercels omgekeerde primaire knop — zodat hij in beide thema's leesbaar blijft wat een consumer ook instelt. `onBrandTextColor()` blijft geëxporteerd voor wie zelf een brandknop bouwt.
 
@@ -351,13 +357,14 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Elk veld heeft een `<label>`; visueel verborgen met `.orbit-sr-only` waar het ontwerp er geen ruimte voor heeft.
 - Kaarten met twee acties gebruiken een uitgerekte overlay-knop plus een link erboven, want een `<button>` mag geen `<button>` bevatten.
 - Escape sluit paneel, popover en inspector, en geeft de focus terug aan de knop die ze opende.
+- **C** zet Feedback plaatsen aan en weer uit (`aria-keyshortcuts="C"`, tooltip "Feedback plaatsen (C)"), achter `settings.keyboardShortcut` zoals Cmd/Ctrl + `.`. Een kale letter, dus hij doet niets als hij iets anders betekent: typen in een veld of `contenteditable` (van het project of van Orbit), een modifier erbij, een ingedrukt gehouden toets, een IME die componeert, of een pagina die de toets al zelf afhandelde (`defaultPrevented`).
 - `prefers-reduced-motion: reduce` zet alle transities en animaties in de module op 0,01ms.
 - Iconen zijn `aria-hidden`; de knop eromheen draagt de naam.
 
 ## Code patterns
 
 - Alle components gebruiken `React.createElement()` — geen JSX.
-- Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image) is een devDependency die tsup in `dist` bundelt, met de licentie in `THIRD-PARTY-NOTICES.md`.
+- Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image, en de lettertypes Inter en Geist Mono) zit gebundeld in `dist`, met de licenties in `THIRD-PARTY-NOTICES.md`.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
 - Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam en taal.

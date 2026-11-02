@@ -152,11 +152,12 @@ function compose(source: Source, { target, options, crop, view }: Plan, rect: DO
 /** The screenshot for feedback on `annotationId`, as a JPEG data URL, or `null`. */
 export async function screenshotFeedback(
   annotationId: string,
-  capture: ScreenshotCapture
+  capture: ScreenshotCapture,
+  label?: string
 ): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const root = document.documentElement;
-  const element = findElementByAnnotationId(annotationId);
+  const element = findElementByAnnotationId(annotationId, label);
   const rect = element ? element.getBoundingClientRect() : null;
   const layout = plan();
 

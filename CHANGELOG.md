@@ -1,5 +1,40 @@
 # Changelog
 
+## 4.5.0
+
+- **The inspector picks what you mean.** Hover and click now agree: what lights up is
+  what gets the feedback. Picking skips wrappers nobody would name and stops at buttons,
+  links, text, images and anything with its own box. ↑ and ↓ move to the element around
+  the lit one or back inside it, and a tag above the ring names it.
+- **A spotlight.** While picking, the app dims and the element stays lit with a white
+  ring, as in Radial. The rail stays lit. The form opens beside the element, not on top
+  of it. New tokens: `--orbit-scrim`, `--orbit-spotlight-ring`, `--orbit-spotlight-glow`, `--orbit-spotlight-edge`, `--orbit-spotlight-tag`, `--orbit-spotlight-tag-text`.
+- **C to give feedback.** Pressing C turns the inspector on, and C again turns it off,
+  like the rail's button. It's behind `settings.keyboardShortcut`, like Cmd/Ctrl + `.`,
+  and does nothing while you type in a field, with a modifier held, or when the page
+  already handled the key.
+- **The button shows how to stop.** While picking, a × grows in at the end of the
+  Feedback plaatsen button, with a "Stop (C or Esc)" tooltip. The button widens smoothly
+  and the × turns in; turned off, it's exactly as wide as before.
+- **Picking is about one element.** While the inspector is on, the other annotation
+  and feedback markers are hidden, also in annotation mode. Once a comment is sent, the
+  popover and the inspector close, its pin and the rail's count update right away (new
+  `refreshComments()` on the context), and "Feedback sent." is announced. A failed send
+  keeps everything open with the form's error.
+- **Feedback stays on its element.** A new comment is stored as a selector from the
+  nearest id, test id or annotation id (`#activiteit > div:nth-of-type(2)`), not as a
+  path from the root. When the markup changes underneath it, the comment's label finds
+  the element again. Older comments keep working and get the same fallback.
+- **Inside an annotated component, the precise element.** Clicking the amount in an
+  annotated card gives feedback on the amount. The card itself (its edge, or ↑) still
+  opens the annotation and its thread.
+- **Inter and Geist Mono, bundled.** Orbit's interface is set in Inter and its mono
+  text (element labels) in Geist Mono on every site, not only where the project loads
+  them. They're Latin woff2 files inlined in `dist`: Inter variable with every weight
+  (~48 KB), Geist Mono regular (~10 KB). There's no request to a font service. They're
+  declared as `"Orbit Inter"` and `"Orbit Geist Mono"` so they never collide with a
+  project's own fonts. The licences (OFL) are in `THIRD-PARTY-NOTICES.md`.
+
 ## 4.4.0
 
 - **A screenshot with every comment.** When feedback is sent, Orbit takes a screenshot of

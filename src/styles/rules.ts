@@ -259,6 +259,43 @@ const CHROME = `
   color: var(--orbit-text-primary);
 }
 
+/* The × at the end of the feedback button while picking. Its track opens from 0fr to 1fr,
+   so the button widens smoothly instead of jumping, and the × turns in as it gets room.
+   The negative margin takes back the button's gap while the track is shut; the gap lives
+   inside the track instead. Reduced motion makes it a plain show and hide. */
+.orbit-rail__close {
+  display: grid;
+  grid-template-columns: minmax(0, 0fr);
+  margin-left: calc(var(--orbit-space-1-5) * -1);
+  transition: grid-template-columns var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-rail__close > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding-left: var(--orbit-space-1-5);
+}
+
+.orbit-rail__close svg {
+  flex: none;
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+  transition:
+    opacity var(--orbit-duration-slow) var(--orbit-ease),
+    transform var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-rail__item--on .orbit-rail__close {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.orbit-rail__item--on .orbit-rail__close svg {
+  opacity: 1;
+  transform: none;
+}
+
 .orbit-rail__count {
   min-width: 20px;
   margin-right: calc(var(--orbit-space-1) * -1);
@@ -1867,13 +1904,30 @@ const OVERLAYS = `
   visibility: hidden;
 }
 
-.orbit-overlay {
+/* The inspector's spotlight. The box is the picking area (the frame, or the window) and
+   clips; the cutout's shadow is the scrim, so the element under it stays untouched and
+   everything outside the area, the rail first, stays lit. */
+.orbit-spotlight {
   position: fixed;
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-overlay));
-  border: 2px solid var(--orbit-bg-feedback-solid);
-  border-radius: var(--orbit-radius-md);
-  background: var(--orbit-overlay-fill);
+  overflow: hidden;
   pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-spotlight--framed {
+  border-radius: 0 0 24px 24px;
+}
+
+.orbit-spotlight--idle {
+  opacity: 0;
+}
+
+.orbit-spotlight__cutout,
+.orbit-spotlight__tag,
+.orbit-spotlight-ring {
+  position: absolute;
   transition:
     top var(--orbit-duration-fast) var(--orbit-ease),
     left var(--orbit-duration-fast) var(--orbit-ease),
@@ -1881,9 +1935,62 @@ const OVERLAYS = `
     height var(--orbit-duration-fast) var(--orbit-ease);
 }
 
-.orbit-overlay--selected {
-  background: var(--orbit-overlay-fill-strong);
+.orbit-spotlight__cutout {
+  border-radius: var(--orbit-radius-xs);
+  box-shadow: var(--orbit-spotlight-edge), 0 0 0 100vmax var(--orbit-scrim);
+}
+
+/* A hairline of light rather than a line of paint: plus-lighter adds it to the page under
+   it, so it glows over the scrim and never greys out a white element. */
+.orbit-spotlight-ring {
+  position: fixed;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-overlay));
+  border-radius: var(--orbit-radius-xs);
+  outline: 1px solid var(--orbit-spotlight-ring);
+  box-shadow: 0 0 8px 0 var(--orbit-spotlight-glow);
+  mix-blend-mode: plus-lighter;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.orbit-spotlight-ring--idle {
+  opacity: 0;
+}
+
+.orbit-spotlight--selected .orbit-spotlight__cutout,
+.orbit-spotlight-ring--selected {
   transition: none;
+}
+
+/* What is lit, above the ring: its tag and text, and the ↑↓ to the levels around it. A
+   dark pill, apart from the white ring. */
+.orbit-spotlight__tag {
+  display: flex;
+  gap: var(--orbit-space-2);
+  align-items: center;
+  padding: 3px var(--orbit-space-2-5);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-spotlight-tag);
+  color: var(--orbit-spotlight-tag-text);
+  font-size: var(--orbit-text-xs);
+  line-height: var(--orbit-leading-normal);
+  white-space: nowrap;
+  transform: translateY(calc(-100% - 6px));
+}
+
+.orbit-spotlight__tag--below {
+  transform: translateY(6px);
+}
+
+.orbit-spotlight__label {
+  overflow: hidden;
+  font-family: var(--orbit-font-mono);
+  text-overflow: ellipsis;
+}
+
+.orbit-spotlight__keys {
+  flex: none;
+  opacity: 0.6;
 }
 
 .orbit-highlight {

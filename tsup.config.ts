@@ -8,6 +8,8 @@ export default defineConfig([
     banner: {
       js: '"use client";',
     },
+    // Geist Mono, inlined: Orbit makes no font request of its own.
+    loader: { ".woff2": "dataurl" },
   },
   {
     entry: ["src/server.ts"],

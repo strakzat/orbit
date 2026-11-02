@@ -23,6 +23,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   commentsConfig: null,
   allComments: [],
   commentsLoading: false,
+  refreshComments: async () => {},
   commentsError: null,
   currentRoute: "/",
   registeredMarkerIds: new Set(),

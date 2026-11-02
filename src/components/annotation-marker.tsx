@@ -68,7 +68,8 @@ export function AnnotationMarker({
     enabled: !!commentsConfig && isActive,
   });
 
-  const showMarkers = mounted && (annotationMode || inspectorActive);
+  // Not while picking: the spotlight is about the one element feedback goes on.
+  const showMarkers = mounted && annotationMode && !inspectorActive;
   const isHovered = hoveredAnnotationId === annotationId;
   const annotationType = annotation?.type ?? "documentation";
 

@@ -93,8 +93,8 @@ function availableHeight(
  * the element and the viewport edge, so a tall form clicked on a mid-page element
  * scrolls. This anchors to whichever element edge leaves the most room and uses that
  * room in full — the popover sits over the element, extending toward the far edge.
- * Meant for the inspector, where you clicked the element to comment on it and the
- * popover's header already names it, so covering it is fine.
+ * The inspector's last resort (getBesidePopoverStyle), when the viewport has no room
+ * for a form anywhere next to the element.
  */
 export function getOverlapPopoverStyle(
   rect: DOMRect,
@@ -123,6 +123,45 @@ export function getOverlapPopoverStyle(
   }
 
   return style;
+}
+
+/**
+ * Fixed placement that keeps the target in view: the inspector lights the element it
+ * picked, and a popover on top of it would hide what the feedback is about. Beside the
+ * element when there is room, then above or below it, and over it only when the
+ * viewport has no other place for a form.
+ */
+export function getBesidePopoverStyle(
+  rect: DOMRect,
+  popoverWidth: number,
+  popoverMaxHeight: number,
+  gap = 12,
+  margin = 16
+): React.CSSProperties {
+  const viewportH = window.innerHeight;
+  const viewportW = window.innerWidth;
+  const minHeight = 240;
+
+  const right = viewportW - rect.right - gap - margin >= popoverWidth;
+  const left = rect.left - gap - margin >= popoverWidth;
+  if (right || left) {
+    const top = Math.max(margin, Math.min(rect.top, viewportH - margin - minHeight));
+    return {
+      position: "fixed",
+      width: popoverWidth,
+      top,
+      left: right ? rect.right + gap : rect.left - gap - popoverWidth,
+      maxHeight: Math.min(popoverMaxHeight, viewportH - top - margin),
+    };
+  }
+
+  const roomBelow = viewportH - rect.bottom - gap - margin;
+  const roomAbove = rect.top - gap - margin;
+  if (Math.max(roomBelow, roomAbove) >= minHeight) {
+    return getFixedPopoverStyle(rect, popoverWidth, popoverMaxHeight, gap);
+  }
+
+  return getOverlapPopoverStyle(rect, popoverWidth, margin);
 }
 
 /**

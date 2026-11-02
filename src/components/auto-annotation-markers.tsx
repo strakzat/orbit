@@ -74,7 +74,8 @@ export function AutoAnnotationMarkers() {
     enabled: !!commentsConfig && !!activeBadge,
   });
 
-  const showMarkers = mounted && (annotationMode || inspectorActive);
+  // Not while picking: the spotlight is about the one element feedback goes on.
+  const showMarkers = mounted && annotationMode && !inspectorActive;
 
   const updateBadges = useCallback(() => {
     if (!showMarkers) {

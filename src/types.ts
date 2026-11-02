@@ -105,6 +105,12 @@ export interface AnnotationLabels {
   formSubmit: string;
   formSubmitting: string;
   formError: string;
+  /** Tooltip on the rail's feedback button while the inspector is on. */
+  inspectorStop: string;
+  /** Tooltip on the rail's feedback button: its name and the shortcut. */
+  placeFeedbackShortcut: string;
+  /** Announced once feedback from the inspector is sent and its popover has closed. */
+  feedbackPlaced: string;
   /** "Als {name}", over the comment field once the name is set: a button that shows the name field. */
   formAs: string;
   /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */
@@ -257,6 +263,8 @@ export interface AnnotationContextValue {
   allComments: Comment[];
   commentsLoading: boolean;
   commentsError: string | null;
+  /** Fetches the project's comments now, outside the 30-second poll. */
+  refreshComments: () => Promise<void>;
   currentRoute: string;
   registeredMarkerIds: Set<string>;
   registerMarkerId: (id: string) => void;
