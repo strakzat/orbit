@@ -4,7 +4,7 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
 import { matchRoute } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
-import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon } from "../icons";
+import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
@@ -40,6 +40,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     language,
     viewer,
     setActiveAnnotationId,
+    settings,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -84,7 +85,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     isOn: boolean,
     extra: Record<string, unknown>,
     icon: React.ReactNode,
-    label: string | null,
+    label: React.ReactNode,
     badge?: number,
     dot?: boolean
   ) => {
@@ -134,10 +135,25 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         {
           [INSPECTOR_TOGGLE_ATTR]: "",
           "aria-pressed": inspectorActive,
+          title: settings.keyboardShortcut
+            ? inspectorActive ? labels.inspectorStop : labels.placeFeedbackShortcut
+            : undefined,
+          "aria-keyshortcuts": settings.keyboardShortcut ? "C" : undefined,
           onClick: () => setInspectorActive(!inspectorActive),
         },
         React.createElement(MessagePlusSquareIcon, { size: 16 }),
-        labels.placeFeedback
+        React.createElement(
+          React.Fragment,
+          null,
+          labels.placeFeedback,
+          // While picking, a × opens up at the end: the same button ends the mode. Always
+          // rendered, so it can grow in and out rather than appear.
+          React.createElement(
+            "span",
+            { className: "orbit-rail__close", "aria-hidden": true },
+            React.createElement("span", null, React.createElement(XIcon, { size: 14 }))
+          )
+        )
       )
     : null;
 

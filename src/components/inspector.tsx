@@ -4,8 +4,10 @@ import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles, useInspectorCursor } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
-import { getElementLabel, getElementPath } from "../utils/element-id";
-import { getOverlapPopoverStyle } from "../utils/popover-position";
+import { getElementLabel, getLocator } from "../utils/element-id";
+import { levelsFrom, pickArea } from "../utils/pick-element";
+import { getBesidePopoverStyle } from "../utils/popover-position";
+import { POPOVER_MAX_HEIGHT } from "./marker-geometry";
 import { AnnotationPopover } from "./annotation-popover";
 import { ORBIT_UI_ATTR } from "../constants";
 
@@ -22,6 +24,20 @@ interface SelectedElement {
   path: string;
   label: string;
 }
+
+/** What the pointer is over: the levels under it, innermost first, and which one is lit. */
+interface Hover {
+  levels: HTMLElement[];
+  index: number;
+}
+
+// The ring sits this far outside the element, so it never covers its edge.
+const SPOTLIGHT_PAD = 4;
+// The ring's width (`outline` in .orbit-spotlight-ring): the tag lines up with its outer edge.
+const RING = 1;
+const TAG_MAX_WIDTH = 320;
+// Room the tag needs above the ring; with less, it goes below.
+const TAG_ROOM = 32;
 
 function isInspectorUI(el: HTMLElement): boolean {
   let current: HTMLElement | null = el;
@@ -44,11 +60,14 @@ function isAnnotationButton(el: HTMLElement): boolean {
 function InspectorPopover({
   selected,
   onClose,
+  onSent,
 }: {
   selected: SelectedElement;
   onClose: () => void;
+  /** After the comment is in: picking is done, so the popover and the inspector close. */
+  onSent: () => void;
 }) {
-  const { commentsConfig, allAnnotations } = useAnnotationsSafe();
+  const { commentsConfig, allAnnotations, refreshComments } = useAnnotationsSafe();
   const popoverId = useStableId("orbit-inspector-popover");
 
   // The clicked element resolved to a stable id (data-annotation-id wins). If that
@@ -80,10 +99,15 @@ function InspectorPopover({
     comments,
     isLoading,
     error,
-    onSubmit: submitComment,
+    // A failed send throws before onSent, so the form keeps the text and shows its error.
+    onSubmit: async (data: { auteur: string; comment: string }) => {
+      await submitComment(data);
+      void refreshComments();
+      onSent();
+    },
     onClose,
     variant: "inspector",
-    style: getOverlapPopoverStyle(selected.rect, 320),
+    style: getBesidePopoverStyle(selected.rect, 320, POPOVER_MAX_HEIGHT),
     extraProps: { [DATA_INSPECTOR]: "" },
   });
 }
@@ -99,25 +123,41 @@ export function Inspector() {
   } = useAnnotationsSafe();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const [hoverRect, setHoverRect] = useState<DOMRect | null>(null);
+  const [hover, setHover] = useState<Hover | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
-  const hoveredRef = useRef<HTMLElement | null>(null);
+  // Bumped on scroll and resize: the rects are read at render, from the elements.
+  const [, setTick] = useState(0);
+  const hitRef = useRef<HTMLElement | null>(null);
+  // What the status region says once the inspector has closed itself after a send.
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (!notice) return;
+    const id = window.setTimeout(() => setNotice(""), 4000);
+    return () => window.clearTimeout(id);
+  }, [notice]);
 
   useInspectorCursor(active && !selected);
+
+  useEffect(() => {
+    if (active) return;
+    setHover(null);
+    setSelected(null);
+    hitRef.current = null;
+  }, [active]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!active || selected) return;
       const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      if (el === hitRef.current) return;
+      hitRef.current = el;
       if (!el || isInspectorUI(el)) {
-        setHoverRect(null);
-        hoveredRef.current = null;
+        setHover(null);
         return;
       }
-      if (el !== hoveredRef.current) {
-        hoveredRef.current = el;
-        setHoverRect(el.getBoundingClientRect());
-      }
+      const levels = levelsFrom(el);
+      setHover(levels.length ? { levels, index: 0 } : null);
     },
     [active, selected]
   );
@@ -131,83 +171,53 @@ export function Inspector() {
       // Let annotation button clicks through — deactivate inspector
       if (isAnnotationButton(el)) {
         setActive(false);
-        setSelected(null);
-        setHoverRect(null);
         return;
       }
 
       e.preventDefault();
       e.stopPropagation();
 
-      // Walk up from clicked element to find nearest ancestor with a stable identifier.
-      // Priority: data-annotation-id > id attribute > CSS selector path.
-      // Skip elements that cover most of the viewport (e.g. <div id="root">).
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      let target: HTMLElement | null = el;
-      let stableId: string | null = null;
+      // The lit level when the pointer is still on what it lit; anything else (a click
+      // while a popover is open, a touch without hover) resolves the same way.
+      const levels = hover && hitRef.current === el ? hover.levels : levelsFrom(el);
+      const target = levels.length
+        ? levels[Math.min(hover && hitRef.current === el ? hover.index : 0, levels.length - 1)]
+        : null;
+      if (!target) return;
 
-      // Pass 1: prefer data-annotation-id (predefined annotation markers)
-      let walk: HTMLElement | null = el;
-      while (walk && walk !== document.body) {
-        const annotationId = walk.getAttribute("data-annotation-id");
-        if (annotationId) {
-          const r = walk.getBoundingClientRect();
-          if (!(r.width > vw * 0.9 && r.height > vh * 0.9)) {
-            stableId = annotationId;
-            target = walk;
-            break;
-          }
-        }
-        walk = walk.parentElement;
-      }
-
-      // Pass 2: fall back to element id attribute
-      if (!stableId) {
-        walk = el;
-        while (walk && walk !== document.body) {
-          if (walk.id) {
-            const r = walk.getBoundingClientRect();
-            if (!(r.width > vw * 0.9 && r.height > vh * 0.9)) {
-              stableId = walk.id;
-              target = walk;
-              break;
-            }
-          }
-          walk = walk.parentElement;
-        }
-      }
-
-      // Pass 3: fall back to CSS selector path
-      if (!stableId || !target) {
-        target = el;
-        stableId = getElementPath(el);
-      }
-
-      const rect = target.getBoundingClientRect();
       setSelected({
         el: target,
-        rect,
-        path: stableId,
+        rect: target.getBoundingClientRect(),
+        path: getLocator(target),
         label: getElementLabel(target),
       });
-      setHoverRect(null);
+      setHover(null);
+      hitRef.current = null;
     },
-    [active, setActive]
+    [active, hover, setActive]
   );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (selected) {
-        setSelected(null);
-      } else if (active) {
-        setActive(false);
-        setHoverRect(null);
-        focusToggle();
+      if (e.key === "Escape") {
+        if (selected) {
+          setSelected(null);
+        } else if (active) {
+          setActive(false);
+          focusToggle();
+        }
+        return;
+      }
+
+      // ↑ to the element around the lit one, ↓ back toward the one under the pointer.
+      if ((e.key === "ArrowUp" || e.key === "ArrowDown") && hover && !selected) {
+        e.preventDefault();
+        const step = e.key === "ArrowUp" ? 1 : -1;
+        const index = Math.max(0, Math.min(hover.levels.length - 1, hover.index + step));
+        if (index !== hover.index) setHover({ ...hover, index });
       }
     },
-    [active, selected, setActive]
+    [active, hover, selected, setActive]
   );
 
   useEffect(() => {
@@ -222,21 +232,17 @@ export function Inspector() {
     };
   }, [active, handleMouseMove, handleClick, handleKeyDown]);
 
-  // Update selected rect on scroll/resize
+  // The spotlight follows its element through scrolling and resizing.
   useEffect(() => {
-    if (!selected) return;
-    const update = () => {
-      setSelected((prev) =>
-        prev ? { ...prev, rect: prev.el.getBoundingClientRect() } : null
-      );
-    };
+    if (!active) return;
+    const update = () => setTick((t) => t + 1);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
     };
-  }, [selected]);
+  }, [active]);
 
   if (!mounted || !commentsConfig) return null;
 
@@ -246,55 +252,114 @@ export function Inspector() {
   const announcement = React.createElement(
     "div",
     { key: "status", className: "orbit-root orbit-sr-only", role: "status" },
-    active && !selected ? labels.inspectorActive : ""
+    notice || (active && !selected ? labels.inspectorActive : "")
   );
 
-  const highlight =
-    active && hoverRect && !selected
-      ? React.createElement("div", {
-          key: "hover",
-          [DATA_INSPECTOR]: "",
-          className: "orbit-root orbit-overlay",
-          style: {
-            left: hoverRect.left,
-            top: hoverRect.top,
-            width: hoverRect.width,
-            height: hoverRect.height,
-          },
-        })
-      : null;
+  const lit = selected ? selected.el : hover ? hover.levels[hover.index] : null;
+  const litRect = lit?.isConnected ? lit.getBoundingClientRect() : null;
 
-  const selectedOutline = selected
-    ? React.createElement("div", {
-        key: "selected",
+  // Radial's spotlight: the app dims, the element stays as it is, ringed in white. The
+  // scrim is the shadow of the cutout, clipped to the frame, so the rail stays lit.
+  let spotlight: React.ReactElement | null = null;
+  if (active) {
+    const area = pickArea();
+    const framed = !!document.querySelector(".orbit-frame");
+    const cutout = litRect
+      ? {
+          left: litRect.left - area.left - SPOTLIGHT_PAD,
+          top: litRect.top - area.top - SPOTLIGHT_PAD,
+          width: litRect.width + SPOTLIGHT_PAD * 2,
+          height: litRect.height + SPOTLIGHT_PAD * 2,
+        }
+      : null;
+    const tagBelow = !!cutout && cutout.top < TAG_ROOM;
+    const showTag = !selected && !!lit;
+
+    const scrim = React.createElement(
+      "div",
+      {
+        key: "spotlight",
         [DATA_INSPECTOR]: "",
-        className: "orbit-root orbit-overlay orbit-overlay--selected",
-        style: {
-          left: selected.rect.left,
-          top: selected.rect.top,
-          width: selected.rect.width,
-          height: selected.rect.height,
-        },
-      })
-    : null;
+        "aria-hidden": true,
+        className: cx(
+          "orbit-root orbit-spotlight",
+          framed && "orbit-spotlight--framed",
+          !cutout && "orbit-spotlight--idle",
+          selected && "orbit-spotlight--selected"
+        ),
+        style: { left: area.left, top: area.top, width: area.width, height: area.height },
+      },
+      cutout &&
+        React.createElement("div", {
+          className: "orbit-spotlight__cutout",
+          style: cutout,
+        }),
+      cutout &&
+        showTag &&
+        lit &&
+        React.createElement(
+          "div",
+          {
+            className: cx("orbit-spotlight__tag", tagBelow && "orbit-spotlight__tag--below"),
+            style: {
+              left: cutout.left - RING,
+              top: tagBelow ? cutout.top + cutout.height + RING : cutout.top - RING,
+              // Never wider than the ring it belongs to; the text ellipses instead.
+              maxWidth: Math.min(TAG_MAX_WIDTH, cutout.width + RING * 2),
+            },
+          },
+          React.createElement("span", { className: "orbit-spotlight__label" }, getElementLabel(lit)),
+          hover && hover.levels.length > 1
+            ? React.createElement(
+                "span",
+                { className: "orbit-spotlight__keys" },
+                `${hover.index + 1}/${hover.levels.length} ↑↓`
+              )
+            : null
+        )
+    );
+
+    // The ring is its own layer, outside the clipped scrim: a blend mode only mixes with
+    // what shares its stacking context, and inside the scrim that would be the scrim alone.
+    // Here it adds light to the page under it, so it glows on a dim edge and stays white
+    // on a white one.
+    const ring = React.createElement("div", {
+      key: "ring",
+      [DATA_INSPECTOR]: "",
+      "aria-hidden": true,
+      className: cx(
+        "orbit-root orbit-spotlight-ring",
+        !cutout && "orbit-spotlight-ring--idle",
+        selected && "orbit-spotlight-ring--selected"
+      ),
+      style: cutout
+        ? {
+            left: area.left + cutout.left,
+            top: area.top + cutout.top,
+            width: cutout.width,
+            height: cutout.height,
+          }
+        : undefined,
+    });
+
+    spotlight = React.createElement(React.Fragment, null, scrim, ring);
+  }
 
   const popover = selected
     ? React.createElement(InspectorPopover, {
         key: "popover",
-        selected,
+        selected: litRect ? { ...selected, rect: litRect } : selected,
         onClose: () => {
           setSelected(null);
+          focusToggle();
+        },
+        onSent: () => {
+          setActive(false);
+          setNotice(labels.feedbackPlaced);
           focusToggle();
         },
       })
     : null;
 
-  return React.createElement(
-    React.Fragment,
-    null,
-    announcement,
-    highlight,
-    selectedOutline,
-    popover
-  );
+  return React.createElement(React.Fragment, null, announcement, spotlight, popover);
 }

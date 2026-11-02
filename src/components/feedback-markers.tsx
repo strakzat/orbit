@@ -54,7 +54,8 @@ export function FeedbackMarkers() {
 
   const popoverId = useStableId("orbit-feedback-popover");
 
-  const showMarkers = mounted && (annotationMode || inspectorActive);
+  // Not while picking: the spotlight is about the one element feedback goes on.
+  const showMarkers = mounted && annotationMode && !inspectorActive;
 
   const activeBadge = activeAnnotationId
     ? badges.find((b) => b.annotationId === activeAnnotationId)
@@ -101,7 +102,7 @@ export function FeedbackMarkers() {
 
     const newBadges: FeedbackBadgeInfo[] = [];
     for (const [annotationId, comments] of grouped) {
-      const el = findElementByAnnotationId(annotationId);
+      const el = findElementByAnnotationId(annotationId, comments[0]?.label);
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
 
       newBadges.push({

@@ -358,13 +358,13 @@ export function AnnotationPanel() {
                     return;
                   }
 
-                  const el = findElementByAnnotationId(c.annotationId!);
+                  const el = findElementByAnnotationId(c.annotationId!, c.label);
                   if (el) scrollToAndHighlight(el);
                 }
               : undefined,
             onMouseEnter: c.annotationId
               ? () => {
-                  const el = findElementByAnnotationId(c.annotationId!);
+                  const el = findElementByAnnotationId(c.annotationId!, c.label);
                   if (el) showHoverHighlight(el);
                 }
               : undefined,

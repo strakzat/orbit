@@ -543,7 +543,7 @@ const comments = data.results.map(parseNotionComment);
     panelWidth: 420,                 // panel width in px
     panelHeight: 640,                // panel height in px, and the variants pane's
     zIndex: 9000,                    // base z-index
-    keyboardShortcut: true,          // Cmd+. / Ctrl+. toggle
+    keyboardShortcut: true,          // Cmd+. / Ctrl+. annotation mode, C to give feedback
   }}
 >
 ```

@@ -93,6 +93,17 @@ const LIGHT: Vars = {
   "--orbit-overlay-fill-strong": "rgba(0, 112, 243, 0.09)",
   "--orbit-overlay-ring": "rgba(0, 112, 243, 0.20)",
 
+  // The inspector's spotlight: the app dimmed around the element being picked
+  "--orbit-scrim": "rgba(0, 0, 0, 0.4)",
+  "--orbit-spotlight-ring": "rgba(255, 255, 255, 0.6)",
+  "--orbit-spotlight-glow": "rgba(255, 255, 255, 0.12)",
+  // A soft grey shade inside the ring, so it reads on a white element as well as on a dark one.
+  "--orbit-spotlight-edge":
+    "inset 0 0 0 1px rgba(0, 0, 0, 0.06), inset 0 1px 12px 0 rgba(0, 0, 0, 0.16)",
+  // The tag above the ring: Radial's dark chrome in both themes.
+  "--orbit-spotlight-tag": "#121926",
+  "--orbit-spotlight-tag-text": "#FCFCFD",
+
   // Annotation types — kept colour-coded (icon + text carry the meaning too), toned
   // to sit quietly next to the monochrome chrome.
   "--orbit-type-documentation-bg": "#F4F4F4",
@@ -190,6 +201,16 @@ const DARK: Vars = {
   "--orbit-overlay-fill": "rgba(58, 129, 252, 0.10)",
   "--orbit-overlay-fill-strong": "rgba(58, 129, 252, 0.16)",
   "--orbit-overlay-ring": "rgba(58, 129, 252, 0.40)",
+
+  "--orbit-scrim": "rgba(0, 0, 0, 0.55)",
+  "--orbit-spotlight-ring": "rgba(255, 255, 255, 0.6)",
+  "--orbit-spotlight-glow": "rgba(255, 255, 255, 0.12)",
+  // A soft grey shade inside the ring, so it reads on a white element as well as on a dark one.
+  "--orbit-spotlight-edge":
+    "inset 0 0 0 1px rgba(0, 0, 0, 0.06), inset 0 1px 12px 0 rgba(0, 0, 0, 0.16)",
+  // The tag above the ring: Radial's dark chrome in both themes.
+  "--orbit-spotlight-tag": "#121926",
+  "--orbit-spotlight-tag-text": "#FCFCFD",
 
   // Radial's chrome: the black the rail is, and its glass. A film is a few percent of white
   // with a lit top edge; the chip is what is on, a shade brighter than the film it sits on.
@@ -302,8 +323,8 @@ const SCALES = `
   --orbit-radius-2xl: 16px;
   --orbit-radius-full: 9999px;
 
-  /* Inter, as Radial, when the consuming app has loaded it; then the system stack. */
-  --orbit-font-body: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
+  /* Inter, as Radial, bundled (styles/font.ts); the project's own Inter, then the system's. */
+  --orbit-font-body: "Orbit Inter", "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* The rail's height; the panel and the variants pane keep clear of it. */
@@ -311,7 +332,8 @@ const SCALES = `
   /* The frame's own ground, behind a project that paints none: the browser's page colour.
      A project with its own sets it, or paints its root. */
   --orbit-frame-bg: Canvas;
-  --orbit-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+  /* Geist Mono, bundled (styles/font.ts); the project's own Geist Mono, then the system's. */
+  --orbit-font-mono: "Orbit Geist Mono", "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     Consolas, "Liberation Mono", monospace;
 
   --orbit-text-2xs: 11px;

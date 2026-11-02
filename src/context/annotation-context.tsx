@@ -14,6 +14,18 @@ import { describeVariants as describe } from "../utils/variants";
 
 export const AnnotationContext = createContext<AnnotationContextValue | null>(null);
 
+/** Whether a key press is text going into a field (of the project's or Orbit's own). */
+function isTyping(target: EventTarget | null): boolean {
+  const el = target instanceof HTMLElement ? target : null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLInputElement) {
+    return !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type);
+  }
+  return false;
+}
+
 export function AnnotationProvider({
   annotations,
   currentRoute = "/",
@@ -114,6 +126,24 @@ export function AnnotationProvider({
     return () => window.removeEventListener("keydown", handler);
   }, [settings.keyboardShortcut]);
 
+  // C: place feedback, like the rail's button; C again stops. A bare letter, so it stands down
+  // whenever the key means something else: typing in a field, a modifier held, a held-down
+  // repeat, an IME composing, or a page that already handled the key itself.
+  const commentsOn = !!commentsConfig?.enabled;
+  useEffect(() => {
+    if (!settings.keyboardShortcut || !commentsOn) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "c" && e.key !== "C") return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat || e.isComposing) return;
+      if (e.defaultPrevented || isTyping(e.target)) return;
+      e.preventDefault();
+      setInspectorActive((prev) => !prev);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [settings.keyboardShortcut, commentsOn]);
+
   // Track which annotation IDs are rendered by AnnotationMarker wrappers
   const [registeredMarkerIds, setRegisteredMarkerIds] = useState<Set<string>>(() => new Set());
   // Force re-render counter so consumers see registration changes
@@ -160,6 +190,7 @@ export function AnnotationProvider({
     comments: allComments,
     isLoading: commentsLoading,
     error: commentsError,
+    refresh: refreshComments,
   } = useAllComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
@@ -202,6 +233,7 @@ export function AnnotationProvider({
       allComments,
       commentsLoading,
       commentsError,
+      refreshComments,
       currentRoute,
       registeredMarkerIds,
       registerMarkerId,
@@ -229,6 +261,7 @@ export function AnnotationProvider({
       allComments,
       commentsLoading,
       commentsError,
+      refreshComments,
       currentRoute,
       registeredMarkerIds,
       registerMarkerId,

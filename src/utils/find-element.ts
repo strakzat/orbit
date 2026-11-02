@@ -1,11 +1,38 @@
+import { getElementLabel } from "./element-id";
+
+// A selector the inspector wrote (`getLocator()`, or the CSS path of earlier versions),
+// as opposed to a bare id. A bare id never contains these.
+const SELECTOR = /[>[:#]/;
+
+// Markers recompute on every scroll; a search by label is remembered, and a miss for a second.
+const byLabelCache = new Map<string, { el: HTMLElement | null; at: number }>();
+const MISS_TTL = 1000;
+
 /**
- * Finds a DOM element by the annotationId stored in a comment.
- * The Inspector stores either:
- * - An element `id` attribute
- * - A `data-annotation-id` attribute
- * - A generated label like "tag: text" (best-effort match)
+ * The one element in `scope` with this label (tag + text preview), or `null` when there
+ * is none or more than one: a guess between two buttons that say "Opslaan" is no answer.
  */
-export function findElementByAnnotationId(annotationId: string): HTMLElement | null {
+function findByLabel(scope: Element, label: string): HTMLElement | null {
+  const tag = /^<([a-z0-9-]+)>/.exec(label)?.[1];
+  if (!tag) return null;
+  const matches = Array.from(scope.querySelectorAll<HTMLElement>(tag)).filter(
+    (el) => getElementLabel(el) === label
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * Finds a DOM element by the annotationId stored in a comment or an annotation:
+ * 1. an element `id`
+ * 2. a `data-annotation-id`
+ * 3. a selector written by the inspector (`getLocator()`, or an older CSS path)
+ *
+ * With the comment's `label`, a selector that no longer finds the element it was written
+ * for — a sibling was added, a wrapper moved — is checked against it: if the element there
+ * reads differently, the one element under the selector's anchor that still reads like
+ * the label wins.
+ */
+export function findElementByAnnotationId(annotationId: string, label?: string): HTMLElement | null {
   // Try by element id
   const byId = document.getElementById(annotationId);
   if (byId) return byId;
@@ -16,17 +43,31 @@ export function findElementByAnnotationId(annotationId: string): HTMLElement | n
   );
   if (byData) return byData;
 
-  // Try as CSS selector path (e.g. "#root > div > section:nth-of-type(2) > button")
-  if (annotationId.includes(">") || annotationId.includes(":nth-of-type")) {
-    try {
-      const bySelector = document.querySelector<HTMLElement>(annotationId);
-      if (bySelector) return bySelector;
-    } catch {
-      // Invalid selector — ignore
-    }
-  }
+  if (!SELECTOR.test(annotationId)) return null;
 
-  return null;
+  let bySelector: HTMLElement | null = null;
+  try {
+    bySelector = document.querySelector<HTMLElement>(annotationId);
+  } catch {
+    // Invalid selector — ignore
+  }
+  if (!label || (bySelector && getElementLabel(bySelector) === label)) return bySelector;
+
+  const key = `${annotationId}\n${label}`;
+  const cached = byLabelCache.get(key);
+  if (cached?.el?.isConnected && getElementLabel(cached.el) === label) return cached.el;
+  if (cached && !cached.el && Date.now() - cached.at < MISS_TTL) return bySelector;
+
+  // The first step is the anchor: an id the project gave, which outlives the path below it.
+  let scope: Element | null = null;
+  try {
+    scope = document.querySelector(annotationId.split(" > ")[0]);
+  } catch {
+    // Invalid selector — search the page
+  }
+  const byLabel = findByLabel(scope ?? document.body, label);
+  byLabelCache.set(key, { el: byLabel, at: Date.now() });
+  return byLabel ?? bySelector;
 }
 
 const HOVER_ATTR = "data-orbit-hover-highlight";

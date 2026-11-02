@@ -13,6 +13,8 @@ interface UseAllCommentsReturn {
   comments: Comment[];
   isLoading: boolean;
   error: string | null;
+  /** Fetches now, past the retry wait: after a comment is sent, its pin and count show at once. */
+  refresh: () => Promise<void>;
 }
 
 export function useAllComments({
@@ -75,5 +77,10 @@ export function useAllComments({
     };
   }, [fetchComments, enabled]);
 
-  return { comments, isLoading, error };
+  const refresh = useCallback(async () => {
+    failedAtRef.current = 0;
+    await fetchComments();
+  }, [fetchComments]);
+
+  return { comments, isLoading, error, refresh };
 }

@@ -81,7 +81,7 @@ export function useComments({
   const submitComment = useCallback(
     async (data: { auteur: string; comment: string }) => {
       // First, while the page is still as the viewer saw it.
-      const shooting = capture ? screenshotFeedback(annotationId, capture) : Promise.resolve(null);
+      const shooting = capture ? screenshotFeedback(annotationId, capture, label) : Promise.resolve(null);
       const url = `${apiBase}/api/comments`;
       // The variants the comment was written in, as they stand when it is sent.
       const varianten = describeVariants();
