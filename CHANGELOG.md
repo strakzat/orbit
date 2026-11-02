@@ -8,7 +8,7 @@
   `settings.defaultVisible` is now `true` and is where it starts until the viewer chooses.
 - **The panel no longer shows or hides the pins.** Opening and closing Annotaties en feedback
   leaves them as they are, and clicking a pin no longer opens the panel. With the pins hidden,
-  a card in the panel still opens its popover on the page.
+  the panel still opens threads and points at their elements.
 - `annotationMode` / `setAnnotationMode` on the context are that setting now; new on the
   context: `setViewerShowMarkers`, and `viewer.showMarkers`. New labels: `profileMarkers`,
   `profileMarkersHint` ("Sneltoets", followed by the keys as chips: ⌘ . on a Mac, Ctrl . elsewhere).
