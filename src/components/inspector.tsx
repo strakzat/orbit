@@ -3,13 +3,14 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles, useInspectorCursor } from "../styles/inject";
 import { cx } from "../utils/cx";
-import { useStableId } from "../utils/use-stable-id";
 import { componentOf, getElementLabel, getLocator, type ComponentRef } from "../utils/element-id";
 import { levelsFrom, pickArea } from "../utils/pick-element";
-import { getBesidePopoverStyle } from "../utils/popover-position";
-import { POPOVER_MAX_HEIGHT } from "./marker-geometry";
-import { AnnotationPopover } from "./annotation-popover";
-import { ComponentChip, ComponentHead } from "./component-chip";
+import { getBubblePlacement } from "../utils/popover-position";
+import { CommentForm } from "./comment-form";
+import { ComponentChip } from "./component-chip";
+import { useStableId } from "../utils/use-stable-id";
+import { fill } from "../labels";
+import { ComponentIcon, InstanceIcon } from "../icons";
 import { ORBIT_UI_ATTR } from "../constants";
 import type { AnnotationLabels } from "../types";
 
@@ -22,7 +23,6 @@ const focusToggle = () => document.querySelector<HTMLElement>(`[${INSPECTOR_TOGG
 
 interface SelectedElement {
   el: HTMLElement;
-  rect: DOMRect;
   path: string;
   label: string;
   /** The component the element is part of, when the project marked one. */
@@ -46,6 +46,11 @@ const TAG_MAX_WIDTH = 320;
 const TAG_MIN_WITH_COMPONENT = 280;
 // Room the tag needs above the ring; with less, it goes below.
 const TAG_ROOM = 32;
+// The tag's height and its gap to the ring (.orbit-spotlight__tag).
+const TAG_HEIGHT = 30;
+const BUBBLE_WIDTH = 320;
+// The bubble once it has opened up for a few lines: below the element only if that fits.
+const BUBBLE_HEIGHT = 140;
 
 function isInspectorUI(el: HTMLElement): boolean {
   let current: HTMLElement | null = el;
@@ -66,22 +71,27 @@ function isAnnotationButton(el: HTMLElement): boolean {
 }
 
 /**
- * Instance or Component: Radial's pill, as a radio group. Only there when the element is part
- * of a component; the instance is the default, the narrower of the two.
+ * Component ❖ or Instance ◇: Radial's pill as a radio group, icons only, each with a tooltip
+ * that says what it means. Only there when the element is part of a component; the component
+ * is the default, the one a component's feedback is usually about.
  */
 function ScopeChoice({
   scope,
   onScope,
+  name,
   labels,
 }: {
   scope: Scope;
   onScope: (scope: Scope) => void;
+  /** The component's name, in the tooltips. */
+  name: string;
   labels: AnnotationLabels;
 }) {
   const groupRef = useRef<HTMLDivElement>(null);
-  const options: [Scope, string][] = [
-    ["element", labels.scopeInstance],
-    ["component", labels.scopeComponent],
+  const tipId = useStableId("orbit-scope-tip");
+  const options: [Scope, string, string, typeof ComponentIcon][] = [
+    ["component", labels.scopeComponent, fill(labels.scopeComponentHint, { name }), ComponentIcon],
+    ["element", labels.scopeInstance, fill(labels.scopeInstanceHint, { name }), InstanceIcon],
   ];
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -89,9 +99,9 @@ function ScopeChoice({
     e.preventDefault();
     // The arrows are the group's here, not the page's.
     e.stopPropagation();
-    const next: Scope = scope === "element" ? "component" : "element";
-    onScope(next);
-    groupRef.current?.querySelectorAll<HTMLElement>("[role=radio]")[next === "element" ? 0 : 1]?.focus();
+    const next = options.findIndex(([value]) => value !== scope);
+    onScope(options[next][0]);
+    groupRef.current?.querySelectorAll<HTMLElement>("[role=radio]")[next]?.focus();
   };
 
   return React.createElement(
@@ -103,7 +113,7 @@ function ScopeChoice({
       className: "orbit-segments orbit-scope",
       onKeyDown,
     },
-    ...options.map(([value, label]) =>
+    ...options.map(([value, label, hint, Icon]) =>
       React.createElement(
         "button",
         {
@@ -111,83 +121,86 @@ function ScopeChoice({
           type: "button",
           role: "radio",
           "aria-checked": scope === value,
+          "aria-label": label,
+          "aria-describedby": `${tipId}-${value}`,
           tabIndex: scope === value ? 0 : -1,
           className: "orbit-segment",
           onClick: () => onScope(value),
         },
-        label
+        React.createElement(Icon, { size: 14 }),
+        React.createElement(
+          "span",
+          { id: `${tipId}-${value}`, role: "tooltip", className: "orbit-scope__tip" },
+          React.createElement("span", { className: "orbit-scope__tip-title" }, label),
+          hint
+        )
       )
     )
   );
 }
 
-function InspectorPopover({
+/**
+ * The comment, and nothing else: a bubble under the picked element with a field and a send
+ * button, and inside a component the choice between this instance and the component.
+ */
+function CommentBubble({
   selected,
   scope,
   onScope,
-  onClose,
+  ring,
   onSent,
 }: {
   selected: SelectedElement;
   scope: Scope;
   onScope: (scope: Scope) => void;
-  onClose: () => void;
-  /** After the comment is in: picking is done, so the popover and the inspector close. */
+  /** The spotlight's ring around the element: the bubble's corner goes on its corner. */
+  ring: DOMRect;
+  /** After the comment is in: picking is done, so the bubble and the inspector close. */
   onSent: () => void;
 }) {
-  const { commentsConfig, allAnnotations, refreshComments, labels } = useAnnotationsSafe();
-  const popoverId = useStableId("orbit-inspector-popover");
+  const { commentsConfig, allAnnotations, refreshComments, labels, language } = useAnnotationsSafe();
 
-  // On the component, the feedback is kept under a selector every instance answers to, and its
-  // thread is the component's: what was said about it anywhere.
+  // On the component, the feedback is kept under a selector every instance answers to.
   const component = scope === "component" ? selected.component : null;
-
-  // The clicked element resolved to a stable id (data-annotation-id wins). If that
-  // id belongs to an annotation, show the annotation here too — so clicking an
-  // annotated component through the inspector opens the same annotation + feedback
-  // thread the annotation pin would, not a bare feedback box on the side.
+  // An annotated element is named by its annotation, as the annotation's own feedback is.
   const annotation = component ? undefined : allAnnotations.find((a) => a.id === selected.path);
 
-  const { comments, isLoading, error, submitComment } = useComments({
+  const { submitComment } = useComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
     annotationId: component ? component.locator : selected.path,
     label: component ? getElementLabel(component.el) : annotation?.title ?? selected.label,
-    enabled: !!commentsConfig,
+    // Only sending: the bubble shows no thread, so there is nothing to fetch.
+    enabled: false,
     component: component?.name,
     target: selected.el,
   });
 
-  // The component's pill, the element under it, and Instance / Component; outside a component
-  // just the element. The popover renders its own close button top-right.
-  const header = React.createElement(
-    "div",
-    { className: "orbit-popover__section" },
-    selected.component &&
-      React.createElement(ComponentHead, { name: selected.component.name, labels }),
-    React.createElement("div", { className: "orbit-mono" }, selected.label),
-    selected.component && React.createElement(ScopeChoice, { scope, onScope, labels })
-  );
+  const { style, above } = getBubblePlacement(ring, pickArea(), BUBBLE_WIDTH, BUBBLE_HEIGHT);
 
-  return React.createElement(AnnotationPopover, {
-    id: popoverId,
-    header,
-    annotation,
-    showComments: true,
-    comments,
-    isLoading,
-    error,
-    // A failed send throws before onSent, so the form keeps the text and shows its error.
-    onSubmit: async (data: { auteur: string; comment: string }) => {
-      await submitComment(data);
-      void refreshComments();
-      onSent();
+  return React.createElement(
+    "div",
+    {
+      className: cx("orbit-root orbit-bubble orbit-glass-pane orbit-animate-in", above && "orbit-bubble--above"),
+      style,
+      lang: language,
+      role: "group",
+      "aria-label": fill(labels.formOn, { label: component ? component.name : selected.label }),
+      [DATA_INSPECTOR]: "",
     },
-    onClose,
-    variant: "inspector",
-    style: getBesidePopoverStyle(selected.rect, 320, POPOVER_MAX_HEIGHT),
-    extraProps: { [DATA_INSPECTOR]: "" },
-  });
+    React.createElement(CommentForm, {
+      autoFocus: true,
+      tools:
+        selected.component &&
+        React.createElement(ScopeChoice, { scope, onScope, name: selected.component.name, labels }),
+      // A failed send throws before onSent, so the bubble keeps the text and shows its error.
+      onSubmit: async (data: { auteur: string; comment: string }) => {
+        await submitComment(data);
+        void refreshComments();
+        onSent();
+      },
+    })
+  );
 }
 
 export function Inspector() {
@@ -203,7 +216,7 @@ export function Inspector() {
   useEffect(() => setMounted(true), []);
   const [hover, setHover] = useState<Hover | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
-  const [scope, setScope] = useState<Scope>("element");
+  const [scope, setScope] = useState<Scope>("component");
   // Bumped on scroll and resize: the rects are read at render, from the elements.
   const [, setTick] = useState(0);
   const hitRef = useRef<HTMLElement | null>(null);
@@ -273,12 +286,11 @@ export function Inspector() {
 
       setSelected({
         el: target,
-        rect: target.getBoundingClientRect(),
         path: getLocator(target),
         label: getElementLabel(target),
         component: componentOf(target),
       });
-      setScope("element");
+      setScope("component");
       setHover(null);
       hitRef.current = null;
     },
@@ -290,6 +302,7 @@ export function Inspector() {
       if (e.key === "Escape") {
         if (selected) {
           setSelected(null);
+          focusToggle();
         } else if (active) {
           setActive(false);
           focusToggle();
@@ -349,6 +362,8 @@ export function Inspector() {
   // Radial's spotlight: the app dims, the element stays as it is, ringed in white. The
   // scrim is the shadow of the cutout, clipped to the frame, so the rail stays lit.
   let spotlight: React.ReactElement | null = null;
+  // The tag goes under the ring when there is no room above it.
+  let tagBelow = false;
   if (active) {
     const area = pickArea();
     const framed = !!document.querySelector(".orbit-frame");
@@ -360,8 +375,9 @@ export function Inspector() {
           height: litRect.height + SPOTLIGHT_PAD * 2,
         }
       : null;
-    const tagBelow = !!cutout && cutout.top < TAG_ROOM;
-    const showTag = !selected && !!lit;
+    tagBelow = !!cutout && cutout.top < TAG_ROOM;
+    // Picked, the tag stays: it names what the bubble under it is about.
+    const showTag = !!lit;
     // In a component, the tag starts with its pill: a pill in the pill, before the element.
     const litComponent = showTag && lit ? componentOf(lit) : null;
 
@@ -444,23 +460,28 @@ export function Inspector() {
     spotlight = React.createElement(React.Fragment, null, scrim, ring);
   }
 
-  const popover = selected
-    ? React.createElement(InspectorPopover, {
-        key: "popover",
-        selected: litRect ? { ...selected, rect: litRect } : selected,
-        scope,
-        onScope: setScope,
-        onClose: () => {
-          setSelected(null);
-          focusToggle();
-        },
-        onSent: () => {
-          setActive(false);
-          setNotice(labels.feedbackPlaced);
-          focusToggle();
-        },
-      })
-    : null;
+  const popover =
+    selected && litRect
+      ? React.createElement(CommentBubble, {
+          // A new bubble, with an empty field, for every element picked.
+          key: selected.path,
+          selected,
+          scope,
+          onScope: setScope,
+          ring: new DOMRect(
+            litRect.left - SPOTLIGHT_PAD - RING,
+            litRect.top - SPOTLIGHT_PAD - RING,
+            litRect.width + (SPOTLIGHT_PAD + RING) * 2,
+            // With the tag under the ring, the bubble goes under the tag.
+            litRect.height + (SPOTLIGHT_PAD + RING) * 2 + (tagBelow ? TAG_HEIGHT : 0)
+          ),
+          onSent: () => {
+            setActive(false);
+            setNotice(labels.feedbackPlaced);
+            focusToggle();
+          },
+        })
+      : null;
 
   return React.createElement(React.Fragment, null, announcement, spotlight, popover);
 }

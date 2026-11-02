@@ -671,16 +671,6 @@ const CHROME = `
   font-weight: 600;
 }
 
-/* In the inspector's popover: what the feedback is on, the instance or the component. */
-.orbit-scope {
-  margin-top: var(--orbit-space-2);
-}
-
-.orbit-scope .orbit-segment {
-  height: 28px;
-  font-size: var(--orbit-text-sm);
-}
-
 /* The component the popover is about: its pill, above the element. */
 .orbit-popover__component {
   display: flex;
@@ -1638,13 +1628,6 @@ const CARD = `
   color: var(--orbit-text-primary);
 }
 
-/* "Als Elwin" over the comment field: the name it goes out under, a press to change it. */
-.orbit-form__as {
-  align-self: flex-start;
-  max-width: 100%;
-  font-size: var(--orbit-text-xs);
-}
-
 /* 12px text would leave a 15px-tall target; WCAG 2.2 asks for 24. Padding would
    push the footer around, so the hit area grows on a pseudo-element instead. */
 .orbit-link::before {
@@ -1845,13 +1828,222 @@ const COMMENTS = `
 // ── Form / composer ────────────────────────────────────────────────────────────
 
 const FORM = `
-.orbit-form {
+/* Figma's composer: one line with the send button beside it. With text it opens up, the
+   button drops to its own row, and the field grows to the stylesheet's cap. A field like the
+   search: no focus ring, the caret says where the typing goes. */
+.orbit-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "field tools send"
+    "error error error";
+  align-items: end;
+  column-gap: var(--orbit-space-2);
+  padding: var(--orbit-space-1) var(--orbit-space-1) var(--orbit-space-1) var(--orbit-space-3);
+  border-radius: var(--orbit-radius-2xl);
+  background: var(--orbit-glass-film-faint);
+  box-shadow: var(--orbit-glass-field-edge);
+}
+
+/* In a popover, under its comments (or the line that says there are none). */
+.orbit-popover__section > .orbit-composer {
+  margin-top: var(--orbit-space-4);
+}
+
+.orbit-composer__field {
+  grid-area: field;
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  max-height: 200px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-md);
+  line-height: var(--orbit-leading-normal);
+  resize: none;
+  overflow-y: auto;
+}
+
+.orbit-composer__field::placeholder {
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-root .orbit-composer__field:focus-visible {
+  outline: none;
+}
+
+/* Room for three lines once there is text: the field says there is more to write. */
+.orbit-composer--expanded {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "field field"
+    "error error"
+    "tools send";
+  padding: var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-3);
+}
+
+.orbit-composer--expanded .orbit-composer__field {
+  min-height: 72px;
+  padding-right: var(--orbit-space-1);
+}
+
+.orbit-composer__error {
+  grid-area: error;
+  padding: var(--orbit-space-1) 0;
+}
+
+.orbit-composer__send {
+  grid-area: send;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+  color: var(--orbit-text-primary_on-brand);
+  transition:
+    background-color var(--orbit-duration) var(--orbit-ease),
+    transform var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-composer__tools {
+  grid-area: tools;
+  display: flex;
+  align-items: center;
+  align-self: center;
+}
+
+.orbit-composer--expanded .orbit-composer__tools {
+  justify-self: start;
+}
+
+.orbit-composer--expanded .orbit-composer__send,
+.orbit-composer--expanded .orbit-composer__tools {
+  margin-top: var(--orbit-space-1);
+}
+
+.orbit-composer__send:hover:not(:disabled) {
+  background: var(--orbit-bg-brand-solid_hover);
+}
+
+.orbit-composer__send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.orbit-composer__send:disabled {
+  background: var(--orbit-bg-disabled);
+  color: var(--orbit-text-disabled);
+}
+
+.orbit-composer[aria-busy="true"] .orbit-composer__send {
+  cursor: progress;
+}
+
+/* The inspector's comment: a message bubble under the element it is about, its corner on
+   the element's. Above the element, the corner flips to the bottom. */
+.orbit-bubble {
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-inspector-popover));
+  border-radius: var(--orbit-radius-2xl);
+  border-top-left-radius: 0;
+}
+
+.orbit-bubble--above {
+  border-top-left-radius: var(--orbit-radius-2xl);
+  border-bottom-left-radius: 0;
+  transform-origin: bottom left;
+}
+
+/* Component ❖ or instance ◇: Radial's pill, a size for two icons. */
+.orbit-scope {
+  position: relative;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+}
+
+.orbit-scope .orbit-segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 24px;
+  padding: 0;
+}
+
+/* What an option means, on hover or keyboard focus. Under the bubble, away from the element;
+   anchored to the side of the pill that has room: its right on one line, where the pill is at
+   the bubble's right, its left once the composer opens and the pill drops to the left. */
+.orbit-scope__tip {
+  position: absolute;
+  top: calc(100% + var(--orbit-space-3));
+  right: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--orbit-space-2);
-  margin-top: var(--orbit-space-4);
-  padding-top: var(--orbit-space-4);
-  border-top: 1px solid var(--orbit-border-secondary);
+  gap: 2px;
+  width: max-content;
+  max-width: 240px;
+  padding: var(--orbit-space-2) var(--orbit-space-2-5);
+  border-radius: var(--orbit-radius-lg);
+  background: var(--orbit-spotlight-tag);
+  box-shadow: var(--orbit-shadow-pane);
+  color: color-mix(in oklab, var(--orbit-spotlight-tag-text) 72%, transparent);
+  font-size: var(--orbit-text-xs);
+  font-weight: 400;
+  line-height: var(--orbit-leading-snug);
+  text-align: start;
+  white-space: normal;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition:
+    opacity var(--orbit-duration-fast) var(--orbit-ease),
+    transform var(--orbit-duration-fast) var(--orbit-ease),
+    visibility 0s linear var(--orbit-duration-fast);
+}
+
+.orbit-scope__tip-title {
+  color: var(--orbit-spotlight-tag-text);
+  font-weight: 600;
+}
+
+.orbit-composer--expanded .orbit-scope__tip {
+  right: auto;
+  left: 0;
+}
+
+/* Above the element, the bubble's foot is nearest the element: the tip goes over the bubble. */
+.orbit-bubble--above .orbit-scope__tip {
+  top: auto;
+  bottom: calc(100% + var(--orbit-space-3));
+  transform: translateY(2px);
+}
+
+/* A short wait on hover, so moving across the pill does not flash them; at once for the keyboard. */
+.orbit-segment:hover .orbit-scope__tip,
+.orbit-segment:focus-visible .orbit-scope__tip {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--orbit-duration-fast) var(--orbit-ease) 300ms,
+    transform var(--orbit-duration-fast) var(--orbit-ease) 300ms,
+    visibility 0s linear 300ms;
+}
+
+.orbit-segment:focus-visible .orbit-scope__tip {
+  transition-delay: 0s;
+}
+
+.orbit-bubble .orbit-composer {
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
 }
 
 /* A 1px inset ring rather than a border, so focus can thicken it without shifting
