@@ -45,7 +45,6 @@ export function FeedbackMarkers() {
     commentsConfig,
     setActiveAnnotationId,
     activeAnnotationId,
-    setPanelOpen,
     currentRoute,
     registeredMarkerIds,
     componentsOnPage,
@@ -58,8 +57,9 @@ export function FeedbackMarkers() {
 
   const popoverId = useStableId("orbit-feedback-popover");
 
-  // Not while picking: the spotlight is about the one element feedback goes on.
-  const showMarkers = mounted && annotationMode && !inspectorActive;
+  // Not while picking: the spotlight is about the one element feedback goes on. With the pins
+  // hidden, the one opened from the panel is still tracked, for its popover.
+  const showMarkers = mounted && (annotationMode || !!activeAnnotationId) && !inspectorActive;
 
   const activeBadge = activeAnnotationId
     ? badges.find((b) => b.annotationId === activeAnnotationId)
@@ -168,6 +168,7 @@ export function FeedbackMarkers() {
 
   for (const badge of badges) {
     const isActive = activeAnnotationId === badge.annotationId;
+    if (!annotationMode && !isActive) continue;
     const offset = badge.unplaced ? 0 : BADGE_OFFSET;
     const left = badge.unplaced
       ? badge.rect.left
@@ -191,7 +192,6 @@ export function FeedbackMarkers() {
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : badge.annotationId);
-          if (!isActive) setPanelOpen(true);
         },
       })
     );

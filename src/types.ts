@@ -13,6 +13,7 @@ export interface Annotation {
 }
 
 export interface AnnotationSettings {
+  /** Whether the pins show until the viewer chooses in their profile. `true` when left out. */
   defaultVisible?: boolean;
   accentColor?: string;
   panelWidth?: number;
@@ -134,6 +135,12 @@ export interface AnnotationLabels {
   /** Under the name field: what the name is for. */
   profileNameHint: string;
   profileLanguage: string;
+  /** The back button of a thread opened in the panel, for a screen reader: "Terug naar {view}". */
+  threadBack: string;
+  /** The profile's switch for the pins on the page: annotations and feedback. */
+  profileMarkers: string;
+  /** Under it, before the keys of its shortcut. */
+  profileMarkersHint: string;
   /** A relative time: just now, then minutes, hours and days as a suffix ("5m", "3u", "2d"). */
   timeNow: string;
   timeMinutes: string;
@@ -149,6 +156,8 @@ export interface OrbitViewer {
   name: string;
   /** Null until they choose: the project's `language` then. */
   language: OrbitLanguage | null;
+  /** Whether the pins show on the page. Null until they choose: the project's `defaultVisible` then. */
+  showMarkers: boolean | null;
 }
 
 /** One option of a `choice` or a `multi`. */
@@ -253,7 +262,12 @@ export interface OrbitShellProps {
 }
 
 export interface AnnotationContextValue {
+  /**
+   * Whether the pins show on the page, annotations and feedback: the viewer's choice, else
+   * `defaultVisible`. Apart from the panel: it opens and closes without them.
+   */
   annotationMode: boolean;
+  /** Shows or hides the pins, and keeps that as the viewer's choice. */
   setAnnotationMode: (value: boolean) => void;
   panelOpen: boolean;
   setPanelOpen: (value: boolean) => void;
@@ -290,6 +304,7 @@ export interface AnnotationContextValue {
   viewer: OrbitViewer;
   setViewerName: (name: string) => void;
   setViewerLanguage: (language: OrbitLanguage) => void;
+  setViewerShowMarkers: (show: boolean) => void;
 }
 
 export interface AnnotationProviderProps {

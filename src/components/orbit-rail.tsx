@@ -27,8 +27,6 @@ interface OrbitRailProps {
 export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const {
     labels,
-    annotationMode,
-    setAnnotationMode,
     panelOpen,
     setPanelOpen,
     inspectorActive,
@@ -62,7 +60,6 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   // variants or the comments go.
   const buttonCount = (hasVariants ? 1 : 0) + (commentsConfig ? 1 : 0) + 2;
   const tabStop = Math.min(focusIndex, buttonCount - 1);
-  const panelExpanded = annotationMode && panelOpen;
 
   // What is open on this page: unresolved feedback, and the annotations here.
   const openFeedback = allComments.filter(
@@ -160,18 +157,13 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
 
   const panelButton = item(
     "panel",
-    panelExpanded,
+    panelOpen,
     {
       // Where the panel gives the focus back when it closes.
       "data-annotation-button": "",
-      "aria-expanded": panelExpanded,
+      "aria-expanded": panelOpen,
       "aria-label": count > 0 ? `${labels.panelTitle}, ${fill(labels.onThisPage, { count })}` : undefined,
-      onClick: () => {
-        if (!annotationMode) {
-          setAnnotationMode(true);
-          setPanelOpen(true);
-        } else setPanelOpen(!panelOpen);
-      },
+      onClick: () => setPanelOpen(!panelOpen),
     },
     React.createElement(MessageChatSquareIcon, { size: 16 }),
     labels.panelTitle,
@@ -192,8 +184,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       onClick: () => {
         if (profileOpen) return setProfileOpen(false);
         // The profile has the stage to itself: the panel, a popover, the inspector and the
-        // variants all close. Each one by itself: the inspector can be on without annotation mode.
-        setAnnotationMode(false);
+        // variants all close. The pins stay: whether they show is the viewer's own setting.
+        setPanelOpen(false);
         setInspectorActive(false);
         setActiveAnnotationId(null);
         setVariantsOpen(false);

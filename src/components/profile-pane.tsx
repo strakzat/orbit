@@ -5,8 +5,8 @@ import { LABELS, LANGUAGE_NAMES } from "../labels";
 import { UserIcon, XIcon } from "../icons";
 import { initials } from "../utils/format";
 import { useStableId } from "../utils/use-stable-id";
-import { Choice } from "./variants-pane";
-import type { OrbitChoiceVariant, OrbitLanguage } from "../types";
+import { Choice, Switch } from "./variants-pane";
+import type { OrbitChoiceVariant, OrbitLanguage, OrbitSwitchVariant } from "../types";
 
 interface ProfilePaneProps {
   id: string;
@@ -24,7 +24,8 @@ interface ProfilePaneProps {
  * press outside close it.
  */
 export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
-  const { labels, language, viewer, setViewerName, setViewerLanguage } = useAnnotations();
+  const { labels, language, viewer, setViewerName, setViewerLanguage, annotationMode, setAnnotationMode, settings } =
+    useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const nameId = useStableId("orbit-profile-name");
   const nameHintId = useStableId("orbit-profile-name-hint");
@@ -62,6 +63,31 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
     value: language,
     onChange: (code) => setViewerLanguage(code as OrbitLanguage),
   };
+
+  // The pins on the page: the viewer's own, so they see what is there, or a clean prototype.
+  const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
+  const markersSwitch: OrbitSwitchVariant = {
+    type: "switch",
+    id: "orbit-markers",
+    title: labels.profileMarkers,
+    value: annotationMode,
+    onChange: setAnnotationMode,
+  };
+  // The shortcut as the keys themselves, a chip each.
+  const markersHint = settings.keyboardShortcut
+    ? React.createElement(
+        React.Fragment,
+        null,
+        labels.profileMarkersHint,
+        React.createElement(
+          "span",
+          { className: "orbit-keys" },
+          (isMac ? ["⌘", "."] : ["Ctrl", "."]).map((key) =>
+            React.createElement("kbd", { key, className: "orbit-key" }, key)
+          )
+        )
+      )
+    : undefined;
 
   return React.createElement(
     "div",
@@ -111,7 +137,8 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
         }),
         React.createElement("p", { id: nameHintId, className: "orbit-profile__hint" }, labels.profileNameHint)
       ),
-      React.createElement(Choice, { variant: languageChoice, onAnnounce })
+      React.createElement(Choice, { variant: languageChoice, onAnnounce }),
+      React.createElement(Switch, { variant: markersSwitch, onAnnounce, hint: markersHint })
     )
   );
 }

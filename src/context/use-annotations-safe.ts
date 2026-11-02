@@ -33,9 +33,10 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   registerVariants: () => {},
   describeVariants: () => "",
   language: "nl",
-  viewer: { name: "", language: null },
+  viewer: { name: "", language: null, showMarkers: null },
   setViewerName: () => {},
   setViewerLanguage: () => {},
+  setViewerShowMarkers: () => {},
 };
 
 export function useAnnotationsSafe(): AnnotationContextValue {

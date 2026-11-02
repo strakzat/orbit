@@ -44,7 +44,6 @@ export function AutoAnnotationMarkers() {
     hoveredAnnotationId,
     setActiveAnnotationId,
     setHoveredAnnotationId,
-    setPanelOpen,
     allAnnotations,
     allComments,
     commentsConfig,
@@ -74,8 +73,9 @@ export function AutoAnnotationMarkers() {
     enabled: !!commentsConfig && !!activeBadge,
   });
 
-  // Not while picking: the spotlight is about the one element feedback goes on.
-  const showMarkers = mounted && annotationMode && !inspectorActive;
+  // Not while picking: the spotlight is about the one element feedback goes on. With the pins
+  // hidden, the one opened from the panel is still tracked, for its popover.
+  const showMarkers = mounted && (annotationMode || !!activeAnnotationId) && !inspectorActive;
 
   const updateBadges = useCallback(() => {
     if (!showMarkers) {
@@ -198,6 +198,7 @@ export function AutoAnnotationMarkers() {
     const { annotation } = badge;
     const isActive = activeAnnotationId === annotation.id;
     const annotationType = annotation.type ?? "documentation";
+    if (!annotationMode && !isActive) continue;
 
     // A placed badge hangs over the element's top-right corner; an unplaced one
     // sits where the geometry helper parked it.
@@ -223,14 +224,13 @@ export function AutoAnnotationMarkers() {
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : annotation.id);
-          if (!isActive) setPanelOpen(true);
         },
         onMouseEnter: () => setHoveredAnnotationId(annotation.id),
         onMouseLeave: () => setHoveredAnnotationId(null),
       })
     );
 
-    if (badge.hasComments) {
+    if (badge.hasComments && annotationMode) {
       elements.push(
         React.createElement(MarkerBadge, {
           key: `auto-fb-${annotation.id}`,

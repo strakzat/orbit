@@ -3,12 +3,7 @@ import { useAnnotations } from "../context/use-annotations";
 import { useAnnotationStyles } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
-import {
-  findElementByAnnotationId,
-  scrollToAndHighlight,
-  showHoverHighlight,
-  removeHoverHighlight,
-} from "../utils/find-element";
+import { findElementByAnnotationId } from "../utils/find-element";
 import { isOnPage, matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching";
 import { STATUS_SLUGS } from "../styles/tokens";
 import { XIcon, SearchIcon } from "../icons";
@@ -16,6 +11,8 @@ import { TYPE_ICONS } from "../constants";
 import { fill } from "../labels";
 import { AnnotationCard } from "./annotation-card";
 import { CommentCard } from "./comment-card";
+import { ThreadPage, type PanelThread } from "./thread-page";
+import { Spotlight } from "./spotlight";
 import type { Comment, AnnotationType } from "../types";
 
 const ALL_TYPES: AnnotationType[] = [
@@ -29,13 +26,11 @@ export function AnnotationPanel() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const {
-    annotationMode,
-    setAnnotationMode,
     panelOpen,
+    setPanelOpen,
     activeAnnotationId,
     setActiveAnnotationId,
     hoveredAnnotationId,
-    setHoveredAnnotationId,
     currentAnnotations,
     allAnnotations,
     labels,
@@ -58,6 +53,66 @@ export function AnnotationPanel() {
   const activeCardRef = useRef<HTMLDivElement>(null);
   const searchId = useStableId("orbit-search");
 
+  // A thread opened from a card is a page of the panel, pushed over the list. It stays rendered
+  // after Back, so it can slide out; `threadOpen` says which page is in view.
+  const [thread, setThread] = useState<PanelThread | null>(null);
+  const [threadOpen, setThreadOpen] = useState(false);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  // The spotlight the inspector picks with: on the card under the mouse, and on the open thread's
+  // element for as long as it is open. "This one" looks the same wherever it is said.
+  const [hoverEl, setHoverEl] = useState<HTMLElement | null>(null);
+  const [threadEl, setThreadEl] = useState<HTMLElement | null>(null);
+
+  const openThread = (next: PanelThread) => {
+    openerRef.current = document.activeElement as HTMLElement | null;
+    setHoverEl(null);
+    // One place to read it: a popover open on the page closes.
+    setActiveAnnotationId(null);
+    setThread(next);
+    setThreadOpen(true);
+  };
+
+  const back = useCallback(() => setThreadOpen(false), []);
+
+  // The focus goes with the page: onto Back once the thread is in, and back to the card that
+  // opened it once the list is. After the render, when the page is no longer hidden.
+  const wasThreadOpen = useRef(false);
+  useEffect(() => {
+    if (threadOpen) backRef.current?.focus({ preventScroll: true });
+    else if (wasThreadOpen.current && panelRef.current?.contains(openerRef.current)) {
+      openerRef.current?.focus({ preventScroll: true });
+    }
+    wasThreadOpen.current = threadOpen;
+  }, [threadOpen, thread]);
+
+  // A closed panel opens on the list again.
+  useEffect(() => {
+    if (!panelOpen) {
+      setThreadOpen(false);
+      setHoverEl(null);
+    }
+  }, [panelOpen]);
+
+  // The open thread's element, also after the panel took the viewer to its page: a frame later,
+  // once the route has rendered. Scrolled into view, then held in the spotlight.
+  useEffect(() => {
+    if (!threadOpen || !thread) {
+      setThreadEl(null);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      const el =
+        thread.kind === "annotation"
+          ? findElementByAnnotationId(thread.annotation.elementId || thread.annotation.id)
+          : findElementByAnnotationId(thread.annotationId, thread.label);
+      setThreadEl(el);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [threadOpen, thread, currentRoute]);
+
   const { panelWidth, panelHeight } = settings;
 
   // Auto-scroll to active annotation card
@@ -70,22 +125,24 @@ export function AnnotationPanel() {
   const close = useCallback(() => {
     // Move focus out before unmounting, and hand it back to the rail's button that
     // opened the panel rather than dropping it at the top of the document.
-    setAnnotationMode(false);
+    setPanelOpen(false);
     document.querySelector<HTMLElement>("[data-annotation-button]")?.focus();
-  }, [setAnnotationMode]);
+  }, [setPanelOpen]);
 
   useEffect(() => {
     if (!panelOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && panelRef.current?.contains(document.activeElement)) {
-        close();
+        // In a thread, Escape goes back a page; on the list it closes the panel.
+        if (threadOpen) back();
+        else close();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [panelOpen, close]);
+  }, [panelOpen, close, back, threadOpen]);
 
-  if (!mounted || !annotationMode || !panelOpen) return null;
+  if (!mounted || !panelOpen) return null;
 
   const sourceAnnotations = tab === "page" ? currentAnnotations : allAnnotations;
   const filtered = sourceAnnotations.filter((a) => {
@@ -286,31 +343,23 @@ export function AnnotationPanel() {
               annotation,
               isActive: annotation.id === activeAnnotationId,
               isHovered: annotation.id === hoveredAnnotationId,
-              // The card is the index; the popover on the page is where you read
-              // the annotation. So the card selects rather than expands — that is
-              // also what keeps the same text from appearing twice at once.
+              // The card is the index; the thread opens as the panel's next page,
+              // and the element on the page is pointed at.
               onSelect: () => {
-                const isOpen = annotation.id === activeAnnotationId;
-                setActiveAnnotationId(isOpen ? null : annotation.id);
-                if (isOpen) return;
-
-                // An annotation for another route has no marker here to open. Go
-                // to that route first; the popover follows once it renders.
+                openThread({ kind: "annotation", annotation });
+                // On another route, go there too: the thread then points at its element.
                 if (
                   annotation.target !== "global" &&
                   !matchRoute(annotation.target, currentRoute)
                 ) {
                   navigateTo(annotation.target);
-                  return;
                 }
-
-                const el = findElementByAnnotationId(
-                  annotation.elementId || annotation.id
-                );
-                if (el) scrollToAndHighlight(el);
               },
-              onHoverStart: (id: string) => setHoveredAnnotationId(id),
-              onHoverEnd: () => setHoveredAnnotationId(null),
+              // The spotlight, not the pin's quiet hover: from the panel it has to be as
+              // clear where on the page the card is.
+              onHoverStart: () =>
+                setHoverEl(findElementByAnnotationId(annotation.elementId || annotation.id)),
+              onHoverEnd: () => setHoverEl(null),
             })
           )
         )
@@ -346,31 +395,23 @@ export function AnnotationPanel() {
             activateLabel: c.label
               ? fill(labels.feedbackFromOn, { name: c.auteur, label: c.label })
               : fill(labels.feedbackFrom, { name: c.auteur }),
-            // Same model as an annotation card: the panel is the index, and the
-            // thread opens on the page next to the element it belongs to.
+            // Same model as an annotation card: the thread is the panel's next page.
             onSelect: c.annotationId
               ? () => {
-                  const isOpen = c.annotationId === activeAnnotationId;
-                  setActiveAnnotationId(isOpen ? null : c.annotationId!);
-                  if (isOpen) return;
-
+                  openThread({
+                    kind: "feedback",
+                    annotationId: c.annotationId!,
+                    label: c.label ?? c.annotationId!,
+                    component: c.component,
+                  });
                   // Feedback on a component is on every page the component is on: no need to go back.
-                  if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) {
-                    navigateTo(c.pagina);
-                    return;
-                  }
-
-                  const el = findElementByAnnotationId(c.annotationId!, c.label);
-                  if (el) scrollToAndHighlight(el);
+                  if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) navigateTo(c.pagina);
                 }
               : undefined,
             onMouseEnter: c.annotationId
-              ? () => {
-                  const el = findElementByAnnotationId(c.annotationId!, c.label);
-                  if (el) showHoverHighlight(el);
-                }
+              ? () => setHoverEl(findElementByAnnotationId(c.annotationId!, c.label))
               : undefined,
-            onMouseLeave: removeHoverHighlight,
+            onMouseLeave: () => setHoverEl(null),
             footer: c.pagina
               ? React.createElement(
                   "div",
@@ -393,21 +434,56 @@ export function AnnotationPanel() {
         )
   );
 
+  // The spotlight is the panel's sibling, not its child: the panel's pages move with
+  // transforms, and a fixed layer inside them would move along.
+  const lit = threadOpen ? threadEl : hoverEl;
   return React.createElement(
-    "div",
-    {
-      ref: panelRef,
-      className: cx("orbit-root", "orbit-panel", "orbit-glass-pane", "orbit-animate-in"),
-      // Bottom right above the rail, by the stylesheet; only the project's size is inline.
-      style: { width: panelWidth, height: panelHeight },
-      role: "complementary",
-      "aria-label": labels.panelTitle,
-      lang: language,
-    },
-    header,
-    subTabs,
-    search,
-    filters,
-    view === "annotations" ? annotationList : feedbackList
+    React.Fragment,
+    null,
+    React.createElement(
+      "div",
+      {
+        ref: panelRef,
+        className: cx("orbit-root", "orbit-panel", "orbit-glass-pane", "orbit-animate-in"),
+        // Bottom right above the rail, by the stylesheet; only the project's size is inline.
+        style: { width: panelWidth, height: panelHeight },
+        role: "complementary",
+        "aria-label": labels.panelTitle,
+        lang: language,
+      },
+      // Two pages over each other: the list, and the thread pushed over it. The one out of view is
+      // hidden by the stylesheet once it has slid away, so it is out of the tab order too.
+      React.createElement(
+        "div",
+        { className: cx("orbit-panel__page", "orbit-panel__page--list", !threadOpen && "orbit-panel__page--in") },
+        header,
+        subTabs,
+        search,
+        filters,
+        view === "annotations" ? annotationList : feedbackList
+      ),
+      React.createElement(
+        "div",
+        {
+          className: cx("orbit-panel__page", "orbit-panel__page--thread", threadOpen && "orbit-panel__page--in"),
+          role: "region",
+          "aria-label": thread
+            ? thread.kind === "annotation" ? thread.annotation.title : thread.label
+            : undefined,
+        },
+        thread &&
+          React.createElement(ThreadPage, {
+            // A new thread is a new page: its comments start empty rather than the last one's.
+            key: thread.kind === "annotation" ? `a:${thread.annotation.id}` : `f:${thread.annotationId}`,
+            thread,
+            open: threadOpen,
+            backLabel: view === "annotations" ? labels.viewAnnotations : labels.viewFeedback,
+            backRef,
+            onBack: back,
+            onClose: close,
+          })
+      )
+    ),
+    React.createElement(Spotlight, { el: lit, still: threadOpen })
   );
 }

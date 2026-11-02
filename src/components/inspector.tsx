@@ -7,7 +7,7 @@ import { componentOf, getElementLabel, getLocator, type ComponentRef } from "../
 import { levelsFrom, pickArea } from "../utils/pick-element";
 import { getBubblePlacement } from "../utils/popover-position";
 import { CommentForm } from "./comment-form";
-import { ComponentChip } from "./component-chip";
+import { Spotlight, SPOTLIGHT_PAD, SPOTLIGHT_RING, SPOTLIGHT_TAG_HEIGHT, spotlightTagBelow } from "./spotlight";
 import { useStableId } from "../utils/use-stable-id";
 import { fill } from "../labels";
 import { ComponentIcon, InstanceIcon } from "../icons";
@@ -38,16 +38,8 @@ interface Hover {
   index: number;
 }
 
-// The ring sits this far outside the element, so it never covers its edge.
-const SPOTLIGHT_PAD = 4;
-// The ring's width (`outline` in .orbit-spotlight-ring): the tag lines up with its outer edge.
-const RING = 1;
-const TAG_MAX_WIDTH = 320;
-const TAG_MIN_WITH_COMPONENT = 280;
-// Room the tag needs above the ring; with less, it goes below.
-const TAG_ROOM = 32;
-// The tag's height and its gap to the ring (.orbit-spotlight__tag).
-const TAG_HEIGHT = 30;
+const RING = SPOTLIGHT_RING;
+const TAG_HEIGHT = SPOTLIGHT_TAG_HEIGHT;
 const BUBBLE_WIDTH = 320;
 // The bubble once it has opened up for a few lines: below the element only if that fits.
 const BUBBLE_HEIGHT = 140;
@@ -359,106 +351,16 @@ export function Inspector() {
   const lit = selected ? selected.el : hover ? hover.levels[hover.index] : null;
   const litRect = lit?.isConnected ? lit.getBoundingClientRect() : null;
 
-  // Radial's spotlight: the app dims, the element stays as it is, ringed in white. The
-  // scrim is the shadow of the cutout, clipped to the frame, so the rail stays lit.
-  let spotlight: React.ReactElement | null = null;
-  // The tag goes under the ring when there is no room above it.
-  let tagBelow = false;
-  if (active) {
-    const area = pickArea();
-    const framed = !!document.querySelector(".orbit-frame");
-    const cutout = litRect
-      ? {
-          left: litRect.left - area.left - SPOTLIGHT_PAD,
-          top: litRect.top - area.top - SPOTLIGHT_PAD,
-          width: litRect.width + SPOTLIGHT_PAD * 2,
-          height: litRect.height + SPOTLIGHT_PAD * 2,
-        }
-      : null;
-    tagBelow = !!cutout && cutout.top < TAG_ROOM;
-    // Picked, the tag stays: it names what the bubble under it is about.
-    const showTag = !!lit;
-    // In a component, the tag starts with its pill: a pill in the pill, before the element.
-    const litComponent = showTag && lit ? componentOf(lit) : null;
-
-    const scrim = React.createElement(
-      "div",
-      {
+  // Radial's spotlight, while picking. With the tag under the ring, the bubble goes under the tag.
+  const tagBelow = !!litRect && spotlightTagBelow(litRect);
+  const spotlight = active
+    ? React.createElement(Spotlight, {
         key: "spotlight",
-        [DATA_INSPECTOR]: "",
-        "aria-hidden": true,
-        className: cx(
-          "orbit-root orbit-spotlight",
-          framed && "orbit-spotlight--framed",
-          !cutout && "orbit-spotlight--idle",
-          selected && "orbit-spotlight--selected"
-        ),
-        style: { left: area.left, top: area.top, width: area.width, height: area.height },
-      },
-      cutout &&
-        React.createElement("div", {
-          className: "orbit-spotlight__cutout",
-          style: cutout,
-        }),
-      cutout &&
-        showTag &&
-        lit &&
-        React.createElement(
-          "div",
-          {
-            className: cx(
-              "orbit-spotlight__tag",
-              tagBelow && "orbit-spotlight__tag--below",
-              litComponent && "orbit-spotlight__tag--component"
-            ),
-            style: {
-              left: cutout.left - RING,
-              top: tagBelow ? cutout.top + cutout.height + RING : cutout.top - RING,
-              // Never wider than the ring it belongs to, the text ellipses instead; with a
-              // component's pill in front, wide enough that the element still reads beside it.
-              maxWidth: Math.min(
-                TAG_MAX_WIDTH,
-                Math.max(cutout.width + RING * 2, litComponent ? TAG_MIN_WITH_COMPONENT : 0)
-              ),
-            },
-          },
-          litComponent && React.createElement(ComponentChip, { name: litComponent.name }),
-          React.createElement("span", { className: "orbit-spotlight__label" }, getElementLabel(lit)),
-          hover && hover.levels.length > 1
-            ? React.createElement(
-                "span",
-                { className: "orbit-spotlight__keys" },
-                `${hover.index + 1}/${hover.levels.length} ↑↓`
-              )
-            : null
-        )
-    );
-
-    // The ring is its own layer, outside the clipped scrim: a blend mode only mixes with
-    // what shares its stacking context, and inside the scrim that would be the scrim alone.
-    // Here it adds light to the page under it, so it glows on a dim edge and stays white
-    // on a white one.
-    const ring = React.createElement("div", {
-      key: "ring",
-      [DATA_INSPECTOR]: "",
-      "aria-hidden": true,
-      className: cx(
-        "orbit-root orbit-spotlight-ring",
-        !cutout && "orbit-spotlight-ring--idle",
-        selected && "orbit-spotlight-ring--selected"
-      ),
-      style: cutout
-        ? {
-            left: area.left + cutout.left,
-            top: area.top + cutout.top,
-            width: cutout.width,
-            height: cutout.height,
-          }
-        : undefined,
-    });
-
-    spotlight = React.createElement(React.Fragment, null, scrim, ring);
-  }
+        el: lit,
+        keys: !selected && hover && hover.levels.length > 1 ? `${hover.index + 1}/${hover.levels.length} ↑↓` : null,
+        still: !!selected,
+      })
+    : null;
 
   const popover =
     selected && litRect
