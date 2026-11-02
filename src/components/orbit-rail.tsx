@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
-import { matchRoute } from "../utils/route-matching";
+import { isOnPage } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
 import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
 import { fill } from "../labels";
@@ -37,6 +37,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     allComments,
     currentAnnotations,
     currentRoute,
+    componentsOnPage,
     language,
     viewer,
     setActiveAnnotationId,
@@ -65,7 +66,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
 
   // What is open on this page: unresolved feedback, and the annotations here.
   const openFeedback = allComments.filter(
-    (c) => c.status !== "Opgelost" && matchRoute(currentRoute, c.pagina ?? "")
+    (c) => c.status !== "Opgelost" && isOnPage(c, currentRoute, componentsOnPage)
   ).length;
   const count = currentAnnotations.length + openFeedback;
 

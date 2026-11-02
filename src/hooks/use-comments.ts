@@ -9,6 +9,10 @@ interface UseCommentsProps {
   annotationId: string;
   label: string;
   enabled: boolean;
+  /** Feedback on a component: its name, sent with the comment. */
+  component?: string;
+  /** The element the viewer picked, outlined in the screenshot: for a component, one of many. */
+  target?: HTMLElement | null;
 }
 
 interface UseCommentsReturn {
@@ -24,6 +28,8 @@ export function useComments({
   annotationId,
   label,
   enabled,
+  component,
+  target,
 }: UseCommentsProps): UseCommentsReturn {
   const [apiBase, setApiBase] = useState(apiBaseProp || "");
   const [comments, setComments] = useState<Comment[]>([]);
@@ -81,7 +87,7 @@ export function useComments({
   const submitComment = useCallback(
     async (data: { auteur: string; comment: string }) => {
       // First, while the page is still as the viewer saw it.
-      const shooting = capture ? screenshotFeedback(annotationId, capture, label) : Promise.resolve(null);
+      const shooting = capture ? screenshotFeedback(annotationId, capture, label, target) : Promise.resolve(null);
       const url = `${apiBase}/api/comments`;
       // The variants the comment was written in, as they stand when it is sent.
       const varianten = describeVariants();
@@ -98,6 +104,7 @@ export function useComments({
             pagina: typeof window !== "undefined" ? window.location.pathname + window.location.search : "/",
             label,
             ...(varianten ? { varianten } : {}),
+            ...(component ? { component } : {}),
             ...(withScreenshot && screenshot ? { screenshot } : {}),
           }),
         });
@@ -107,7 +114,7 @@ export function useComments({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await fetchComments();
     },
-    [apiBase, project, annotationId, label, describeVariants, capture, fetchComments]
+    [apiBase, project, annotationId, label, component, target, describeVariants, capture, fetchComments]
   );
 
   return { comments, isLoading, error, submitComment };

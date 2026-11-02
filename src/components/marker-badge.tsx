@@ -22,6 +22,8 @@ interface MarkerBadgeProps {
   behind?: boolean;
   /** Not attached to an element — drawn with a dashed edge to say so. */
   unplaced?: boolean;
+  /** Feedback on a component: purple, like the component everywhere else in Orbit. */
+  component?: boolean;
   controls?: string;
   onClick?: (event: React.MouseEvent) => void;
   onMouseEnter?: () => void;
@@ -47,6 +49,7 @@ export function MarkerBadge({
   active,
   behind,
   unplaced,
+  component,
   controls,
   onClick,
   onMouseEnter,
@@ -60,6 +63,7 @@ export function MarkerBadge({
     "orbit-marker",
     placement === "fixed" ? "orbit-marker--fixed" : "orbit-marker--absolute",
     variant === "feedback" && "orbit-marker--feedback",
+    component && "orbit-marker--component",
     resolved && "orbit-marker--resolved",
     active && "orbit-marker--active",
     behind && "orbit-marker--behind",

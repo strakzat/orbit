@@ -671,6 +671,22 @@ const CHROME = `
   font-weight: 600;
 }
 
+/* In the inspector's popover: what the feedback is on, the instance or the component. */
+.orbit-scope {
+  margin-top: var(--orbit-space-2);
+}
+
+.orbit-scope .orbit-segment {
+  height: 28px;
+  font-size: var(--orbit-text-sm);
+}
+
+/* The component the popover is about: its pill, above the element. */
+.orbit-popover__component {
+  display: flex;
+  margin-bottom: var(--orbit-space-2);
+}
+
 .orbit-root .orbit-segment:focus-visible {
   outline-offset: -2px;
 }
@@ -1023,6 +1039,26 @@ const MARKER = `
 .orbit-marker--feedback.orbit-marker--active {
   box-shadow:
     0 0 0 4px var(--orbit-overlay-ring),
+    var(--orbit-shadow-sm);
+}
+
+/* Feedback on a component: the same pin in dark purple glass, on every page the component is on. */
+.orbit-marker--component {
+  border-color: transparent;
+  background: var(--orbit-component-glass);
+  box-shadow: var(--orbit-component-glass-edge), var(--orbit-shadow-sm);
+  color: var(--orbit-text-component_on-glass);
+  backdrop-filter: var(--orbit-glass-blur);
+}
+
+.orbit-marker--component:hover {
+  box-shadow: var(--orbit-component-glass-edge), var(--orbit-shadow-md);
+}
+
+.orbit-marker--component.orbit-marker--active {
+  box-shadow:
+    var(--orbit-component-glass-edge),
+    0 0 0 4px color-mix(in oklab, var(--orbit-component) 35%, transparent),
     var(--orbit-shadow-sm);
 }
 
@@ -1729,6 +1765,11 @@ const COMMENTS = `
   color: var(--orbit-text-quaternary);
 }
 
+.orbit-comment__component {
+  display: flex;
+  margin-top: var(--orbit-space-1-5);
+}
+
 .orbit-comment--clickable .orbit-comment__variants {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1978,6 +2019,11 @@ const OVERLAYS = `
   transform: translateY(calc(-100% - 6px));
 }
 
+/* With a component's pill in front: as much room left of it as above and below. */
+.orbit-spotlight__tag--component {
+  padding-left: 3px;
+}
+
 .orbit-spotlight__tag--below {
   transform: translateY(6px);
 }
@@ -1991,6 +2037,37 @@ const OVERLAYS = `
 .orbit-spotlight__keys {
   flex: none;
   opacity: 0.6;
+}
+
+/* A component of the project's: dark purple glass, light text. A pill at the head of the
+   spotlight's tag, of a popover, and on a comment card. */
+.orbit-component-chip {
+  display: inline-flex;
+  flex: none;
+  gap: var(--orbit-space-1);
+  align-items: center;
+  max-width: 100%;
+  padding: 0 var(--orbit-space-1-5);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-component-glass);
+  box-shadow: var(--orbit-component-glass-edge);
+  color: var(--orbit-text-component_on-glass);
+  /* A name from the code, like the element beside it. Geist Mono is bundled at 400 only. */
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-text-xs);
+  font-weight: 400;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.orbit-component-chip svg {
+  flex: none;
+  opacity: 0.8;
+}
+
+.orbit-component-chip__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .orbit-highlight {

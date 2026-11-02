@@ -147,9 +147,9 @@ export function annotationsDevApi(): {
 
             if (req.method === "POST") {
               const body = await parseJsonBody(req);
-              const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = body;
+              const { annotationId, auteur, comment, pagina, label, varianten, component, screenshot } = body;
               const properties = buildNotionCommentProperties(
-                { annotationId, auteur, comment, pagina, label, varianten },
+                { annotationId, auteur, comment, pagina, label, varianten, component },
                 process.env.NOTION_PROJECT_ID!
               );
               // The screenshot of the spot, as the page's body.
@@ -172,18 +172,18 @@ export function annotationsDevApi(): {
                 });
 
               let response = await createPage(properties);
-              // A database from before variants has no Varianten column: the comment is sent
-              // without them rather than lost.
-              if (!response.ok && "Varianten" in properties) {
+              // A database from before variants or components has no Varianten or Component
+              // column: the comment is sent without them rather than lost.
+              for (const column of ["Varianten", "Component"]) {
+                if (response.ok || !(column in properties)) continue;
                 const text = await response.clone().text();
-                if (text.includes("Varianten")) {
-                  console.warn(
-                    '[annotations-dev-api] De Notion-database heeft geen kolom "Varianten" (tekst). ' +
-                      "De feedback is opgeslagen zonder de varianten."
-                  );
-                  const { Varianten: _dropped, ...rest } = properties;
-                  response = await createPage(rest);
-                }
+                if (!text.includes(column)) continue;
+                console.warn(
+                  `[annotations-dev-api] De Notion-database heeft geen kolom "${column}" (tekst). ` +
+                    `De feedback is opgeslagen zonder.`
+                );
+                delete properties[column];
+                response = await createPage(properties);
               }
               const page = await response.json();
               if (!response.ok) {

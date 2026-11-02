@@ -9,7 +9,7 @@ import {
   showHoverHighlight,
   removeHoverHighlight,
 } from "../utils/find-element";
-import { matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching";
+import { isOnPage, matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching";
 import { STATUS_SLUGS } from "../styles/tokens";
 import { XIcon, SearchIcon } from "../icons";
 import { TYPE_ICONS } from "../constants";
@@ -44,6 +44,7 @@ export function AnnotationPanel() {
     commentsLoading: feedbackLoading,
     commentsError: feedbackError,
     currentRoute,
+    componentsOnPage,
     language,
   } = useAnnotations();
 
@@ -96,7 +97,7 @@ export function AnnotationPanel() {
     return true;
   });
 
-  const pageFeedback = allFeedback.filter((c) => matchRoute(currentRoute, c.pagina ?? ""));
+  const pageFeedback = allFeedback.filter((c) => isOnPage(c, currentRoute, componentsOnPage));
   const sourceFeedback = tab === "page" ? pageFeedback : allFeedback;
   const filteredFeedback = sourceFeedback.filter((c) => {
     if (statusFilter.size > 0 && !statusFilter.has(c.status)) return false;
@@ -353,7 +354,8 @@ export function AnnotationPanel() {
                   setActiveAnnotationId(isOpen ? null : c.annotationId!);
                   if (isOpen) return;
 
-                  if (c.pagina && !matchRoute(currentRoute, c.pagina)) {
+                  // Feedback on a component is on every page the component is on: no need to go back.
+                  if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) {
                     navigateTo(c.pagina);
                     return;
                   }

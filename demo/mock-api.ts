@@ -11,6 +11,7 @@ interface MockComment {
   pagina: string;
   label: string;
   varianten?: string;
+  component?: string;
   screenshot?: string;
 }
 
@@ -89,6 +90,7 @@ export function mockCommentsApi(): Plugin {
               pagina: data.pagina ?? "/",
               label: data.label ?? "",
               varianten: data.varianten,
+              component: data.component,
               screenshot: data.screenshot,
             };
             if (data.screenshot) {

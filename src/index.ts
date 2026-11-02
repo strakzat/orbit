@@ -22,7 +22,7 @@ export { LABELS } from "./labels";
 // Theming — the CSS custom properties are a public contract; see CLAUDE.md.
 export { THEME_ATTR } from "./styles/tokens";
 export { onBrandTextColor } from "./styles/brand";
-export { ORBIT_UI_ATTR } from "./constants";
+export { ORBIT_UI_ATTR, COMPONENT_ATTR } from "./constants";
 
 // Types
 export type {

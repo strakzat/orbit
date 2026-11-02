@@ -4,6 +4,7 @@ import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { fill } from "../labels";
 import { StatusPill } from "./status-pill";
+import { ComponentChip } from "./component-chip";
 import type { Comment } from "../types";
 
 interface CommentCardProps {
@@ -93,6 +94,24 @@ export function CommentCard({
       ),
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
+
+      // Given on a component: it shows wherever the component is, so the card says which.
+      comment.component
+        ? React.createElement(
+            "div",
+            { className: "orbit-comment__component" },
+            React.createElement(
+              "span",
+              { className: "orbit-sr-only" },
+              fill(labels.componentNamed, { name: comment.component })
+            ),
+            React.createElement(
+              "span",
+              { "aria-hidden": true },
+              React.createElement(ComponentChip, { name: comment.component })
+            )
+          )
+        : null,
 
       // The variants it was written in, on one line: a list entry is no place for more.
       comment.varianten

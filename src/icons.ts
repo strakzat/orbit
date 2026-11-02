@@ -181,3 +181,11 @@ export const RefreshIcon = createIcon([
 export const LinkIcon = createIcon([
   ["path", { d: "m12.708 18.364-1.415 1.414a5 5 0 1 1-7.07-7.07l1.413-1.415m12.728 1.414 1.415-1.414a5 5 0 0 0-7.071-7.071l-1.415 1.414M8.5 15.5l7-7" }],
 ]);
+
+/** Figma's component mark: four diamonds. What a component of the project's is, in purple. */
+export const ComponentIcon = createIcon([
+  ["path", { d: "M12 2.5 15 5.5 12 8.5 9 5.5Z" }],
+  ["path", { d: "M18.5 9 21.5 12 18.5 15 15.5 12Z" }],
+  ["path", { d: "M12 15.5 15 18.5 12 21.5 9 18.5Z" }],
+  ["path", { d: "M5.5 9 8.5 12 5.5 15 2.5 12Z" }],
+]);

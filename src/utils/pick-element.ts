@@ -5,6 +5,8 @@
  * answer, so what is lit is what gets the feedback.
  */
 
+import { COMPONENT_ATTR } from "../constants";
+
 const INTERACTIVE = new Set(["A", "BUTTON", "INPUT", "SELECT", "TEXTAREA", "LABEL", "SUMMARY"]);
 
 const SEMANTIC = new Set([
@@ -22,6 +24,7 @@ const INLINE = new Set(["SPAN", "B", "STRONG", "I", "EM", "SMALL", "CODE", "MARK
 function rank(el: HTMLElement): number {
   const tag = el.tagName.toUpperCase();
   if (el.hasAttribute("data-annotation-id")) return 50;
+  if (el.hasAttribute(COMPONENT_ATTR)) return 45;
   if (el.hasAttribute("data-testid")) return 40;
   if (el.id) return 30;
   if (INTERACTIVE.has(tag) || el.hasAttribute("role") || el.hasAttribute("tabindex")) return 20;

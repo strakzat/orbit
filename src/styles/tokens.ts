@@ -104,6 +104,15 @@ const LIGHT: Vars = {
   "--orbit-spotlight-tag": "#121926",
   "--orbit-spotlight-tag-text": "#FCFCFD",
 
+  // Components (\`data-orbit-component\`): Figma's purple, apart from the suggestion type's.
+  "--orbit-component": "#9747FF",
+  // Dark purple glass for what names a component (chip, tag, pin), in both themes like the
+  // spotlight's tag: dense enough over a white page that its light text keeps 4.5:1.
+  "--orbit-component-glass": "rgba(59, 22, 120, 0.88)",
+  "--orbit-component-glass-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(201, 168, 255, 0.22)",
+  "--orbit-text-component_on-glass": "#E2D1FF",
+
   // Annotation types — kept colour-coded (icon + text carry the meaning too), toned
   // to sit quietly next to the monochrome chrome.
   "--orbit-type-documentation-bg": "#F4F4F4",
@@ -211,6 +220,14 @@ const DARK: Vars = {
   // The tag above the ring: Radial's dark chrome in both themes.
   "--orbit-spotlight-tag": "#121926",
   "--orbit-spotlight-tag-text": "#FCFCFD",
+
+  "--orbit-component": "#9747FF",
+  // Dark purple glass for what names a component (chip, tag, pin), in both themes like the
+  // spotlight's tag: dense enough over a white page that its light text keeps 4.5:1.
+  "--orbit-component-glass": "rgba(59, 22, 120, 0.88)",
+  "--orbit-component-glass-edge":
+    "inset 0 1px 0 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(201, 168, 255, 0.22)",
+  "--orbit-text-component_on-glass": "#E2D1FF",
 
   // Radial's chrome: the black the rail is, and its glass. A film is a few percent of white
   // with a lit top edge; the chip is what is on, a shade brighter than the film it sits on.

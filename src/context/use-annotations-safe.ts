@@ -27,6 +27,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   commentsError: null,
   currentRoute: "/",
   registeredMarkerIds: new Set(),
+  componentsOnPage: new Set(),
   registerMarkerId: () => {},
   unregisterMarkerId: () => {},
   registerVariants: () => {},
