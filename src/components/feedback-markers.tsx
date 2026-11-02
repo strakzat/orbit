@@ -5,10 +5,11 @@ import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
 import { getFixedPopoverStyle } from "../utils/popover-position";
-import { matchRoute } from "../utils/route-matching";
+import { isOnPage } from "../utils/route-matching";
 import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
+import { ComponentHead } from "./component-chip";
 import { BADGE_GAP, BADGE_OFFSET, POPOVER_MAX_HEIGHT, unplacedBadgeRect } from "./marker-geometry";
 import { unplacedAnnotationIds } from "./marker-placement";
 import type { Comment } from "../types";
@@ -24,6 +25,8 @@ interface FeedbackBadgeInfo {
   sharesCorner: boolean;
   /** The element is gone; parked in the unplaced column instead. */
   unplaced: boolean;
+  /** Feedback on a component: its name. */
+  component?: string;
 }
 
 /**
@@ -45,6 +48,7 @@ export function FeedbackMarkers() {
     setPanelOpen,
     currentRoute,
     registeredMarkerIds,
+    componentsOnPage,
     labels,
   } = useAnnotationsSafe();
 
@@ -67,6 +71,7 @@ export function FeedbackMarkers() {
     annotationId: activeAnnotationId ?? "",
     label: activeBadge?.label ?? "",
     enabled: !!commentsConfig && !!activeBadge,
+    component: activeBadge?.component,
   });
 
   const updateBadges = useCallback(() => {
@@ -80,7 +85,9 @@ export function FeedbackMarkers() {
     const grouped = new Map<string, Comment[]>();
     for (const c of allComments) {
       if (!c.annotationId || registeredMarkerIds.has(c.annotationId)) continue;
-      if (!c.pagina || !matchRoute(currentRoute, c.pagina)) continue;
+      // Feedback on a component goes wherever the component is; the rest stays on its page.
+      if (!c.component && !c.pagina) continue;
+      if (!isOnPage(c, currentRoute, componentsOnPage)) continue;
       const list = grouped.get(c.annotationId) || [];
       list.push(c);
       grouped.set(c.annotationId, list);
@@ -103,6 +110,10 @@ export function FeedbackMarkers() {
     const newBadges: FeedbackBadgeInfo[] = [];
     for (const [annotationId, comments] of grouped) {
       const el = findElementByAnnotationId(annotationId, comments[0]?.label);
+      const component = comments.find((c) => c.component)?.component;
+      // A component's pin is on its first instance. With none here (yet), there is none: parked,
+      // it would sit in the corner of every page.
+      if (component && !el) continue;
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
 
       newBadges.push({
@@ -116,6 +127,7 @@ export function FeedbackMarkers() {
         allResolved: openCount === 0,
         sharesCorner: !!el && (annotated.has(el) || !!el.closest(".orbit-marker-wrap")),
         unplaced: !el,
+        component,
       });
     }
 
@@ -127,6 +139,7 @@ export function FeedbackMarkers() {
     commentsConfig,
     showMarkers,
     currentRoute,
+    componentsOnPage,
   ]);
 
   // Update positions on mount, scroll, resize, and when comments change
@@ -168,6 +181,7 @@ export function FeedbackMarkers() {
         count: badge.openCount,
         active: isActive,
         unplaced: badge.unplaced,
+        component: !!badge.component,
         placement: "fixed",
         controls: popoverId,
         style: { top: badge.rect.top - offset, left },
@@ -191,6 +205,8 @@ export function FeedbackMarkers() {
         header: React.createElement(
           "div",
           { className: "orbit-popover__section" },
+          activeBadge.component &&
+            React.createElement(ComponentHead, { name: activeBadge.component, labels }),
           React.createElement("div", { className: "orbit-mono" }, activeBadge.label)
         ),
         showComments: true,

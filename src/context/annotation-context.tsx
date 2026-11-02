@@ -1,6 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
 import type { AnnotationContextValue, AnnotationProviderProps, OrbitLanguage, OrbitVariant } from "../types";
-import { DEFAULT_SETTINGS } from "../constants";
+import { COMPONENT_ATTR, DEFAULT_SETTINGS } from "../constants";
 import { resolveLabels } from "../labels";
 import { useViewer } from "../hooks/use-viewer";
 import { useAnnotationStyles } from "../styles/inject";
@@ -11,6 +11,19 @@ import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
 import { describeVariants as describe } from "../utils/variants";
+
+/** The names of the components on the page now. */
+function readComponents(): Set<string> {
+  const names = new Set<string>();
+  document.querySelectorAll(`[${COMPONENT_ATTR}]`).forEach((el) => {
+    const name = el.getAttribute(COMPONENT_ATTR)?.trim();
+    if (name) names.add(name);
+  });
+  return names;
+}
+
+const sameSet = (a: Set<string>, b: Set<string>) =>
+  a.size === b.size && Array.from(a).every((name) => b.has(name));
 
 export const AnnotationContext = createContext<AnnotationContextValue | null>(null);
 
@@ -169,6 +182,33 @@ export function AnnotationProvider({
     forceUpdate();
   }, []);
 
+  // The components on the page, for their feedback: it shows wherever they are. Read from the DOM
+  // after it changed rather than during a render, which still sees the page before it.
+  const [componentsOnPage, setComponentsOnPage] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!commentsOn) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const next = readComponents();
+      setComponentsOnPage((prev) => (sameSet(prev, next) ? prev : next));
+    };
+    update();
+    const observer = new MutationObserver(() => {
+      if (!frame) frame = requestAnimationFrame(update);
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: [COMPONENT_ATTR],
+    });
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [commentsOn]);
+
   // The shell's variants, kept for the moment feedback is sent rather than in state: a variant
   // changing re-renders the shell, not every consumer of this context.
   const variantsRef = useRef<OrbitVariant[]>([]);
@@ -236,6 +276,7 @@ export function AnnotationProvider({
       refreshComments,
       currentRoute,
       registeredMarkerIds,
+      componentsOnPage,
       registerMarkerId,
       unregisterMarkerId,
       registerVariants,
@@ -264,6 +305,7 @@ export function AnnotationProvider({
       refreshComments,
       currentRoute,
       registeredMarkerIds,
+      componentsOnPage,
       registerMarkerId,
       unregisterMarkerId,
       registerVariants,

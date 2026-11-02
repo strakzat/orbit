@@ -153,11 +153,13 @@ function compose(source: Source, { target, options, crop, view }: Plan, rect: DO
 export async function screenshotFeedback(
   annotationId: string,
   capture: ScreenshotCapture,
-  label?: string
+  label?: string,
+  /** The element to outline when it is known: the instance feedback on a component was given on. */
+  target?: HTMLElement | null
 ): Promise<string | null> {
   if (typeof window === "undefined") return null;
   const root = document.documentElement;
-  const element = findElementByAnnotationId(annotationId, label);
+  const element = target?.isConnected ? target : findElementByAnnotationId(annotationId, label);
   const rect = element ? element.getBoundingClientRect() : null;
   const layout = plan();
 

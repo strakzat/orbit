@@ -75,6 +75,7 @@ function NavBar({ route, navigate }: { route: string; navigate: (p: string) => v
   return (
     <nav
       id="main-nav"
+      data-orbit-component="NavBar"
       style={{
         display: "flex",
         gap: 4,
@@ -173,6 +174,7 @@ function DashboardPage() {
           (item, i) => (
             <div
               key={i}
+              data-orbit-component="ActivityItem"
               style={{
                 padding: "12px 0",
                 borderBottom: i < 2 ? "1px solid #f2f4f7" : "none",

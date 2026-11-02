@@ -4,12 +4,14 @@ import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles, useInspectorCursor } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
-import { getElementLabel, getLocator } from "../utils/element-id";
+import { componentOf, getElementLabel, getLocator, type ComponentRef } from "../utils/element-id";
 import { levelsFrom, pickArea } from "../utils/pick-element";
 import { getBesidePopoverStyle } from "../utils/popover-position";
 import { POPOVER_MAX_HEIGHT } from "./marker-geometry";
 import { AnnotationPopover } from "./annotation-popover";
+import { ComponentChip, ComponentHead } from "./component-chip";
 import { ORBIT_UI_ATTR } from "../constants";
+import type { AnnotationLabels } from "../types";
 
 const DATA_INSPECTOR = ORBIT_UI_ATTR;
 
@@ -23,7 +25,12 @@ interface SelectedElement {
   rect: DOMRect;
   path: string;
   label: string;
+  /** The component the element is part of, when the project marked one. */
+  component: ComponentRef | null;
 }
+
+/** What feedback goes on: the picked element, or every instance of its component. */
+type Scope = "element" | "component";
 
 /** What the pointer is over: the levels under it, innermost first, and which one is lit. */
 interface Hover {
@@ -36,6 +43,7 @@ const SPOTLIGHT_PAD = 4;
 // The ring's width (`outline` in .orbit-spotlight-ring): the tag lines up with its outer edge.
 const RING = 1;
 const TAG_MAX_WIDTH = 320;
+const TAG_MIN_WITH_COMPONENT = 280;
 // Room the tag needs above the ring; with less, it goes below.
 const TAG_ROOM = 32;
 
@@ -57,38 +65,108 @@ function isAnnotationButton(el: HTMLElement): boolean {
   return false;
 }
 
+/**
+ * Instance or Component: Radial's pill, as a radio group. Only there when the element is part
+ * of a component; the instance is the default, the narrower of the two.
+ */
+function ScopeChoice({
+  scope,
+  onScope,
+  labels,
+}: {
+  scope: Scope;
+  onScope: (scope: Scope) => void;
+  labels: AnnotationLabels;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const options: [Scope, string][] = [
+    ["element", labels.scopeInstance],
+    ["component", labels.scopeComponent],
+  ];
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    // The arrows are the group's here, not the page's.
+    e.stopPropagation();
+    const next: Scope = scope === "element" ? "component" : "element";
+    onScope(next);
+    groupRef.current?.querySelectorAll<HTMLElement>("[role=radio]")[next === "element" ? 0 : 1]?.focus();
+  };
+
+  return React.createElement(
+    "div",
+    {
+      ref: groupRef,
+      role: "radiogroup",
+      "aria-label": labels.scopeLabel,
+      className: "orbit-segments orbit-scope",
+      onKeyDown,
+    },
+    ...options.map(([value, label]) =>
+      React.createElement(
+        "button",
+        {
+          key: value,
+          type: "button",
+          role: "radio",
+          "aria-checked": scope === value,
+          tabIndex: scope === value ? 0 : -1,
+          className: "orbit-segment",
+          onClick: () => onScope(value),
+        },
+        label
+      )
+    )
+  );
+}
+
 function InspectorPopover({
   selected,
+  scope,
+  onScope,
   onClose,
   onSent,
 }: {
   selected: SelectedElement;
+  scope: Scope;
+  onScope: (scope: Scope) => void;
   onClose: () => void;
   /** After the comment is in: picking is done, so the popover and the inspector close. */
   onSent: () => void;
 }) {
-  const { commentsConfig, allAnnotations, refreshComments } = useAnnotationsSafe();
+  const { commentsConfig, allAnnotations, refreshComments, labels } = useAnnotationsSafe();
   const popoverId = useStableId("orbit-inspector-popover");
+
+  // On the component, the feedback is kept under a selector every instance answers to, and its
+  // thread is the component's: what was said about it anywhere.
+  const component = scope === "component" ? selected.component : null;
 
   // The clicked element resolved to a stable id (data-annotation-id wins). If that
   // id belongs to an annotation, show the annotation here too — so clicking an
   // annotated component through the inspector opens the same annotation + feedback
   // thread the annotation pin would, not a bare feedback box on the side.
-  const annotation = allAnnotations.find((a) => a.id === selected.path);
+  const annotation = component ? undefined : allAnnotations.find((a) => a.id === selected.path);
 
   const { comments, isLoading, error, submitComment } = useComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
-    annotationId: selected.path,
-    label: annotation?.title ?? selected.label,
+    annotationId: component ? component.locator : selected.path,
+    label: component ? getElementLabel(component.el) : annotation?.title ?? selected.label,
     enabled: !!commentsConfig,
+    component: component?.name,
+    target: selected.el,
   });
 
-  // Just the element locator; the popover renders its own close button top-right.
+  // The component's pill, the element under it, and Instance / Component; outside a component
+  // just the element. The popover renders its own close button top-right.
   const header = React.createElement(
     "div",
     { className: "orbit-popover__section" },
-    React.createElement("div", { className: "orbit-mono" }, selected.label)
+    selected.component &&
+      React.createElement(ComponentHead, { name: selected.component.name, labels }),
+    React.createElement("div", { className: "orbit-mono" }, selected.label),
+    selected.component && React.createElement(ScopeChoice, { scope, onScope, labels })
   );
 
   return React.createElement(AnnotationPopover, {
@@ -125,6 +203,7 @@ export function Inspector() {
   useEffect(() => setMounted(true), []);
   const [hover, setHover] = useState<Hover | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
+  const [scope, setScope] = useState<Scope>("element");
   // Bumped on scroll and resize: the rects are read at render, from the elements.
   const [, setTick] = useState(0);
   const hitRef = useRef<HTMLElement | null>(null);
@@ -177,6 +256,13 @@ export function Inspector() {
       e.preventDefault();
       e.stopPropagation();
 
+      // With an element picked, a click beside its popover lets go of it rather than picking
+      // another: the next click picks again.
+      if (selected) {
+        setSelected(null);
+        return;
+      }
+
       // The lit level when the pointer is still on what it lit; anything else (a click
       // while a popover is open, a touch without hover) resolves the same way.
       const levels = hover && hitRef.current === el ? hover.levels : levelsFrom(el);
@@ -190,11 +276,13 @@ export function Inspector() {
         rect: target.getBoundingClientRect(),
         path: getLocator(target),
         label: getElementLabel(target),
+        component: componentOf(target),
       });
+      setScope("element");
       setHover(null);
       hitRef.current = null;
     },
-    [active, hover, setActive]
+    [active, hover, selected, setActive]
   );
 
   const handleKeyDown = useCallback(
@@ -274,6 +362,8 @@ export function Inspector() {
       : null;
     const tagBelow = !!cutout && cutout.top < TAG_ROOM;
     const showTag = !selected && !!lit;
+    // In a component, the tag starts with its pill: a pill in the pill, before the element.
+    const litComponent = showTag && lit ? componentOf(lit) : null;
 
     const scrim = React.createElement(
       "div",
@@ -300,14 +390,23 @@ export function Inspector() {
         React.createElement(
           "div",
           {
-            className: cx("orbit-spotlight__tag", tagBelow && "orbit-spotlight__tag--below"),
+            className: cx(
+              "orbit-spotlight__tag",
+              tagBelow && "orbit-spotlight__tag--below",
+              litComponent && "orbit-spotlight__tag--component"
+            ),
             style: {
               left: cutout.left - RING,
               top: tagBelow ? cutout.top + cutout.height + RING : cutout.top - RING,
-              // Never wider than the ring it belongs to; the text ellipses instead.
-              maxWidth: Math.min(TAG_MAX_WIDTH, cutout.width + RING * 2),
+              // Never wider than the ring it belongs to, the text ellipses instead; with a
+              // component's pill in front, wide enough that the element still reads beside it.
+              maxWidth: Math.min(
+                TAG_MAX_WIDTH,
+                Math.max(cutout.width + RING * 2, litComponent ? TAG_MIN_WITH_COMPONENT : 0)
+              ),
             },
           },
+          litComponent && React.createElement(ComponentChip, { name: litComponent.name }),
           React.createElement("span", { className: "orbit-spotlight__label" }, getElementLabel(lit)),
           hover && hover.levels.length > 1
             ? React.createElement(
@@ -349,6 +448,8 @@ export function Inspector() {
     ? React.createElement(InspectorPopover, {
         key: "popover",
         selected: litRect ? { ...selected, rect: litRect } : selected,
+        scope,
+        onScope: setScope,
         onClose: () => {
           setSelected(null);
           focusToggle();

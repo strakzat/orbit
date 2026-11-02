@@ -45,6 +45,19 @@ export function matchRoute(pattern: string, path: string): boolean {
 }
 
 /**
+ * Whether a comment belongs on the current page. Feedback on a component goes wherever that
+ * component is (`componentsOnPage`, kept by the provider), not to the page it was given on.
+ */
+export function isOnPage(
+  comment: { pagina?: string; component?: string },
+  route: string,
+  componentsOnPage: Set<string>
+): boolean {
+  if (comment.component) return componentsOnPage.has(comment.component);
+  return matchRoute(route, comment.pagina ?? "");
+}
+
+/**
  * Turns a route target into a readable trail: "/projects/3?tab=kpi" reads as
  * "projects / 3 / tab=kpi". Used by the annotation cards and the feedback list,
  * which had grown two copies of this.

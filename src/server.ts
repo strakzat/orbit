@@ -13,6 +13,8 @@ interface CommentInput {
   label?: string;
   /** The variants the feedback was given in, a line each. Sent by Orbit when the project has any. */
   varianten?: string;
+  /** Feedback on a component: its name (`data-orbit-component`). Sent by Orbit only then. */
+  component?: string;
   /** The screenshot of the spot, a JPEG data URL. Sent by Orbit unless `comments.screenshot` is off. */
   screenshot?: string;
 }
@@ -26,7 +28,8 @@ const NOTION_VERSION = "2022-06-28";
  *
  * `Varianten` is only written when the comment carries variants, so a database without that
  * column keeps working for a project without variants. A project with variants needs the column
- * (rich text), or Notion refuses the page.
+ * (rich text), or Notion refuses the page. `Component` likewise, for feedback on a component: the
+ * column `orbit-feedback init` makes.
  */
 export function buildNotionCommentProperties(
   input: CommentInput,
@@ -61,6 +64,9 @@ export function buildNotionCommentProperties(
   if (input.varianten) {
     // Notion takes at most 2000 characters in one text object.
     properties.Varianten = { rich_text: [{ text: { content: input.varianten.slice(0, 2000) } }] };
+  }
+  if (input.component) {
+    properties.Component = { rich_text: [{ text: { content: input.component.slice(0, 2000) } }] };
   }
   return properties;
 }
@@ -139,6 +145,7 @@ export function parseNotionComment(page: any): Comment {
     antwoord: getPlainText(page.properties["Antwoord"]),
     pagina: getPlainText(page.properties["Pagina"]),
     varianten: getPlainText(page.properties["Varianten"]) || undefined,
+    component: getPlainText(page.properties["Component"]) || undefined,
   };
 }
 

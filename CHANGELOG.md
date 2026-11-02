@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.6.0
+
+- **Feedback on a component.** Mark a component with `data-orbit-component="Sidebar"`
+  (`COMPONENT_ATTR`). Pick something inside it, and the popover shows the component's pill,
+  the element under it, and an Instance / Component choice. Feedback on the component shows
+  on every page where the component is rendered, with one pin, on the first instance. It is
+  listed under Deze pagina and counted on the rail there, and hidden on pages without it.
+- **A pill in a pill.** While picking inside a component, the tag above the spotlight starts
+  with the component's pill, before the element. The pill, the pin and the chip on a comment
+  card are dark purple glass with light text. New tokens: `--orbit-component`,
+  `--orbit-component-glass`, `--orbit-component-glass-edge`, `--orbit-text-component_on-glass`.
+- **One element at a time.** With an element picked, a click beside its popover lets go of it
+  instead of picking another one; the next click picks again.
+- **`component` on a comment**, sent in the POST and written to the Notion column `Component`
+  (rich text, made by `orbit-feedback init`) only when it is set. The Vite plugin resends
+  without the column if the database has none.
+
 ## 4.5.0
 
 - **The inspector picks what you mean.** Hover and click now agree: what lights up is

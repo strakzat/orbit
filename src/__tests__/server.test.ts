@@ -69,3 +69,25 @@ describe("buildNotionCommentChildren", () => {
     expect(await buildNotionCommentChildren(input, "key")).toEqual([]);
   });
 });
+
+describe("buildNotionCommentProperties and parseNotionComment", () => {
+  it("writes Component only for feedback on a component, and reads it back", async () => {
+    const { buildNotionCommentProperties, parseNotionComment } = await import("../server");
+    const plain = buildNotionCommentProperties({ annotationId: "x", comment: "c" }, "p");
+    expect("Component" in plain).toBe(false);
+
+    const onComponent = buildNotionCommentProperties(
+      { annotationId: '[data-orbit-component="NavBar"]', comment: "c", component: "NavBar" },
+      "p"
+    );
+    expect(onComponent.Component).toEqual({ rich_text: [{ text: { content: "NavBar" } }] });
+
+    const page = {
+      id: "1",
+      created_time: "2026-11-02T00:00:00.000Z",
+      properties: { Component: { rich_text: [{ plain_text: "NavBar" }] } },
+    };
+    expect(parseNotionComment(page).component).toBe("NavBar");
+    expect(parseNotionComment({ ...page, properties: {} }).component).toBeUndefined();
+  });
+});

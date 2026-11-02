@@ -64,6 +64,7 @@ interface Comment {
   label?: string;          // Element label ("<button> Submit...")
   annotationId?: string;   // Element reference (data-annotation-id, id, of CSS selector path)
   varianten?: string;      // De varianten waarin de feedback is gegeven, een regel elk
+  component?: string;      // Feedback op een component: z'n naam (data-orbit-component)
 }
 
 interface CommentsConfig {
@@ -138,6 +139,7 @@ src/
 │   ├── comment-thread.tsx             — Comment lijst
 │   ├── comment-card.tsx               — Eén comment (thread én panel-lijst)
 │   ├── comment-form.tsx               — Feedback submit formulier
+│   ├── component-chip.tsx             — Paarse chip: icoon + naam van een component
 │   ├── marker-badge.tsx               — De ronde badge, één implementatie voor alle drie de plekken
 │   ├── marker-geometry.ts             — Badge-afmetingen en hoekposities
 │   ├── status-pill.tsx                — Comment-status
@@ -164,10 +166,12 @@ src/
 
 Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, krijgt de feedback.
 
-1. **Niveaus.** `levelsFrom(hit)` loopt vanaf het element onder de cursor omhoog en houdt alleen elementen die iemand zou aanwijzen: interactief (`button`, `a`, `input`, `[role]`, …), semantisch (`p`, `li`, `h1`–`h6`, `img`, `section`, …), met een `data-annotation-id`, `data-testid` of `id`, of met een eigen tekst of eigen box (achtergrond, rand, schaduw). Een `span` in een zin telt niet; containers die ≥90% van het frame vullen ook niet. Elementen met precies dezelfde box zijn één niveau, genoemd naar de sterkste (annotatie-id > test-id > id > interactief > semantisch).
+1. **Niveaus.** `levelsFrom(hit)` loopt vanaf het element onder de cursor omhoog en houdt alleen elementen die iemand zou aanwijzen: interactief (`button`, `a`, `input`, `[role]`, …), semantisch (`p`, `li`, `h1`–`h6`, `img`, `section`, …), met een `data-annotation-id`, `data-testid` of `id`, of met een eigen tekst of eigen box (achtergrond, rand, schaduw). Een `span` in een zin telt niet; containers die ≥90% van het frame vullen ook niet. Elementen met precies dezelfde box zijn één niveau, genoemd naar de sterkste (annotatie-id > component > test-id > id > interactief > semantisch).
 2. **↑/↓** stappen tijdens hoveren door die niveaus; het label boven de ring toont het element en `1/3 ↑↓`. Bewegen zet hem terug op het binnenste.
 3. **De locator** (`getLocator()` in `element-id.ts`): een element met een `data-annotation-id` of `id` is die id. Al het andere is een selector vanaf de dichtstbijzijnde naam erboven: `#activiteit > div:nth-of-type(2)`, `[data-annotation-id="2"] > p`, met `aria-label`, `name`, `role` of `type` vóór een positie.
 4. **Terugvinden** (`findElementByAnnotationId(id, label?)`): `getElementById`, dan `[data-annotation-id]`, dan de selector. Met het `label` van de comment (tag + begin van de tekst, zonder Orbits eigen badges) wordt de selector gecontroleerd: leest het element daar anders, dan wint het ene element onder het anker dat nog zo leest. Zo overleeft feedback een rij erbij of een wrapper erom. Twee kandidaten is geen antwoord; dan blijft de selector staan.
+
+**Eén element tegelijk.** Staat er een popover open, dan pakt een klik ernaast geen ander element: hij laat het gekozen element los, en de volgende klik kiest weer.
 
 **De spotlight.** Zolang de inspector aanstaat, dimt een scrim (`--orbit-scrim`) het frame rond het opgelichte element, met een witte ring (`--orbit-spotlight-ring`). De scrim is de schaduw van een uitsparing, geknipt op het frame, dus de rail blijft licht. De popover komt naast het element (`getBesidePopoverStyle()`), erboven of eronder, en er alleen overheen als er nergens anders plek is.
 
@@ -178,12 +182,22 @@ Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, k
 **Annotatie en feedback delen één id per component.** `AnnotationMarker` stempelt `data-annotation-id={annotationId}` op z'n wrapper, en wrapper en component hebben één box, dus het niveau van de kaart heet naar de annotatie. Kies je dat niveau (klik op de rand, of ↑ vanuit de inhoud), dan landt de feedback in dezelfde bak als de annotatie en toont de popover beide; `FeedbackMarkers` slaat geregistreerde marker-id's over. Klik je iets ín de kaart aan, het bedrag, dan krijgt dat element eigen feedback met een eigen pin, onder het anker van de annotatie.
 
 
+## Feedback op een component
+
+Een project markeert een component met `data-orbit-component="Sidebar"` (`COMPONENT_ATTR`). Orbit leest geen React-internals: op een preview (minified) heten componenten `e` en `t`.
+
+- **De kijker kiest.** Zit het gekozen element in een component, dan toont de popover van de inspector de pil van het component (`ComponentHead`), daaronder het element in wit, en dan Instance / Component (een `radiogroup` in Radials pil, gewoon gestyled). Standaard is Instance. De spotlight blijft op de gekozen instance, ook bij Component: die is ook wat de screenshot omlijnt.
+- **De pil boven de ring** begint met de pil van het component (`ComponentChip`) als het opgelichte element in een component zit, ook als het het component zelf is: een pil in de pil, vóór het element. `rank()` geeft `data-orbit-component` 45, tussen annotatie-id en test-id.
+- **Opslag.** `annotationId` is de selector `[data-orbit-component="Sidebar"]` (`componentOf()` / `componentLocator()` in `element-id.ts`), `component` de naam, `pagina` de route waar hij geplaatst is (alleen als context). Het component is géén anker voor `getLocator()`: elke instance heeft dezelfde naam.
+- **Waar hij staat.** `isOnPage()` (`route-matching.ts`) filtert paneel, railteller en pins: feedback op een component staat op elke pagina waar het component nu gerenderd is (`componentsOnPage`, bijgehouden door de provider met een `MutationObserver`, niet tijdens een render). Eén pin, op de eerste instance, paars (`orbit-marker--component`). Zonder het component op de pagina is er geen pin, ook niet geparkeerd: anders stond hij linksboven op elke pagina.
+- **Notion.** `Component` (rich text, gemaakt door `orbit-feedback init`) wordt alleen geschreven als hij gezet is, net als `Varianten`. De Vite-plugin stuurt opnieuw zonder als de kolom ontbreekt.
+
 ## API endpoints (verwacht door consuming project)
 
 ```
 GET  {apiBase}/api/comments?project={project}                         → Comment[]
 GET  {apiBase}/api/comments?project={project}&annotationId={id}       → Comment[]
-POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten?, screenshot? }
+POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten?, component?, screenshot? }
 ```
 
 Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
@@ -331,6 +345,7 @@ Overschrijf ze op `:root` of op een ancestor. Hernoemen is breaking, dus dat geb
 | Feedback | `--orbit-bg-feedback`, `--orbit-border-feedback`, `--orbit-text-feedback`, `--orbit-bg-feedback-solid` |
 | Overlay | `--orbit-overlay-fill`, `-fill-strong`, `--orbit-overlay-ring` |
 | Spotlight | `--orbit-scrim`, `--orbit-spotlight-ring`, `--orbit-spotlight-glow`, `--orbit-spotlight-edge`, `--orbit-spotlight-tag`, `-tag-text` |
+| Component | `--orbit-component`, `--orbit-component-glass`, `--orbit-component-glass-edge`, `--orbit-text-component_on-glass` — Figma's paars `#9747FF` als accent; chip, tag en pin zijn donkerpaars glas met lichte tekst, de naam in mono (in beide thema's, zoals de spotlight-tag). Bewust niet het paars van `suggestion` |
 | Type | `--orbit-type-{documentation,pro,question,con,suggestion,critical,user-insight}-{bg,border,fg}` |
 | Schaal | `--orbit-space-*`, `--orbit-radius-*`, `--orbit-text-*`, `--orbit-shadow-*`, `--orbit-font-body`, `--orbit-font-mono` |
 | Motion | `--orbit-duration-fast`, `--orbit-duration`, `--orbit-duration-slow`, `--orbit-ease` |

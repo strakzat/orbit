@@ -113,6 +113,12 @@ export interface AnnotationLabels {
   feedbackPlaced: string;
   /** "Als {name}", over the comment field once the name is set: a button that shows the name field. */
   formAs: string;
+  /** The inspector's scope choice, for an element inside a component: what the feedback is on. */
+  scopeLabel: string;
+  scopeInstance: string;
+  scopeComponent: string;
+  /** "Component: {name}", for a screen reader: the component a comment or the popover is about. */
+  componentNamed: string;
   /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */
   profile: string;
   profileNamed: string;
@@ -267,6 +273,8 @@ export interface AnnotationContextValue {
   refreshComments: () => Promise<void>;
   currentRoute: string;
   registeredMarkerIds: Set<string>;
+  /** The components (`data-orbit-component`) on the page now: their feedback shows here. */
+  componentsOnPage: Set<string>;
   registerMarkerId: (id: string) => void;
   unregisterMarkerId: (id: string) => void;
   /** Called by `OrbitShell` with its variants, so feedback can say which ones it was given in. */
@@ -307,6 +315,11 @@ export interface Comment {
   annotationId?: string;
   /** The variants the feedback was given in, a line each: "Rol: Administratie". */
   varianten?: string;
+  /**
+   * Given on a component rather than one element: its name, from `data-orbit-component`. Such a
+   * comment shows on every page the component is on, and `annotationId` is the component's selector.
+   */
+  component?: string;
 }
 
 /**

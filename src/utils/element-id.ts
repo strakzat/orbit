@@ -1,3 +1,5 @@
+import { COMPONENT_ATTR } from "../constants";
+
 /**
  * The selector of an element the project gave a name: an annotation id, a test id or an
  * element id. A locator starts at the nearest of these, so it survives anything that
@@ -58,6 +60,32 @@ export function getLocator(el: HTMLElement): string {
   }
 
   return parts.join(" > ");
+}
+
+/** A component of the project's, as marked with `data-orbit-component`. */
+export interface ComponentRef {
+  name: string;
+  /** The instance around the element. */
+  el: HTMLElement;
+  /** What feedback on the component is kept under: a selector every instance answers to. */
+  locator: string;
+}
+
+/** The selector every instance of a component answers to. */
+export function componentLocator(name: string): string {
+  return `[${COMPONENT_ATTR}="${CSS.escape(name)}"]`;
+}
+
+/**
+ * The component `el` is part of: the nearest element with `data-orbit-component`, itself or
+ * above it. Not an anchor for `getLocator()`: every instance carries the same name, so feedback
+ * on one element would land on all of them.
+ */
+export function componentOf(el: Element): ComponentRef | null {
+  const host = el.closest<HTMLElement>(`[${COMPONENT_ATTR}]`);
+  const name = host?.getAttribute(COMPONENT_ATTR)?.trim();
+  if (!host || !name) return null;
+  return { name, el: host, locator: componentLocator(name) };
 }
 
 /**

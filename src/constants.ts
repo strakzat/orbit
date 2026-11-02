@@ -36,6 +36,12 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
 export const ORBIT_UI_ATTR = "data-annotation-inspector";
 
 /**
+ * On an element of the project's that is a component: `data-orbit-component="Sidebar"`. Feedback
+ * inside it can be given on the component, and then shows on every page and instance it is on.
+ */
+export const COMPONENT_ATTR = "data-orbit-component";
+
+/**
  * On the name fields: a name for feedback, not a login. `autocomplete="off"` keeps the browser's
  * own autofill away; the password managers each read their own attribute (1Password, LastPass,
  * Bitwarden, Dashlane) and ignore the standard one.
