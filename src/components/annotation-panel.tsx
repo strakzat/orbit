@@ -18,6 +18,9 @@ import type { Comment, AnnotationType } from "../types";
 const ALL_TYPES: AnnotationType[] = [
   "documentation", "pro", "question", "con", "suggestion", "critical", "user-insight",
 ];
+// The thread's slide out (.orbit-panel__page, --orbit-duration-slow), and a little room.
+const THREAD_EXIT_MS = 300;
+
 const ALL_STATUSES: Comment["status"][] = ["Open", "In behandeling", "Opgelost"];
 
 export function AnnotationPanel() {
@@ -41,6 +44,7 @@ export function AnnotationPanel() {
     currentRoute,
     componentsOnPage,
     language,
+    inspectorActive,
   } = useAnnotations();
 
   // A project that writes no annotations uses Orbit for its feedback: open there.
@@ -54,20 +58,24 @@ export function AnnotationPanel() {
   const searchId = useStableId("orbit-search");
 
   // A thread opened from a card is a page of the panel, pushed over the list. It stays rendered
-  // after Back, so it can slide out; `threadOpen` says which page is in view.
+  // after Back until it has slid out; `threadOpen` says which page is in view.
   const [thread, setThread] = useState<PanelThread | null>(null);
   const [threadOpen, setThreadOpen] = useState(false);
   const backRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
   // The spotlight the inspector picks with: on the card under the mouse, and on the open thread's
-  // element for as long as it is open. "This one" looks the same wherever it is said.
-  const [hoverEl, setHoverEl] = useState<HTMLElement | null>(null);
+  // element for as long as it is open. "This one" looks the same wherever it is said. The hovered
+  // card by its key, so a card that leaves the list under the mouse (a filter, the poll) takes
+  // its spotlight with it, without a mouseleave.
+  const [hover, setHover] = useState<{ key: string; el: HTMLElement | null } | null>(null);
   const [threadEl, setThreadEl] = useState<HTMLElement | null>(null);
 
-  const openThread = (next: PanelThread) => {
-    openerRef.current = document.activeElement as HTMLElement | null;
-    setHoverEl(null);
+  // The card's own button, from the click: Safari does not focus a button it clicks, so the
+  // focused element would not say which card it was.
+  const openThread = (next: PanelThread, opener: HTMLElement) => {
+    openerRef.current = opener;
+    setHover(null);
     // One place to read it: a popover open on the page closes.
     setActiveAnnotationId(null);
     setThread(next);
@@ -75,6 +83,13 @@ export function AnnotationPanel() {
   };
 
   const back = useCallback(() => setThreadOpen(false), []);
+
+  // Slid out, the thread goes: its comments stop polling, and the next one starts fresh.
+  useEffect(() => {
+    if (threadOpen || !thread) return;
+    const timer = window.setTimeout(() => setThread(null), THREAD_EXIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [threadOpen, thread]);
 
   // The focus goes with the page: onto Back once the thread is in, and back to the card that
   // opened it once the list is. After the render, when the page is no longer hidden.
@@ -91,7 +106,7 @@ export function AnnotationPanel() {
   useEffect(() => {
     if (!panelOpen) {
       setThreadOpen(false);
-      setHoverEl(null);
+      setHover(null);
     }
   }, [panelOpen]);
 
@@ -106,7 +121,7 @@ export function AnnotationPanel() {
       const el =
         thread.kind === "annotation"
           ? findElementByAnnotationId(thread.annotation.elementId || thread.annotation.id)
-          : findElementByAnnotationId(thread.annotationId, thread.label);
+          : findElementByAnnotationId(thread.annotationId, thread.label || undefined);
       setThreadEl(el);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
@@ -345,8 +360,8 @@ export function AnnotationPanel() {
               isHovered: annotation.id === hoveredAnnotationId,
               // The card is the index; the thread opens as the panel's next page,
               // and the element on the page is pointed at.
-              onSelect: () => {
-                openThread({ kind: "annotation", annotation });
+              onSelect: (e: React.MouseEvent<HTMLElement>) => {
+                openThread({ kind: "annotation", annotation }, e.currentTarget);
                 // On another route, go there too: the thread then points at its element.
                 if (
                   annotation.target !== "global" &&
@@ -358,8 +373,11 @@ export function AnnotationPanel() {
               // The spotlight, not the pin's quiet hover: from the panel it has to be as
               // clear where on the page the card is.
               onHoverStart: () =>
-                setHoverEl(findElementByAnnotationId(annotation.elementId || annotation.id)),
-              onHoverEnd: () => setHoverEl(null),
+                setHover({
+                  key: `a:${annotation.id}`,
+                  el: findElementByAnnotationId(annotation.elementId || annotation.id),
+                }),
+              onHoverEnd: () => setHover(null),
             })
           )
         )
@@ -397,21 +415,25 @@ export function AnnotationPanel() {
               : fill(labels.feedbackFrom, { name: c.auteur }),
             // Same model as an annotation card: the thread is the panel's next page.
             onSelect: c.annotationId
-              ? () => {
-                  openThread({
-                    kind: "feedback",
-                    annotationId: c.annotationId!,
-                    label: c.label ?? c.annotationId!,
-                    component: c.component,
-                  });
+              ? (e: React.MouseEvent<HTMLElement>) => {
+                  openThread(
+                    {
+                      kind: "feedback",
+                      annotationId: c.annotationId!,
+                      // No label is no label: the selector is not one, and would be sent as one.
+                      label: c.label ?? "",
+                      component: c.component,
+                    },
+                    e.currentTarget
+                  );
                   // Feedback on a component is on every page the component is on: no need to go back.
                   if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) navigateTo(c.pagina);
                 }
               : undefined,
             onMouseEnter: c.annotationId
-              ? () => setHoverEl(findElementByAnnotationId(c.annotationId!, c.label))
+              ? () => setHover({ key: `f:${c.id}`, el: findElementByAnnotationId(c.annotationId!, c.label) })
               : undefined,
-            onMouseLeave: () => setHoverEl(null),
+            onMouseLeave: () => setHover(null),
             footer: c.pagina
               ? React.createElement(
                   "div",
@@ -436,7 +458,13 @@ export function AnnotationPanel() {
 
   // The spotlight is the panel's sibling, not its child: the panel's pages move with
   // transforms, and a fixed layer inside them would move along.
-  const lit = threadOpen ? threadEl : hoverEl;
+  // While picking, the inspector's spotlight is the only one.
+  const hovered =
+    hover &&
+    (view === "annotations"
+      ? filtered.some((a) => `a:${a.id}` === hover.key)
+      : filteredFeedback.some((c) => `f:${c.id}` === hover.key));
+  const lit = inspectorActive ? null : threadOpen ? threadEl : hovered ? hover.el : null;
   return React.createElement(
     React.Fragment,
     null,
@@ -468,7 +496,7 @@ export function AnnotationPanel() {
           className: cx("orbit-panel__page", "orbit-panel__page--thread", threadOpen && "orbit-panel__page--in"),
           role: "region",
           "aria-label": thread
-            ? thread.kind === "annotation" ? thread.annotation.title : thread.label
+            ? thread.kind === "annotation" ? thread.annotation.title : thread.label || thread.annotationId
             : undefined,
         },
         thread &&
@@ -476,7 +504,6 @@ export function AnnotationPanel() {
             // A new thread is a new page: its comments start empty rather than the last one's.
             key: thread.kind === "annotation" ? `a:${thread.annotation.id}` : `f:${thread.annotationId}`,
             thread,
-            open: threadOpen,
             backLabel: view === "annotations" ? labels.viewAnnotations : labels.viewFeedback,
             backRef,
             onBack: back,

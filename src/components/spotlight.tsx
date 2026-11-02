@@ -6,19 +6,33 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { ComponentChip } from "./component-chip";
 
 // The ring sits this far outside the element, so it never covers its edge.
-export const SPOTLIGHT_PAD = 4;
+const SPOTLIGHT_PAD = 4;
 // The ring's width (`outline` in .orbit-spotlight-ring): the tag lines up with its outer edge.
-export const SPOTLIGHT_RING = 1;
+const SPOTLIGHT_RING = 1;
 // The tag's height and its gap to the ring (.orbit-spotlight__tag).
-export const SPOTLIGHT_TAG_HEIGHT = 30;
+const SPOTLIGHT_TAG_HEIGHT = 30;
 const TAG_MAX_WIDTH = 320;
 const TAG_MIN_WITH_COMPONENT = 280;
 // Room the tag needs above the ring; with less, it goes below.
 const TAG_ROOM = 32;
 
 /** Whether the tag goes under the ring around `rect`: there is no room above it. */
-export function spotlightTagBelow(rect: DOMRect): boolean {
+function spotlightTagBelow(rect: DOMRect): boolean {
   return rect.top - pickArea().top - SPOTLIGHT_PAD < TAG_ROOM;
+}
+
+/**
+ * What the spotlight draws around `rect`: the ring, and the tag too when it sits under the ring.
+ * The inspector's bubble hangs from it, so it never covers the tag.
+ */
+export function spotlightAnchor(rect: DOMRect): DOMRect {
+  const out = SPOTLIGHT_PAD + SPOTLIGHT_RING;
+  return new DOMRect(
+    rect.left - out,
+    rect.top - out,
+    rect.width + out * 2,
+    rect.height + out * 2 + (spotlightTagBelow(rect) ? SPOTLIGHT_TAG_HEIGHT : 0)
+  );
 }
 
 interface SpotlightProps {
@@ -37,16 +51,25 @@ interface SpotlightProps {
  * scrim is the shadow of the cutout, clipped to the frame, so the rail and the panel stay lit.
  */
 export function Spotlight({ el, keys, still }: SpotlightProps) {
-  // It follows its element through scrolling and resizing.
+  // It follows its element through scrolling and resizing, once a frame at most. A scroll in
+  // Orbit's own UI (the panel's list, a thread) moves nothing on the page.
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!el) return;
-    const update = () => setTick((t) => t + 1);
+    let frame = 0;
+    const update = (e: Event) => {
+      if (e.target instanceof Element && e.target.closest(".orbit-root")) return;
+      if (!frame) frame = requestAnimationFrame(() => {
+        frame = 0;
+        setTick((t) => t + 1);
+      });
+    };
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
     return () => {
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, [el]);
 

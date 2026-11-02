@@ -67,10 +67,8 @@ export function AnnotationMarker({
     enabled: !!commentsConfig && isActive,
   });
 
-  // Not while picking: the spotlight is about the one element feedback goes on. With the pins
-  // hidden, the one opened from the panel still shows its popover.
+  // Not while picking: the spotlight is about the one element feedback goes on.
   const showMarkers = mounted && annotationMode && !inspectorActive;
-  const showActive = mounted && isActive && !inspectorActive;
   const isHovered = hoveredAnnotationId === annotationId;
   const annotationType = annotation?.type ?? "documentation";
 
@@ -106,8 +104,8 @@ export function AnnotationMarker({
         // styling. The ring needs no reset, and the badges inside carry their own.
         className: cx(
           "orbit-marker-wrap",
-          (showActive || (showMarkers && isHovered)) && "orbit-marker-wrap--lit",
-          showActive && "orbit-marker-wrap--active"
+          showMarkers && (isActive || isHovered) && "orbit-marker-wrap--lit",
+          showMarkers && isActive && "orbit-marker-wrap--active"
         ),
         // Stamp the annotation id on the wrapper so the element is identified by the
         // *same* id everywhere: the inspector walking up for feedback resolves to this
@@ -147,7 +145,8 @@ export function AnnotationMarker({
           style: feedbackCorner(position),
         }),
 
-      showActive &&
+      showMarkers &&
+        isActive &&
         React.createElement(AnnotationPopover, {
           id: popoverId,
           annotation,

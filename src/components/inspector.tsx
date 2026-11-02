@@ -7,7 +7,7 @@ import { componentOf, getElementLabel, getLocator, type ComponentRef } from "../
 import { levelsFrom, pickArea } from "../utils/pick-element";
 import { getBubblePlacement } from "../utils/popover-position";
 import { CommentForm } from "./comment-form";
-import { Spotlight, SPOTLIGHT_PAD, SPOTLIGHT_RING, SPOTLIGHT_TAG_HEIGHT, spotlightTagBelow } from "./spotlight";
+import { Spotlight, spotlightAnchor } from "./spotlight";
 import { useStableId } from "../utils/use-stable-id";
 import { fill } from "../labels";
 import { ComponentIcon, InstanceIcon } from "../icons";
@@ -38,8 +38,6 @@ interface Hover {
   index: number;
 }
 
-const RING = SPOTLIGHT_RING;
-const TAG_HEIGHT = SPOTLIGHT_TAG_HEIGHT;
 const BUBBLE_WIDTH = 320;
 // The bubble once it has opened up for a few lines: below the element only if that fits.
 const BUBBLE_HEIGHT = 140;
@@ -351,8 +349,7 @@ export function Inspector() {
   const lit = selected ? selected.el : hover ? hover.levels[hover.index] : null;
   const litRect = lit?.isConnected ? lit.getBoundingClientRect() : null;
 
-  // Radial's spotlight, while picking. With the tag under the ring, the bubble goes under the tag.
-  const tagBelow = !!litRect && spotlightTagBelow(litRect);
+  // Radial's spotlight, while picking.
   const spotlight = active
     ? React.createElement(Spotlight, {
         key: "spotlight",
@@ -370,13 +367,8 @@ export function Inspector() {
           selected,
           scope,
           onScope: setScope,
-          ring: new DOMRect(
-            litRect.left - SPOTLIGHT_PAD - RING,
-            litRect.top - SPOTLIGHT_PAD - RING,
-            litRect.width + (SPOTLIGHT_PAD + RING) * 2,
-            // With the tag under the ring, the bubble goes under the tag.
-            litRect.height + (SPOTLIGHT_PAD + RING) * 2 + (tagBelow ? TAG_HEIGHT : 0)
-          ),
+          // The spotlight says where it drew the ring, and the tag when it is under the ring.
+          ring: spotlightAnchor(litRect),
           onSent: () => {
             setActive(false);
             setNotice(labels.feedbackPlaced);

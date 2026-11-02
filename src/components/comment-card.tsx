@@ -16,7 +16,7 @@ interface CommentCardProps {
    * Opens this comment's thread on the page. Leave it out for a thread inside a
    * popover, where the comments are already shown in full.
    */
-  onSelect?: () => void;
+  onSelect?: (e: React.MouseEvent<HTMLElement>) => void;
   isActive?: boolean;
   activateLabel?: string;
   onMouseEnter?: () => void;

@@ -14,8 +14,6 @@ export type PanelThread =
 
 interface ThreadPageProps {
   thread: PanelThread;
-  /** Whether it is the page in view; it stays rendered behind the list, to slide out. */
-  open: boolean;
   /** The view it was opened from: the back button's text. */
   backLabel: string;
   backRef: React.Ref<HTMLButtonElement>;
@@ -29,8 +27,8 @@ interface ThreadPageProps {
  * panel can sit on top of. The panel keeps the element in the spotlight while it is open, so the
  * page still says where it is.
  */
-export function ThreadPage({ thread, open, backLabel, backRef, onBack, onClose }: ThreadPageProps) {
-  const { labels, commentsConfig } = useAnnotations();
+export function ThreadPage({ thread, backLabel, backRef, onBack, onClose }: ThreadPageProps) {
+  const { labels, commentsConfig, refreshComments } = useAnnotations();
 
   const annotationId = thread.kind === "annotation" ? thread.annotation.id : thread.annotationId;
   const label = thread.kind === "annotation" ? thread.annotation.title : thread.label;
@@ -40,7 +38,9 @@ export function ThreadPage({ thread, open, backLabel, backRef, onBack, onClose }
     project: commentsConfig?.project ?? "",
     annotationId,
     label,
-    enabled: !!commentsConfig && open,
+    // Also while it slides out after Back: emptied then, it would slide out blank. The panel
+    // unmounts it once it is out.
+    enabled: !!commentsConfig,
     component: thread.kind === "feedback" ? thread.component : undefined,
   });
 
@@ -50,7 +50,8 @@ export function ThreadPage({ thread, open, backLabel, backRef, onBack, onClose }
           "div",
           { className: "orbit-popover__section" },
           thread.component && React.createElement(ComponentHead, { name: thread.component, labels }),
-          React.createElement("div", { className: "orbit-mono" }, thread.label)
+          // Old feedback without a label: the selector, to show something, never to send.
+          React.createElement("div", { className: "orbit-mono" }, thread.label || thread.annotationId)
         )
       : undefined;
 
@@ -93,7 +94,11 @@ export function ThreadPage({ thread, open, backLabel, backRef, onBack, onClose }
         comments,
         isLoading,
         error,
-        onSubmit: submitComment,
+        // The list behind it, its tab and the rail count the new comment at once, not at the next poll.
+        onSubmit: async (data) => {
+          await submitComment(data);
+          void refreshComments();
+        },
       })
     )
   );
