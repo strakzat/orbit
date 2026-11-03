@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.8.0
 
 - **The pins are the viewer's to show or hide.** Annotations and feedback on the page show by
   default, so you see what is there. A switch in the profile ("Annotaties en feedback tonen")
