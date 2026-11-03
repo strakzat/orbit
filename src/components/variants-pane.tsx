@@ -333,7 +333,16 @@ function Multi({ variant, onAnnounce }: { variant: OrbitMultiVariant; onAnnounce
 }
 
 /** On or off: the title, and Radial's switch beside it, near-white when on. For one thing alone. */
-function Switch({ variant, onAnnounce }: { variant: OrbitSwitchVariant; onAnnounce: Announce }) {
+export function Switch({
+  variant,
+  onAnnounce,
+  hint = variant.hint,
+}: {
+  variant: OrbitSwitchVariant;
+  onAnnounce: Announce;
+  /** In place of the variant's own hint, for more than text: the profile's key chips. */
+  hint?: React.ReactNode;
+}) {
   const { labels } = useAnnotations();
   const hintId = useStableId("orbit-variant-hint");
   return React.createElement(
@@ -345,7 +354,7 @@ function Switch({ variant, onAnnounce }: { variant: OrbitSwitchVariant; onAnnoun
         type: "button",
         role: "switch",
         "aria-checked": variant.value,
-        "aria-describedby": variant.hint ? hintId : undefined,
+        "aria-describedby": hint ? hintId : undefined,
         className: "orbit-switch",
         onClick: () => {
           variant.onChange(!variant.value);
@@ -359,8 +368,8 @@ function Switch({ variant, onAnnounce }: { variant: OrbitSwitchVariant; onAnnoun
         React.createElement("span", { className: "orbit-switch__knob" })
       )
     ),
-    variant.hint
-      ? React.createElement("p", { id: hintId, className: "orbit-variants__hint orbit-variants__hint--switch" }, variant.hint)
+    hint
+      ? React.createElement("p", { id: hintId, className: "orbit-variants__hint orbit-variants__hint--switch" }, hint)
       : null
   );
 }

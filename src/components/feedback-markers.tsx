@@ -45,7 +45,6 @@ export function FeedbackMarkers() {
     commentsConfig,
     setActiveAnnotationId,
     activeAnnotationId,
-    setPanelOpen,
     currentRoute,
     registeredMarkerIds,
     componentsOnPage,
@@ -191,7 +190,6 @@ export function FeedbackMarkers() {
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : badge.annotationId);
-          if (!isActive) setPanelOpen(true);
         },
       })
     );

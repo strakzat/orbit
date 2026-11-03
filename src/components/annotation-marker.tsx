@@ -38,7 +38,6 @@ export function AnnotationMarker({
     hoveredAnnotationId,
     setActiveAnnotationId,
     setHoveredAnnotationId,
-    setPanelOpen,
     commentsConfig,
     allAnnotations,
     allComments,
@@ -91,7 +90,6 @@ export function AnnotationMarker({
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveAnnotationId(isActive ? null : annotationId);
-    if (!isActive) setPanelOpen(true);
   };
 
   return React.createElement(

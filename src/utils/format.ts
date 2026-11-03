@@ -2,11 +2,11 @@ import type { AnnotationLabels } from "../types";
 
 /** Small presentational formatters shared by the comment components. */
 
-/** Up to two uppercase initials from a name, for an avatar monogram. */
+/** Initials for an avatar monogram: "E" for Elwin, "ED" for Elwin de Witte. */
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  if (parts.length === 1) return parts[0][0].toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 

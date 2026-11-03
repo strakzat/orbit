@@ -1,5 +1,30 @@
 # Changelog
 
+## 4.8.0
+
+- **The pins are the viewer's to show or hide.** Annotations and feedback on the page show by
+  default, so you see what is there. A switch in the profile ("Annotaties en feedback tonen")
+  hides them, and Cmd/Ctrl + `.` does the same; the choice is kept with the name and language.
+  `settings.defaultVisible` is now `true` and is where it starts until the viewer chooses.
+- **The panel no longer shows or hides the pins.** Opening and closing Annotaties en feedback
+  leaves them as they are, and clicking a pin no longer opens the panel. With the pins hidden,
+  the panel still opens threads and points at their elements.
+- `annotationMode` / `setAnnotationMode` on the context are that setting now; new on the
+  context: `setViewerShowMarkers`, and `viewer.showMarkers`. New labels: `profileMarkers`,
+  `profileMarkersHint` ("Sneltoets", followed by the keys as chips: ⌘ . on a Mac, Ctrl . elsewhere).
+- **A thread without the panel.** A pin opens its thread as a popover on the page; the panel is
+  for browsing everything, and only opens from its own button.
+- **The panel points with the spotlight you place feedback with.** Hovering a card dims the
+  page around its element, ringed in white with its name in a tag, the same as picking with
+  Feedback plaatsen; moving between cards, it glides along. Hovering a pin on the page keeps
+  the faint highlight.
+- **A thread opens inside the panel.** Clicking a card pushes its thread over the list as the
+  panel's next page, with a back button (‹ Annotaties / ‹ Feedback) and the composer; no popover
+  opens on the page, where it could end up behind the panel. The element is scrolled into view
+  and stays in the spotlight while the thread is open. The list slides away to the left and keeps its filters, search and scroll. Escape
+  in a thread goes back; the focus goes to Back, and back to the card. New label: `threadBack`.
+- **One initial for one name.** "Elwin" is E, "Elwin de Witte" is EW.
+
 ## 4.7.0
 
 - **A comment bubble instead of a popover.** After picking an element, a message bubble opens

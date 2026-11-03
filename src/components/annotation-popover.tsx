@@ -54,8 +54,6 @@ export function AnnotationPopover({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const type = annotation?.type ?? "documentation";
-
   return React.createElement(
     "div",
     {
@@ -88,6 +86,42 @@ export function AnnotationPopover({
       React.createElement(XIcon, { size: 16 })
     ),
 
+    React.createElement(ThreadSections, {
+      annotation,
+      header,
+      showComments,
+      comments,
+      isLoading,
+      error,
+      onSubmit,
+    })
+  );
+}
+
+type ThreadSectionsProps = Pick<
+  AnnotationPopoverProps,
+  "annotation" | "header" | "showComments" | "comments" | "isLoading" | "error" | "onSubmit"
+>;
+
+/**
+ * What a thread is: the annotation, if there is one, and the feedback on it with the composer.
+ * The popover on the page and the thread page in the panel both show it.
+ */
+export function ThreadSections({
+  annotation,
+  header,
+  showComments,
+  comments,
+  isLoading,
+  error,
+  onSubmit,
+}: ThreadSectionsProps) {
+  const { labels } = useAnnotationsSafe();
+  const type = annotation?.type ?? "documentation";
+
+  return React.createElement(
+    React.Fragment,
+    null,
     header,
 
     annotation &&

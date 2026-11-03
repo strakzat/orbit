@@ -44,7 +44,6 @@ export function AutoAnnotationMarkers() {
     hoveredAnnotationId,
     setActiveAnnotationId,
     setHoveredAnnotationId,
-    setPanelOpen,
     allAnnotations,
     allComments,
     commentsConfig,
@@ -223,7 +222,6 @@ export function AutoAnnotationMarkers() {
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : annotation.id);
-          if (!isActive) setPanelOpen(true);
         },
         onMouseEnter: () => setHoveredAnnotationId(annotation.id),
         onMouseLeave: () => setHoveredAnnotationId(null),

@@ -554,6 +554,30 @@ const CHROME = `
   margin-top: calc(var(--orbit-space-1-5) * -1);
 }
 
+/* A shortcut, a chip per key: the profile's hint under the pins switch. */
+.orbit-keys {
+  display: inline-flex;
+  gap: var(--orbit-space-1);
+  margin-left: var(--orbit-space-1-5);
+  vertical-align: middle;
+}
+
+.orbit-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--orbit-space-1-5);
+  border-radius: var(--orbit-radius-sm);
+  background: var(--orbit-glass-chip);
+  box-shadow: var(--orbit-glass-chip-edge);
+  color: var(--orbit-text-secondary);
+  font-family: var(--orbit-font-body);
+  font-size: var(--orbit-text-xs);
+  line-height: 1;
+}
+
 /* Holds the measuring copy of a choice's pill. */
 .orbit-variants__measure {
   position: relative;
@@ -1307,6 +1331,85 @@ const PANEL = `
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--orbit-radius-2xl);
+}
+
+/*
+ * The panel's two pages, over each other: the list, and a thread pushed over it from the right.
+ * The list gives way to the left, at half the distance, so the thread reads as the next page
+ * and Back as the way to the one before. The page going out fades quicker than the one coming in. Transitions, not keyframes: a quick Back mid-push turns
+ * around from where it is. The page out of view goes hidden once it has slid away, so it leaves
+ * the tab order; coming in, it is visible at once.
+ */
+.orbit-panel__page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* Out quicker than in: the panel is glass, and two pages through each other read as noise. */
+  transition:
+    transform var(--orbit-duration-slow) var(--orbit-ease),
+    opacity var(--orbit-duration-fast) var(--orbit-ease),
+    visibility 0s linear var(--orbit-duration-slow);
+}
+
+.orbit-panel__page--list {
+  transform: translateX(-12%);
+}
+
+.orbit-panel__page--thread {
+  transform: translateX(24%);
+}
+
+.orbit-panel__page--in {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    transform var(--orbit-duration-slow) var(--orbit-ease),
+    opacity var(--orbit-duration-slow) var(--orbit-ease),
+    visibility 0s;
+}
+
+/* Less motion: no sliding, the pages still cross-fade so the change is not a jump. */
+@media (prefers-reduced-motion: reduce) {
+  .orbit-root .orbit-panel__page {
+    transform: none;
+    transition-duration: var(--orbit-duration-slow) !important;
+  }
+}
+
+/* The thread scrolls under its header, as the list does. */
+.orbit-thread-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Back to the list: the view it came from, after a chevron. */
+.orbit-back {
+  display: flex;
+  align-items: center;
+  gap: var(--orbit-space-1);
+  height: 32px;
+  margin-right: auto;
+  padding: 0 var(--orbit-space-3) 0 var(--orbit-space-1-5);
+  border-radius: var(--orbit-radius-full);
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  font-weight: 500;
+  transition:
+    background-color var(--orbit-duration-fast) var(--orbit-ease),
+    color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-back:hover {
+  background: var(--orbit-glass-chip);
+  color: var(--orbit-text-primary);
 }
 
 /* The tabs and the close share one row. */

@@ -13,7 +13,7 @@ interface AnnotationCardProps {
   isActive: boolean;
   /** Set when the marker for this annotation is hovered out on the page. */
   isHovered: boolean;
-  onSelect: () => void;
+  onSelect: (e: React.MouseEvent<HTMLElement>) => void;
   onHoverStart: (id: string) => void;
   onHoverEnd: () => void;
 }

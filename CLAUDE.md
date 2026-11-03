@@ -31,7 +31,7 @@ AnnotationProvider (context + state, één poller voor alle comments)
 ├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
 │   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
 │   │   ├── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
-│   │   └── ProfilePane     — de avatar rechts op de rail: naam en taal van de kijker
+│   │   └── ProfilePane     — de avatar rechts op de rail: naam, taal en pins van de kijker
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
 ├── Inspector               — element picker met spotlight voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
@@ -90,12 +90,12 @@ interface CommentsConfig {
 
 ```typescript
 {
-  defaultVisible: false,
+  defaultVisible: true,     // de pins tonen, tot de kijker kiest
   accentColor: "#171717",
   panelWidth: 420,
   panelHeight: 640,         // ook de hoogte van het variantenpaneel
   zIndex: 9000,
-  keyboardShortcut: true,   // Cmd+. / Ctrl+. (annotatiemodus), C (feedback plaatsen)
+  keyboardShortcut: true,   // Cmd+. / Ctrl+. (pins tonen/verbergen), C (feedback plaatsen)
 }
 ```
 
@@ -132,10 +132,12 @@ src/
 │   ├── annotation-panel.tsx           — Side panel: annotation list + feedback list + filters + search
 │   ├── annotation-card.tsx            — Annotation card in panel
 │   ├── annotation-marker.tsx          — Wrapper component: ring + badges + popover
-│   ├── annotation-popover.tsx         — Gedeelde popover (marker, auto-marker én inspector)
+│   ├── annotation-popover.tsx         — Gedeelde popover (marker, auto-marker én inspector); ThreadSections
+│   ├── thread-page.tsx                — Een thread als pagina van het paneel, met Terug
 │   ├── auto-annotation-markers.tsx    — Auto-discovers data-annotation-id elementen
 │   ├── feedback-markers.tsx           — Floating feedback badges op elementen met comments
 │   ├── inspector.tsx                  — Element picker: spotlight, ↑/↓ niveaus, click-to-comment
+│   ├── spotlight.tsx                  — De spotlight: scrim, witte ring, pil; voor de inspector én het paneel
 │   ├── comment-thread.tsx             — Comment lijst
 │   ├── comment-card.tsx               — Eén comment (thread én panel-lijst)
 │   ├── comment-form.tsx               — De composer: één regel met verstuurknop, groeit met de tekst
@@ -147,7 +149,7 @@ src/
 ├── hooks/
 │   ├── use-comments.ts                — Fetch + submit comments voor specifiek annotationId (polls 30s)
 │   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
-│   ├── use-viewer.ts                  — Naam en taal van de kijker, in localStorage
+│   ├── use-viewer.ts                  — Naam, taal en pins van de kijker, in localStorage
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
@@ -179,7 +181,7 @@ Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, k
 
 **De knop zegt hoe je stopt.** Zolang de inspector aanstaat, groeit er rechts in Feedback plaatsen een × bij, met de tooltip "Stoppen (C of Esc)". `.orbit-rail__close` is altijd gerenderd: z'n kolom gaat van `minmax(0, 0fr)` naar `minmax(0, 1fr)`, zodat de knop vloeiend breder wordt in plaats van te springen, en de × draait erin (`opacity`, `transform`), 200 ms `--orbit-ease`. Dicht is hij precies zo breed als zonder ×.
 
-**Tijdens het kiezen geen andere markers.** Zolang de inspector aanstaat, tonen `AnnotationMarker`, `AutoAnnotationMarkers` en `FeedbackMarkers` niets, ook in annotatiemodus: de spotlight gaat over het ene element waar de feedback op komt. Is de comment verstuurd, dan sluiten ballon én inspector, haalt `refreshComments()` (op de context) de lijst meteen opnieuw op zodat pin en teller er direct zijn, en meldt de status-regio "Feedback geplaatst.". Mislukt het versturen, dan blijft alles open met de tekst en de foutmelding in de ballon.
+**Tijdens het kiezen geen andere markers.** Zolang de inspector aanstaat, tonen `AnnotationMarker`, `AutoAnnotationMarkers` en `FeedbackMarkers` niets, ook als de pins aanstaan: de spotlight gaat over het ene element waar de feedback op komt. Is de comment verstuurd, dan sluiten ballon én inspector, haalt `refreshComments()` (op de context) de lijst meteen opnieuw op zodat pin en teller er direct zijn, en meldt de status-regio "Feedback geplaatst.". Mislukt het versturen, dan blijft alles open met de tekst en de foutmelding in de ballon.
 
 **Annotatie en feedback delen één id per component.** `AnnotationMarker` stempelt `data-annotation-id={annotationId}` op z'n wrapper, en wrapper en component hebben één box, dus het niveau van de kaart heet naar de annotatie. Kies je dat niveau (klik op de rand, of ↑ vanuit de inhoud), dan landt de feedback in dezelfde bak als de annotatie (de popover van de annotatie toont beide); `FeedbackMarkers` slaat geregistreerde marker-id's over. Klik je iets ín de kaart aan, het bedrag, dan krijgt dat element eigen feedback met een eigen pin, onder het anker van de annotatie.
 
@@ -211,10 +213,11 @@ Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 - **Panel sub-tabs**: "Deze pagina" vs "Alles" — gedeelde tab tussen annotations en feedback views
 - **Panel-header**: geen aparte titelbalk. De twee tabs en de sluitknop delen één rij; het paneel sleept niet, het blijft boven de knop op de rail die het opent. Een project zonder annotaties opent op Feedback. `labels.panelTitle` is nog steeds de `aria-label` van het paneel, maar staat niet meer als tekst boven twee tabs die al Annotaties en Feedback heten.
 - **Losse annotaties krijgen tóch een marker.** Heeft een annotatie geen element op de pagina — `target: "global"`, of het element is nu niet gerenderd — dan parkeert `AutoAnnotationMarkers` de badge in een kolom linksboven (`unplacedBadgeRect()` in `marker-geometry.ts`), met een streepjesrand als teken dat hij nergens aan hangt. De popover opent daar. Zonder dat waren die annotaties alleen in het paneel te lezen.
-- **Een annotatiekaart selecteert, hij klapt niet uit.** Klikken zet `activeAnnotationId`, waardoor de popover van die annotatie op de pagina opent — daar staat de volledige body. De kaart blijft op twee regels afgekapt: hij is een lijstingang, geen tweede kopie van de annotatie. Nog eens klikken sluit de popover.
-  - Zit het element op deze pagina, dan wordt er ook naartoe gescrold en gehighlight.
-  - Staat de annotatie op een andere route (tab "Alles"), dan navigeert de klik daar eerst heen; `activeAnnotationId` blijft staan, dus de popover opent zodra de marker daar rendert.
-- **Een feedbackkaart werkt hetzelfde.** Klikken opent de thread als popover op de pagina, naast het element waar de feedback op zit. `FeedbackMarkers` rendert die popover; de kaart in het paneel blijft afgekapt (comment 3 regels, antwoord 2).
+- **Een kaart opent z'n thread in het paneel, als volgende pagina.** Klikken schuift `ThreadPage` (`thread-page.tsx`) over de lijst: een terugknop met de naam van de view (‹ Annotaties / ‹ Feedback), dan de annotatie voluit en de feedback met de composer (`ThreadSections`, dezelfde inhoud als de popover). Op de pagina opent dan géén popover, die viel soms achter het paneel; het element wordt in beeld gescrold en blijft in de spotlight zolang de thread open is. Een pin op de pagina opent nog steeds z'n popover daar, zonder het paneel: het paneel is om door alles te bladeren. De kaart blijft afgekapt (annotatie twee regels, comment drie, antwoord twee): hij is een lijstingang.
+  - **De overgang.** Beide pagina's liggen over elkaar (`.orbit-panel__page`), de lijst blijft gerenderd, dus filters, zoekveld en scrollpositie staan er nog na Terug. De thread komt van rechts (`translateX(24%)`), de lijst wijkt half zo ver naar links: 200 ms `--orbit-ease`, transitions zodat een snelle Terug halverwege omkeert. De pagina die weggaat vervaagt sneller (`--orbit-duration-fast`) dan de nieuwe verschijnt, want door glas heen lezen twee pagina's als ruis. Weg is hij `visibility: hidden`, dus uit de tabvolgorde. Met `prefers-reduced-motion` geen schuiven, alleen de crossfade.
+  - **Focus en Escape.** Openen zet de focus op Terug; Terug (of Escape in de thread) brengt hem naar de kaart die hem opende (de knop uit de klik, want Safari focust geen knop bij een klik). Uitgeschoven verdwijnt de thread (`THREAD_EXIT_MS`): z'n comments pollen niet door. Een comment vanuit de thread ververst meteen de lijst en de teller (`refreshComments()`). Escape op de lijst sluit het paneel, en een gesloten paneel opent weer op de lijst.
+  - Staat de annotatie of feedback op een andere route (tab "Alles"), dan navigeert de klik daar ook heen, en wijst de thread het element daar aan zodra de route gerenderd is.
+- **Het paneel wijst aan met de spotlight van Feedback plaatsen.** Een kaart onder de muis zet z'n element in dezelfde spotlight als de inspector bij het kiezen: het frame dimt, het element houdt een witte ring en de pil met z'n naam (en component). Van kaart naar kaart glijdt hij mee. Staat er een thread open, dan blijft z'n element in de spotlight tot Terug; openen scrolt het in beeld. `Spotlight` (`spotlight.tsx`) is één component voor de inspector en het paneel; het paneel rendert hem náást zich, niet erin, want de pagina's van het paneel bewegen met transforms. Zolang de inspector aanstaat, tekent alleen díe een spotlight. Een pin op de pagina hoveren houdt de stille highlight (`showHoverHighlight`).
 - **Losse feedback wordt ook geparkeerd.** Is het element van een comment verdwenen, dan krijgt de badge een plek in dezelfde kolom linksboven, onder de losse annotaties. `marker-placement.ts` bepaalt de volgorde, zodat `AutoAnnotationMarkers` en `FeedbackMarkers` niet in hetzelfde vakje tekenen.
 - **Beide tabs tellen hetzelfde soort ding**: annotaties op deze pagina, en niet-opgeloste feedback op deze pagina.
 - **Teller op de rail** (Annotaties en feedback): `currentAnnotations.length + openFeedbackCount` (page-gefilterd)
@@ -322,10 +325,11 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 
 ### Taal en naam
 
-Rechts op de rail staat de kijker: een monogram zodra er een naam is, anders een profielicoon. Het opent een klein paneel (niet-modale `dialog`, zoals Varianten) met de naam en de taal: Nederlands of English, met de segmenten van een `choice`. Geen titel: de sluitknop zweeft rechtsboven (`labels.profileTitle` is de `aria-label`). Bovenin staat het monogram groot en gecentreerd als voorbeeld, met de naam eronder: direct te typen, zonder veldstijl (placeholder "Je naam..."), de focus als een blauwe lijn eronder. Het naamveld draagt `NO_AUTOFILL`: `autocomplete="off"` plus de negeer-attributen van 1Password, LastPass, Bitwarden en Dashlane — het is een naam voor feedback, geen login. Openen sluit al het andere: paneel, popover, inspector en Varianten — elk apart, want de inspector kan aanstaan zonder annotatiemodus.
+Rechts op de rail staat de kijker: een monogram zodra er een naam is, anders een profielicoon. Het opent een klein paneel (niet-modale `dialog`, zoals Varianten) met de naam, de taal (Nederlands of English, met de segmenten van een `choice`) en een switch voor de pins. Geen titel: de sluitknop zweeft rechtsboven (`labels.profileTitle` is de `aria-label`). Bovenin staat het monogram groot en gecentreerd als voorbeeld, met de naam eronder: direct te typen, zonder veldstijl (placeholder "Je naam..."), de focus als een blauwe lijn eronder. Het naamveld draagt `NO_AUTOFILL`: `autocomplete="off"` plus de negeer-attributen van 1Password, LastPass, Bitwarden en Dashlane — het is een naam voor feedback, geen login. Openen sluit al het andere: paneel, popover, inspector en Varianten. De pins blijven staan: die zijn een instelling, geen venster.
 
 - **De naam is voor feedback.** Eén keer gezet, gaat elke comment eronder uit. Het formulier heeft geen naamveld: zonder naam gaat de comment uit als `Anonymous` (`ANONYMOUS` in `constants.ts`). De naam zet je alleen in het profiel. Annotaties komen uit de data van het project, die schrijft Orbit niet.
-- **De taal is van de kijker.** `language` op de provider is waar Orbit begint; de keuze van de kijker gaat erboven. Naam en taal staan in `localStorage` (`@strakzat/orbit:viewer`), voor elk project op dezelfde origin; de oude sleutel van het formulier (`commentAuteur`) wordt één keer overgenomen. Gelezen na mount, zodat server-HTML en de eerste client-render gelijk zijn.
+- **De pins zijn van de kijker.** Annotaties en feedback op de pagina staan standaard aan, zodat je ziet wat er is; uitzetten kan in het profiel (switch "Annotaties en feedback tonen") of met Cmd/Ctrl + `.`, en dat blijft bewaard (`showMarkers`). `settings.defaultVisible` is waar het begint tot de kijker kiest, net als `language`. Het paneel staat er los van: openen en sluiten verandert niets aan de pins. Op de context zijn `annotationMode` / `setAnnotationMode` die instelling. Staan de pins uit, dan werkt het paneel gewoon: een kaart opent z'n thread in het paneel en de spotlight wijst het element aan. Een pin aanklikken opent alleen z'n thread, niet het paneel: het paneel is om alles door te bladeren. Onder de switch staat de sneltoets als toetsen, een `<kbd class="orbit-key">` elk (⌘ . op een Mac, Ctrl . elders), achter `labels.profileMarkersHint` ("Sneltoets").
+- **De taal is van de kijker.** `language` op de provider is waar Orbit begint; de keuze van de kijker gaat erboven. Naam, taal en pins staan in `localStorage` (`@strakzat/orbit:viewer`), voor elk project op dezelfde origin; de oude sleutel van het formulier (`commentAuteur`) wordt één keer overgenomen. Gelezen na mount, zodat server-HTML en de eerste client-render gelijk zijn.
 - **Orbit vertaalt alleen zichzelf.** Annotaties, feedback en de varianten zijn van het project. Wil een project z'n varianten in beide talen, dan bouwt het ze uit `useOrbitLanguage()`, en ze volgen de wissel. De `varianten` op een comment zijn de tekst die de kijker zag, in de taal van dat moment.
 - **Labels per taal.** `LABELS.nl` en `LABELS.en` in `labels.ts`; een overschrijving is plat (voor elke taal) of per taal (`{ nl: {…}, en: {…} }`). Een tekst met `{count}`, `{name}`, `{label}` of `{title}` is een template, gevuld met `fill()`. Er staat geen Nederlandse tekst meer los in een component.
 - Datums blijven "15 Apr 2026" in beide talen: vaste maandnamen, hetzelfde in elke browser-locale.
@@ -384,7 +388,7 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image, en de lettertypes Inter en Geist Mono) zit gebundeld in `dist`, met de licenties in `THIRD-PARTY-NOTICES.md`.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
-- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam en taal.
+- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam, taal en pins.
 - Comments worden door de provider gepolled, één keer voor alles, elke 30 seconden zolang comments aanstaan — ook als het paneel dicht is, voor de teller op de rail. Een verborgen tab slaat over; na een fout wordt het twee minuten later opnieuw geprobeerd.
 
 ## Checks

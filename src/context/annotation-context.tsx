@@ -58,7 +58,7 @@ export function AnnotationProvider({
     [settingsOverride]
   );
   // The viewer's language when they chose one, else the project's.
-  const { viewer, setViewerName, setViewerLanguage } = useViewer();
+  const { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers } = useViewer();
   const language: OrbitLanguage = viewer.language ?? projectLanguage;
   const labels = useMemo(() => resolveLabels(language, labelsOverride), [language, labelsOverride]);
 
@@ -70,14 +70,22 @@ export function AnnotationProvider({
     [settings.accentColor, settings.zIndex]
   );
 
-  const [annotationMode, setAnnotationMode] = useState(false);
+  // The pins on the page, annotations and feedback: the viewer's choice, else the project's. Apart
+  // from the panel, which opens and closes without them.
+  const annotationMode = viewer.showMarkers ?? settings.defaultVisible;
   const [panelOpen, setPanelOpen] = useState(false);
-
-  // Apply defaultVisible after mount
-  useEffect(() => {
-    setAnnotationMode(settings.defaultVisible);
-  }, []);
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+
+  const setAnnotationMode = useCallback(
+    (show: boolean) => {
+      setViewerShowMarkers(show);
+      // Hidden is nothing on the page, an open popover included.
+      if (!show) setActiveAnnotationId(null);
+    },
+    [setViewerShowMarkers]
+  );
+  const annotationModeRef = useRef(annotationMode);
+  annotationModeRef.current = annotationMode;
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null);
   const [inspectorActive, setInspectorActive] = useState(false);
   const [contextStack, setContextStack] = useState<string[]>([]);
@@ -116,28 +124,19 @@ export function AnnotationProvider({
     }
   }, [currentRoute]);
 
-  // Close panel and inspector when annotation mode is turned off
-  useEffect(() => {
-    if (!annotationMode) {
-      setPanelOpen(false);
-      setActiveAnnotationId(null);
-      setInspectorActive(false);
-    }
-  }, [annotationMode]);
-
-  // Keyboard shortcut: Cmd+. / Ctrl+.
+  // Keyboard shortcut: Cmd+. / Ctrl+. shows or hides the pins, as the profile's switch does.
   useEffect(() => {
     if (!settings.keyboardShortcut) return;
 
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === ".") {
         e.preventDefault();
-        setAnnotationMode((prev) => !prev);
+        setAnnotationMode(!annotationModeRef.current);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [settings.keyboardShortcut]);
+  }, [settings.keyboardShortcut, setAnnotationMode]);
 
   // C: place feedback, like the rail's button; C again stops. A bare letter, so it stands down
   // whenever the key means something else: typing in a field, a modifier held, a held-down
@@ -285,9 +284,11 @@ export function AnnotationProvider({
       viewer,
       setViewerName,
       setViewerLanguage,
+      setViewerShowMarkers,
     }),
     [
       annotationMode,
+      setAnnotationMode,
       panelOpen,
       activeAnnotationId,
       hoveredAnnotationId,
@@ -314,6 +315,7 @@ export function AnnotationProvider({
       viewer,
       setViewerName,
       setViewerLanguage,
+      setViewerShowMarkers,
     ]
   );
 

@@ -538,12 +538,12 @@ const comments = data.results.map(parseNotionComment);
   annotations={data}
   currentRoute={pathname}
   settings={{
-    defaultVisible: false,           // start with annotations on/off
+    defaultVisible: true,            // pins on the page until the viewer chooses in their profile
     accentColor: "#1567a4",          // accent colour
     panelWidth: 420,                 // panel width in px
     panelHeight: 640,                // panel height in px, and the variants pane's
     zIndex: 9000,                    // base z-index
-    keyboardShortcut: true,          // Cmd+. / Ctrl+. annotation mode, C to give feedback
+    keyboardShortcut: true,          // Cmd+. / Ctrl+. show/hide pins, C to give feedback
   }}
 >
 ```

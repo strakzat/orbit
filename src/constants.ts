@@ -19,7 +19,8 @@ export const TYPE_ICONS: Record<AnnotationType, typeof FileTextIcon> = {
 export const DEFAULT_LABELS: AnnotationLabels = LABELS.nl;
 
 export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
-  defaultVisible: false,
+  // The pins show: what is there, is seen. The viewer can hide them in their profile.
+  defaultVisible: true,
   // Tints the quiet brand tokens (subtle fill, border, links). The primary button is
   // a theme-aware monochrome constant, so this no longer needs to read on both themes.
   accentColor: "#171717",
