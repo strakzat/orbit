@@ -277,6 +277,8 @@ npm version patch # bump version
 npm publish       # publishes to GitHub Packages (npm.pkg.github.com)
 ```
 
+**Elke PR bumpt de versie.** `npm version patch|minor|major --no-git-tag-version` (package.json én package-lock.json), met een entry bovenaan `CHANGELOG.md`, en de titel van de PR begint met de nieuwe versie (`4.9.1: …`). Patch voor een fix of kleine UI-aanpassing, minor voor nieuwe functionaliteit, major voor een breaking change (zoals een hernoemde CSS-variabele).
+
 Output: `dist/index.js` (CJS), `dist/index.mjs` (ESM), `dist/index.d.ts` (types). Client entry krijgt `"use client";` banner voor Next.js compatibiliteit. Server entry (`dist/server.*`) en Vite entry (`dist/vite.*`) hebben geen banner.
 
 ## Theming
