@@ -13,6 +13,14 @@
   a comment without `annotationId` or text (400), like the Vercel example.
 - **`orbit-init`** writes the one-line route, and suggests it when `api/comments.js` is a handler
   of its own.
+- **Delete your own comment.** In a thread, a comment you wrote in this browser has a bin
+  (on hover or focus, always on touch). It asks first, in the card (Annuleren / Verwijderen),
+  and the comment leaves the thread, the panel and the pins at once. The API signs a
+  `deleteToken` for each new comment (HMAC with `ORBIT_SECRET`, else the Notion key) that the
+  browser keeps under `@strakzat/orbit:own`; `DELETE /api/comments` with `{ id, token }`
+  archives the Notion page. No accounts, nothing stored server-side: a name can be typed by
+  anyone, a token cannot. Only through `createCommentsHandler()`: a handler of a project's own
+  gives no token, and no bin shows.
 
 ## 4.9.1
 

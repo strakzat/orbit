@@ -151,6 +151,7 @@ src/
 │   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
 │   ├── use-viewer.ts                  — Naam, taal en pins van de kijker, in localStorage
 │   ├── use-seen.ts                    — Wat de kijker per thread gelezen heeft, in localStorage
+│   ├── use-own-comments.ts            — De comments die deze browser schreef, met hun delete-token
 │   ├── use-pin-morph.ts               — De popover van een pin groeit uit die pin, en terug
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
 └── utils/
@@ -203,8 +204,11 @@ Een project markeert een component met `data-orbit-component="Sidebar"` (`COMPON
 ```
 GET  {apiBase}/api/comments?project={project}                         → Comment[]
 GET  {apiBase}/api/comments?project={project}&annotationId={id}       → Comment[]
-POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten?, component?, screenshot? }
+POST {apiBase}/api/comments  body: { project, annotationId, auteur, comment, pagina, label, varianten?, component?, screenshot? }  → Comment & { deleteToken }
+DELETE {apiBase}/api/comments  body: { project, id, token }                                     → { id }
 ```
+
+**Je eigen comment verwijderen.** De POST geeft een `deleteToken` terug: een HMAC van het page-id (`commentDeleteToken()`, met `ORBIT_SECRET` of anders de Notion-key), dus de server bewaart niets. De browser die schreef bewaart hem (`useOwnComments()`, `@strakzat/orbit:own`, per project); `isOwnComment`, `rememberOwnComment`, `deleteComment` en `deletedCommentIds` staan op de context. Alleen in een thread (`CommentThread`), niet in de lijst van het paneel: een prullenbak in de kop, zichtbaar bij hover of focus (altijd zonder hover), die eerst in de kaart vraagt (Annuleren krijgt de focus, Escape annuleert zonder de thread te sluiten). Verwijderd verdwijnt hij meteen overal (`deletedCommentIds` filtert de lijsten tot de API hem niet meer geeft), de focus blijft in de thread en de status-regio zegt "Comment verwijderd.". DELETE archiveert de Notion-page (30 dagen in de prullenbak). Niet op naam: een naam typt iedereen.
 
 Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 

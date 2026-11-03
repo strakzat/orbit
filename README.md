@@ -443,6 +443,14 @@ its own request shape, `handleCommentsRequest({ method, query, body }, options)`
 `{ status, body, headers? }`. The Vite plugin uses the same handler, so dev and production
 take the same fields.
 
+**Deleting your own comment.** A POST answers with a `deleteToken`: an HMAC of the new page's
+id, signed with `ORBIT_SECRET` (option `secret`), else the Notion API key. The browser that
+wrote the comment keeps it in `localStorage` and shows a bin on that comment in its thread;
+`DELETE /api/comments` with `{ id, token }` moves the page to Notion's trash (restorable for
+30 days). Nothing is stored on the server, and a comment written in another browser, or before
+4.10, has no token and stays. Setting `ORBIT_SECRET` later invalidates the tokens handed out
+before.
+
 A handler of your own is built from the helpers below. It has to pass on each field, and
 keep doing so as Orbit adds them:
 

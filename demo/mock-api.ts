@@ -98,7 +98,25 @@ export function mockCommentsApi(): Plugin {
             }
             comments.push(newComment);
             res.statusCode = 201;
-            res.end(JSON.stringify({ ok: true }));
+            // A token as the real API gives one: the demo's is the id, reversed.
+            res.end(JSON.stringify({ ...newComment, deleteToken: newComment.id.split("").reverse().join("") + "-del" }));
+          });
+          return;
+        }
+
+        if (req.method === "DELETE") {
+          let body = "";
+          req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+          req.on("end", () => {
+            const { id, token } = JSON.parse(body || "{}");
+            const index = comments.findIndex((c) => c.id === id);
+            if (index < 0 || token !== String(id).split("").reverse().join("") + "-del") {
+              res.statusCode = 403;
+              res.end(JSON.stringify({ error: "Only the writer of a comment can delete it" }));
+              return;
+            }
+            comments.splice(index, 1);
+            res.end(JSON.stringify({ id }));
           });
           return;
         }

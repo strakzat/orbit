@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { fill } from "../labels";
 import { StatusPill } from "./status-pill";
 import { ComponentChip } from "./component-chip";
+import { TrashIcon } from "../icons";
 import type { Comment } from "../types";
 
 interface CommentCardProps {
@@ -21,6 +22,8 @@ interface CommentCardProps {
   activateLabel?: string;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
+  /** The viewer's own comment, in a thread: it can be deleted, after a question. */
+  onDelete?: () => Promise<void>;
 }
 
 /**
@@ -37,8 +40,38 @@ export function CommentCard({
   activateLabel,
   onMouseEnter,
   onMouseLeave,
+  onDelete,
 }: CommentCardProps) {
   const { labels } = useAnnotationsSafe();
+  // Deleting asks first, in the card: Annuleren, or Verwijderen.
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFailed, setDeleteFailed] = useState(false);
+  const trashRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const askedRef = useRef(false);
+  useEffect(() => {
+    // The question takes the focus, on the safe answer; dismissed, the focus goes back to the bin.
+    if (confirming) cancelRef.current?.focus();
+    else if (askedRef.current) trashRef.current?.focus();
+    askedRef.current = confirming;
+  }, [confirming]);
+
+  const cancel = () => {
+    setConfirming(false);
+    setDeleteFailed(false);
+  };
+  const confirmDelete = async () => {
+    if (!onDelete || deleting) return;
+    setDeleting(true);
+    setDeleteFailed(false);
+    try {
+      await onDelete();
+    } catch {
+      setDeleteFailed(true);
+      setDeleting(false);
+    }
+  };
   return React.createElement(
     "div",
     {
@@ -90,7 +123,21 @@ export function CommentCard({
           { className: "orbit-comment__time-rel" },
           relativeTime(comment.aangemaakt, labels)
         ),
-        React.createElement(StatusPill, { status: comment.status })
+        React.createElement(StatusPill, { status: comment.status }),
+        onDelete &&
+          React.createElement(
+            "button",
+            {
+              ref: trashRef,
+              type: "button",
+              className: cx("orbit-icon-button", "orbit-comment__delete", confirming && "orbit-comment__delete--open"),
+              onClick: () => setConfirming(true),
+              "aria-label": labels.commentDelete,
+              "aria-expanded": confirming,
+              title: labels.commentDelete,
+            },
+            React.createElement(TrashIcon, { size: 14 })
+          )
       ),
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
@@ -139,6 +186,40 @@ export function CommentCard({
             )
           )
         : null,
+
+      confirming &&
+        React.createElement(
+          "div",
+          {
+            className: "orbit-comment__confirm",
+            role: "group",
+            "aria-label": labels.commentDeleteConfirm,
+            // Escape answers the question, rather than closing the thread around it.
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key !== "Escape") return;
+              e.stopPropagation();
+              cancel();
+            },
+          },
+          React.createElement("span", { className: "orbit-comment__confirm-text" }, labels.commentDeleteConfirm),
+          React.createElement(
+            "button",
+            { ref: cancelRef, type: "button", className: "orbit-comment__confirm-button", onClick: cancel },
+            labels.commentDeleteCancel
+          ),
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "orbit-comment__confirm-button orbit-comment__confirm-button--danger",
+              onClick: confirmDelete,
+              disabled: deleting,
+            },
+            labels.commentDeleteSubmit
+          ),
+          deleteFailed &&
+            React.createElement("p", { className: "orbit-error orbit-comment__confirm-error", role: "alert" }, labels.commentDeleteError)
+        ),
 
       footer
     )

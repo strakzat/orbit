@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { renderWithHtmlToImage, screenshotFeedback } from "../utils/screenshot";
 import type { Comment } from "../types";
@@ -39,7 +39,7 @@ export function useComments({
   }, [apiBaseProp]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { describeVariants, commentsConfig } = useAnnotationsSafe();
+  const { describeVariants, commentsConfig, rememberOwnComment, deletedCommentIds } = useAnnotationsSafe();
   const setting = commentsConfig?.screenshot ?? true;
   const capture = setting === false ? null : setting === true ? renderWithHtmlToImage : setting;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -112,10 +112,21 @@ export function useComments({
       // A route with a body limit (Next.js: 1 MB) refuses the screenshot; the comment goes without.
       if (res.status === 413 && screenshot) res = await send(false);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // The API's key to delete it again; a route of a project's own may not give one.
+      const created = await res.json().catch(() => null);
+      if (typeof created?.id === "string" && typeof created.deleteToken === "string") {
+        rememberOwnComment(created.id, created.deleteToken);
+      }
       await fetchComments();
     },
-    [apiBase, project, annotationId, label, component, target, describeVariants, capture, fetchComments]
+    [apiBase, project, annotationId, label, component, target, describeVariants, capture, fetchComments, rememberOwnComment]
   );
 
-  return { comments, isLoading, error, submitComment };
+  // A comment deleted here leaves at once, not on the next poll.
+  const shown = useMemo(
+    () => (deletedCommentIds.size ? comments.filter((c) => !deletedCommentIds.has(c.id)) : comments),
+    [comments, deletedCommentIds]
+  );
+
+  return { comments: shown, isLoading, error, submitComment };
 }

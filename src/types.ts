@@ -114,6 +114,13 @@ export interface AnnotationLabels {
   placeFeedbackShortcut: string;
   /** Announced once feedback from the inspector is sent and its popover has closed. */
   feedbackPlaced: string;
+  /** Deleting a comment of the viewer's own: the button, the question, its answers, the outcome. */
+  commentDelete: string;
+  commentDeleteConfirm: string;
+  commentDeleteCancel: string;
+  commentDeleteSubmit: string;
+  commentDeleteError: string;
+  commentDeleted: string;
   /** The inspector's comment bubble, for a screen reader: "Feedback op {label}". */
   formOn: string;
   /** The bubble's scope choice, for an element inside a component: what the feedback is on. */
@@ -299,6 +306,14 @@ export interface AnnotationContextValue {
   unseenAnnotationIds: Set<string>;
   /** Everything in this thread now counts as read. Called while a thread is open. */
   markSeen: (annotationId: string) => void;
+  /** Whether this browser wrote the comment, and kept the token to delete it. */
+  isOwnComment: (id: string) => boolean;
+  /** Keeps the token the API returned with a new comment. */
+  rememberOwnComment: (id: string, token: string) => void;
+  /** Deletes a comment of the viewer's own; throws when the API refuses. */
+  deleteComment: (id: string) => Promise<void>;
+  /** Comments deleted on this page, left out until the API's list no longer has them. */
+  deletedCommentIds: Set<string>;
   currentRoute: string;
   registeredMarkerIds: Set<string>;
   /** The components (`data-orbit-component`) on the page now: their feedback shows here. */

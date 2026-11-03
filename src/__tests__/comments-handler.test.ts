@@ -1,7 +1,7 @@
 import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCommentsHandler, handleCommentsRequest } from "../server";
+import { commentDeleteToken, createCommentsHandler, handleCommentsRequest } from "../server";
 
 const options = { apiKey: "key", databaseId: "db", projectId: "proj" };
 
@@ -107,8 +107,42 @@ describe("handleCommentsRequest", () => {
     expect(sent(fetch, 1).filter.and).toHaveLength(1);
   });
 
+  it("POST gives the writer a token to delete the comment, and only theirs", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json(notionPage({}))));
+    const result = await handleCommentsRequest({ method: "POST", body: { annotationId: "a", comment: "c" } }, options);
+    const token = (result.body as any).deleteToken;
+    expect(token).toBe(await commentDeleteToken("page-1", "key"));
+    expect(token).not.toBe(await commentDeleteToken("page-2", "key"));
+    expect(token).not.toBe(await commentDeleteToken("page-1", "other"));
+  });
+
+  it("DELETE archives the page with its token, and refuses without", async () => {
+    const fetch = vi.fn(async (_url?: string, _init?: RequestInit) => json({ id: "page-1", archived: true }));
+    vi.stubGlobal("fetch", fetch);
+    const token = await commentDeleteToken("page-1", "key");
+
+    expect((await handleCommentsRequest({ method: "DELETE", body: { id: "page-1" } }, options)).status).toBe(400);
+    expect((await handleCommentsRequest({ method: "DELETE", body: { id: "page-2", token } }, options)).status).toBe(403);
+    expect((await handleCommentsRequest({ method: "DELETE", body: { id: "page-1", token: "x" } }, options)).status).toBe(403);
+    expect(fetch).not.toHaveBeenCalled();
+
+    const result = await handleCommentsRequest({ method: "DELETE", body: { id: "page-1", token } }, options);
+    expect(result).toEqual({ status: 200, body: { id: "page-1" } });
+    expect(fetch.mock.calls[0][0]).toBe("https://api.notion.com/v1/pages/page-1");
+    expect(fetch.mock.calls[0][1]).toMatchObject({ method: "PATCH" });
+    expect(sent(fetch, 0)).toEqual({ archived: true });
+  });
+
+  it("signs with ORBIT_SECRET when there is one", async () => {
+    vi.stubEnv("ORBIT_SECRET", "s3cret");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json(notionPage({}))));
+    const result = await handleCommentsRequest({ method: "POST", body: { annotationId: "a", comment: "c" } }, options);
+    expect((result.body as any).deleteToken).toBe(await commentDeleteToken("page-1", "s3cret"));
+    vi.unstubAllEnvs();
+  });
+
   it("refuses other methods, and says so without the Notion settings", async () => {
-    expect(await handleCommentsRequest({ method: "DELETE" }, options)).toMatchObject({ status: 405, headers: { Allow: "GET, POST" } });
+    expect(await handleCommentsRequest({ method: "PUT" }, options)).toMatchObject({ status: 405, headers: { Allow: "GET, POST, DELETE" } });
     vi.stubEnv("NOTION_API_KEY", "");
     expect((await handleCommentsRequest({ method: "GET" }, { databaseId: "db", projectId: "proj" })).status).toBe(500);
     vi.unstubAllEnvs();
@@ -146,6 +180,15 @@ describe("createCommentsHandler", () => {
     const got = await fetch(`${base}/?annotationId=a`);
     expect(await got.json()).toEqual([]);
     expect(sent(notion, 1).filter.and[1]).toEqual({ property: "Annotatie ID", rich_text: { equals: "a" } });
+
+    const { id, deleteToken } = await posted.json();
+    const deleted = await fetch(`${base}/`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, token: deleteToken }),
+    });
+    expect(deleted.status).toBe(200);
+    expect(sent(notion, 2)).toEqual({ archived: true });
   });
 
   it("takes a body the framework already parsed, as Vercel does", async () => {
