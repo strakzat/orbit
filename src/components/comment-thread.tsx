@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAnnotationStyles } from "../styles/inject";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { CommentCard } from "./comment-card";
@@ -12,11 +12,21 @@ interface CommentThreadProps {
 
 export function CommentThread({ comments, isLoading, error }: CommentThreadProps) {
   useAnnotationStyles();
-  const { labels } = useAnnotationsSafe();
+  const { labels, isOwnComment, deleteComment } = useAnnotationsSafe();
+  const ref = useRef<HTMLDivElement>(null);
+  // Said once a comment of the viewer's is gone; the focus stays in the thread it was in.
+  const [notice, setNotice] = useState("");
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
+
+  const status = React.createElement("span", { className: "orbit-sr-only", role: "status" }, notice);
+  const remove = (id: string) => async () => {
+    await deleteComment(id);
+    setNotice(labels.commentDeleted);
+    ref.current?.focus();
+  };
 
   if (comments.length === 0) {
     const [message, isError] = isLoading
@@ -29,6 +39,8 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
     return React.createElement(
       "div",
       {
+        ref,
+        tabIndex: -1,
         className: isError ? "orbit-root orbit-empty orbit-empty--error" : "orbit-root orbit-empty",
         role: isError ? "alert" : "status",
       },
@@ -38,9 +50,14 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
 
   return React.createElement(
     "div",
-    { className: "orbit-root orbit-thread" },
+    { ref, tabIndex: -1, className: "orbit-root orbit-thread" },
+    status,
     ...comments.map((comment) =>
-      React.createElement(CommentCard, { key: comment.id, comment })
+      React.createElement(CommentCard, {
+        key: comment.id,
+        comment,
+        onDelete: isOwnComment(comment.id) ? remove(comment.id) : undefined,
+      })
     )
   );
 }

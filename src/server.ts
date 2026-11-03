@@ -129,6 +129,212 @@ export async function buildNotionCommentChildren(
   }
 }
 
+export interface CommentsApiOptions {
+  /** Defaults to `process.env.NOTION_API_KEY`, read on each request. */
+  apiKey?: string;
+  /** Defaults to `process.env.NOTION_DATABASE_ID`. */
+  databaseId?: string;
+  /** Defaults to `process.env.NOTION_PROJECT_ID`. */
+  projectId?: string;
+  /**
+   * Signs the token that lets the writer of a comment delete it. Defaults to
+   * `process.env.ORBIT_SECRET`, else the Notion API key, which never leaves the server either.
+   */
+  secret?: string;
+}
+
+export interface CommentsApiRequest {
+  method?: string;
+  query?: Record<string, unknown>;
+  body?: any;
+}
+
+export interface CommentsApiResponse {
+  status: number;
+  body: unknown;
+  headers?: Record<string, string>;
+}
+
+/** The fields Orbit POSTs. Taken here, in one place, so a new one reaches every project's API. */
+const COMMENT_FIELDS = [
+  "annotationId",
+  "auteur",
+  "comment",
+  "pagina",
+  "label",
+  "varianten",
+  "component",
+  "screenshot",
+] as const;
+
+/** Columns a database from before their feature lacks: a comment is sent without them rather than lost. */
+const OPTIONAL_COLUMNS = ["Varianten", "Component"];
+
+async function subtle(): Promise<SubtleCrypto> {
+  // A global in Node 19+ and edge runtimes; Node 18 has it under node:crypto.
+  if (globalThis.crypto?.subtle) return globalThis.crypto.subtle;
+  return ((await import("node:crypto")).webcrypto as unknown as Crypto).subtle;
+}
+
+/**
+ * The token for deleting one comment: an HMAC of its page id, so the server keeps nothing. It
+ * goes back to whoever POSTed the comment, and only to them; the GET never carries it.
+ */
+export async function commentDeleteToken(pageId: string, secret: string): Promise<string> {
+  const crypto = await subtle();
+  const encoder = new TextEncoder();
+  const key = await crypto.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signature = await crypto.sign("HMAC", key, encoder.encode(`orbit-delete:${pageId}`));
+  return Array.from(new Uint8Array(signature), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Compares two tokens in the same time whatever they share. */
+function sameToken(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * The comments API, framework-free: GET lists the project's comments (one element's with
+ * `?annotationId=`), POST creates one with every field Orbit sends, DELETE moves one to Notion's
+ * trash for whoever wrote it. `createCommentsHandler` wraps it for Node; call this directly from
+ * a runtime with its own request shape.
+ */
+export async function handleCommentsRequest(
+  request: CommentsApiRequest,
+  options: CommentsApiOptions = {}
+): Promise<CommentsApiResponse> {
+  const apiKey = options.apiKey ?? process.env.NOTION_API_KEY;
+  const databaseId = options.databaseId ?? process.env.NOTION_DATABASE_ID;
+  const projectId = options.projectId ?? process.env.NOTION_PROJECT_ID;
+  const secret = options.secret ?? process.env.ORBIT_SECRET ?? apiKey;
+  if (!apiKey || !databaseId || !projectId) {
+    return { status: 500, body: { error: "NOTION_API_KEY, NOTION_DATABASE_ID and NOTION_PROJECT_ID are required" } };
+  }
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    "Notion-Version": NOTION_VERSION,
+    "Content-Type": "application/json",
+  };
+
+  if (request.method === "GET") {
+    const annotationId = typeof request.query?.annotationId === "string" ? request.query.annotationId : "";
+    const filter = {
+      and: [
+        { property: "Project", relation: { contains: projectId } },
+        // The column buildNotionCommentProperties writes and parseNotionComment reads.
+        ...(annotationId ? [{ property: "Annotatie ID", rich_text: { equals: annotationId } }] : []),
+      ],
+    };
+    const response = await fetch(`${NOTION_BASE}/databases/${databaseId}/query`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ filter, sorts: [{ timestamp: "created_time", direction: "ascending" }] }),
+    });
+    const data: any = await response.json();
+    if (!response.ok) return { status: 502, body: { error: data.message } };
+    return { status: 200, body: data.results.map(parseNotionComment) };
+  }
+
+  if (request.method === "POST") {
+    const input = {} as CommentInput;
+    for (const field of COMMENT_FIELDS) {
+      const value = request.body?.[field];
+      if (typeof value === "string" && value) (input as any)[field] = value;
+    }
+    if (!input.annotationId || !input.comment) {
+      return { status: 400, body: { error: "annotationId and comment are required" } };
+    }
+
+    const properties = buildNotionCommentProperties(input, projectId);
+    // The screenshot of the spot, as the page's body.
+    const children = await buildNotionCommentChildren(input, apiKey);
+    const createPage = () =>
+      fetch(`${NOTION_BASE}/pages`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          parent: { database_id: databaseId },
+          properties,
+          ...(children.length ? { children } : {}),
+        }),
+      });
+
+    let response = await createPage();
+    for (const column of OPTIONAL_COLUMNS) {
+      if (response.ok || !(column in properties)) continue;
+      const text = await response.clone().text();
+      if (!text.includes(column)) continue;
+      console.warn(
+        `[@strakzat/orbit] De Notion-database heeft geen kolom "${column}" (tekst). De feedback is opgeslagen zonder.`
+      );
+      delete properties[column];
+      response = await createPage();
+    }
+    const page: any = await response.json();
+    if (!response.ok) return { status: 502, body: { error: page.message } };
+    // The writer's key to delete it later: the browser that sent it keeps it.
+    const deleteToken = await commentDeleteToken(page.id, secret!);
+    return { status: 201, body: { ...parseNotionComment(page), deleteToken } };
+  }
+
+  if (request.method === "DELETE") {
+    const id = typeof request.body?.id === "string" ? request.body.id : "";
+    const token = typeof request.body?.token === "string" ? request.body.token : "";
+    if (!id || !token) return { status: 400, body: { error: "id and token are required" } };
+    if (!sameToken(token, await commentDeleteToken(id, secret!))) {
+      return { status: 403, body: { error: "Only the writer of a comment can delete it" } };
+    }
+    // Archived, as Notion's own delete does: still in the database's trash, for 30 days.
+    const response = await fetch(`${NOTION_BASE}/pages/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ archived: true }),
+    });
+    if (!response.ok) {
+      const error: any = await response.json().catch(() => ({}));
+      return { status: 502, body: { error: error.message ?? `Notion ${response.status}` } };
+    }
+    return { status: 200, body: { id } };
+  }
+
+  return { status: 405, body: { error: "Method not allowed" }, headers: { Allow: "GET, POST, DELETE" } };
+}
+
+type NodeRequest = import("http").IncomingMessage & { body?: unknown; query?: Record<string, unknown> };
+
+/**
+ * The comments API as a Node handler, for Vercel, Express or a Vite dev server alike. An
+ * `api/comments.js` is then one line: `export default createCommentsHandler()`. It takes a body
+ * a framework already parsed, and reads the stream when there is none.
+ */
+export function createCommentsHandler(options: CommentsApiOptions = {}) {
+  return async (req: NodeRequest, res: import("http").ServerResponse): Promise<void> => {
+    let result: CommentsApiResponse;
+    try {
+      const query = req.query ?? Object.fromEntries(new URL(req.url ?? "/", "http://localhost").searchParams);
+      const body = req.method === "POST" || req.method === "DELETE" ? await readBody(req) : undefined;
+      result = await handleCommentsRequest({ method: req.method, query, body }, options);
+    } catch (err: any) {
+      console.error("[@strakzat/orbit]", err);
+      result = { status: 500, body: { error: err?.message ?? "Internal error" } };
+    }
+    res.writeHead(result.status, { "Content-Type": "application/json", ...result.headers });
+    res.end(JSON.stringify(result.body));
+  };
+}
+
+async function readBody(req: NodeRequest): Promise<unknown> {
+  // Vercel parses the body lazily, through a getter that throws on invalid JSON.
+  const parsed = req.body;
+  if (parsed !== undefined) return typeof parsed === "string" ? JSON.parse(parsed || "{}") : parsed;
+  let raw = "";
+  for await (const chunk of req) raw += chunk;
+  return raw ? JSON.parse(raw) : {};
+}
+
 /**
  * Parses a Notion page result into a Comment object.
  * Use this in your GET /api/comments handler.

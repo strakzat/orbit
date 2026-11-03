@@ -48,6 +48,12 @@ export const MessageSquareTextIcon = createIcon([
   ["path", { d: "M17 12H7" }],
 ]);
 
+export const TrashIcon = createIcon([
+  ["path", { d: "M3 6h18" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }],
+]);
+
 export const MapPinIcon = createIcon([
   ["path", { d: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" }],
   ["circle", { cx: 12, cy: 10, r: 3 }],

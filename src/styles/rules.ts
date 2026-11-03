@@ -1923,6 +1923,88 @@ const COMMENTS = `
   color: var(--orbit-text-quaternary);
 }
 
+/* The bin on the viewer's own comment: there when the comment is pointed at or holds the focus,
+   always on a touch screen, which has no pointing. */
+.orbit-comment__delete {
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  margin: -4px -4px -4px 0;
+  opacity: 0;
+  transition:
+    opacity var(--orbit-duration-fast) var(--orbit-ease),
+    background-color var(--orbit-duration-fast) var(--orbit-ease),
+    color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-comment__delete::before {
+  inset: -8px;
+}
+
+.orbit-comment:hover .orbit-comment__delete,
+.orbit-comment:focus-within .orbit-comment__delete,
+.orbit-comment__delete--open {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .orbit-comment__delete {
+    opacity: 1;
+  }
+}
+
+.orbit-comment__delete:hover {
+  color: var(--orbit-text-error-primary);
+}
+
+/* The question before deleting, under the comment it is about. */
+.orbit-comment__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--orbit-space-2);
+  margin-top: var(--orbit-space-2);
+  font-size: var(--orbit-text-xs);
+  color: var(--orbit-text-secondary);
+}
+
+.orbit-comment__confirm-text {
+  margin-right: auto;
+}
+
+.orbit-comment__confirm-button {
+  min-height: 28px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-glass-chip);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-xs);
+  font-weight: 600;
+  transition: background-color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-comment__confirm-button:hover:not(:disabled) {
+  background: var(--orbit-bg-secondary_hover);
+}
+
+.orbit-comment__confirm-button--danger {
+  background: var(--orbit-bg-error-primary);
+  color: var(--orbit-text-error-primary);
+}
+
+.orbit-comment__confirm-button--danger:hover:not(:disabled) {
+  background: var(--orbit-bg-error-primary);
+  box-shadow: inset 0 0 0 1px var(--orbit-border-error);
+}
+
+.orbit-comment__confirm-button:disabled {
+  color: var(--orbit-text-disabled);
+}
+
+.orbit-comment__confirm-error {
+  flex-basis: 100%;
+}
+
 /* The admin reply, as a nested note under the comment it answers. */
 .orbit-comment__reply {
   margin-top: var(--orbit-space-2-5);

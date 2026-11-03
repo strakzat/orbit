@@ -4,6 +4,7 @@ import { COMPONENT_ATTR, DEFAULT_SETTINGS } from "../constants";
 import { resolveLabels } from "../labels";
 import { useViewer } from "../hooks/use-viewer";
 import { useSeen } from "../hooks/use-seen";
+import { useOwnComments } from "../hooks/use-own-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
 import { matchRoute } from "../utils/route-matching";
@@ -248,7 +249,7 @@ export function AnnotationProvider({
   // One poller for the whole module: the rail shows the open count at all times, and the panel,
   // the markers and the rail all read this one list rather than each fetching their own.
   const {
-    comments: allComments,
+    comments: fetchedComments,
     isLoading: commentsLoading,
     error: commentsError,
     refresh: refreshComments,
@@ -257,6 +258,36 @@ export function AnnotationProvider({
     project: commentsConfig?.project ?? "",
     enabled: !!commentsConfig?.enabled,
   });
+
+  // The viewer's own comments, which they can delete. A deleted one leaves every list at once,
+  // before the API's next list confirms it.
+  const { tokens: ownTokens, remember: rememberOwnComment, forget: forgetOwnComment } = useOwnComments(
+    commentsConfig?.project ?? ""
+  );
+  const [deletedCommentIds, setDeletedCommentIds] = useState<Set<string>>(() => new Set());
+  const allComments = useMemo(
+    () => (deletedCommentIds.size ? fetchedComments.filter((c) => !deletedCommentIds.has(c.id)) : fetchedComments),
+    [fetchedComments, deletedCommentIds]
+  );
+  const isOwnComment = useCallback((id: string) => id in ownTokens, [ownTokens]);
+  const apiBase = commentsConfig?.apiBase;
+  const project = commentsConfig?.project ?? "";
+  const deleteComment = useCallback(
+    async (id: string) => {
+      const token = ownTokens[id];
+      if (!token) throw new Error("Not a comment of this viewer's");
+      const res = await fetch(`${apiBase || window.location.origin}/api/comments`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project, id, token }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDeletedCommentIds((prev) => new Set(prev).add(id));
+      forgetOwnComment(id);
+      void refreshComments();
+    },
+    [ownTokens, apiBase, project, forgetOwnComment, refreshComments]
+  );
 
   // What the viewer has not read yet: a white dot on the annotation's pin. An open popover reads
   // its thread, also what arrives while it is open; the panel's thread page does the same.
@@ -308,6 +339,10 @@ export function AnnotationProvider({
       refreshComments,
       unseenAnnotationIds,
       markSeen,
+      isOwnComment,
+      rememberOwnComment,
+      deleteComment,
+      deletedCommentIds,
       currentRoute,
       registeredMarkerIds,
       componentsOnPage,
@@ -343,6 +378,10 @@ export function AnnotationProvider({
       refreshComments,
       unseenAnnotationIds,
       markSeen,
+      isOwnComment,
+      rememberOwnComment,
+      deleteComment,
+      deletedCommentIds,
       currentRoute,
       registeredMarkerIds,
       componentsOnPage,
