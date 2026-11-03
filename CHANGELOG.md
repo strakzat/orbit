@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.9.1
+
+- **The composer is part of the thread.** In a thread, in the panel and in a pin's popover, the
+  message box is no longer a field floating in the Feedback section: it is the thread's last
+  section, under a divider like the others, without a field shell of its own.
+
 ## 4.9.0
 
 - **Pins look like pins.** Glass like the component chip: a dark film tinted by the kind, a lit
