@@ -230,14 +230,16 @@ Als `apiBase` leeg is, wordt `window.location.origin` gebruikt.
 
 ## Server helpers (voor consuming projects)
 
-Het package exporteert server-side helpers via `@strakzat/orbit/server` voor gebruik in API routes. **Gebruik deze altijd** bij het bouwen van een comments API — ze garanderen dat alle velden (inclusief `pagina`) correct worden opgeslagen.
+Het package exporteert de hele comments API via `@strakzat/orbit/server`: `createCommentsHandler()`, een Node-handler (Vercel, Express, de Vite-plugin), en daaronder `handleCommentsRequest({ method, query, body }, options)` zonder framework. Een `api/comments.js` is één regel, `export default createCommentsHandler()`, en dat schrijft `orbit-init` ook. **Een nieuw veld in de POST komt in `COMMENT_FIELDS` (`server.ts`)**, dan neemt elke route en de Vite-plugin het mee met een update van het package. Eerder schreef elk project z'n eigen handler die de velden één voor één doorgaf; daar viel `component` uit (4.9), en feedback op een component landde in productie als feedback op één element.
+
+Wie toch een eigen handler bouwt, gebruikt de helpers eronder — ze garanderen dat alle velden (inclusief `pagina`) correct worden opgeslagen, zolang de handler ze doorgeeft.
 
 ```typescript
 import { buildNotionCommentChildren, buildNotionCommentProperties, parseNotionComment } from "@strakzat/orbit/server";
 
 // POST handler — bouwt alle Notion properties inclusief Pagina, en de body: de screenshot
 const properties = buildNotionCommentProperties(
-  { annotationId, auteur, comment, pagina, label },
+  { annotationId, auteur, comment, pagina, label, varianten, component },
   NOTION_PROJECT_ID
 );
 const children = await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY);
@@ -253,7 +255,7 @@ const comments = data.results.map(parseNotionComment);
 
 **De screenshot.** Elke nieuwe comment krijgt een screenshot mee: de app zonder Orbit erop (`data-orbit-capturing` op `<html>` verbergt elke `.orbit-root`), bijgesneden tot wat de kijker zag, het element blauw omlijnd (`utils/screenshot.ts`). Orbit rendert hem met html-to-image, gebundeld (devDependency, door tsup ingelijfd; de licentie staat in `THIRD-PARTY-NOTICES.md`) en via een dynamische `import()` pas geladen als er feedback verstuurd wordt: in ESM een eigen chunk. html-to-image bouwt de pagina na uit de DOM, dus geen prompt van de browser; wat hij niet na kan bouwen (cross-origin beelden zonder CORS, iframes, video) blijft leeg. `comments.screenshot: false` zet het uit; een functie (`ScreenshotCapture`) rendert met een library van het project. De renderer krijgt `target`, de scroll-container van het frame (of `document.body` zonder frame), en `options` (`width`, `height`, `style`) die hem op volle hoogte neerleggen, want een kopie van de DOM vergeet waar hij gescrold stond; Orbit snijdt het zichtbare stuk eruit. Zo blijven ook de ronde hoeken van het frame buiten beeld. Transparante delen krijgen de eerste achtergrond eronder. Een JPEG van maximaal 1600px breed, als data-URL in de POST. `buildNotionCommentChildren` uploadt hem via Notions File Upload API en geeft een image-blok voor `children`. Niets hiervan houdt de feedback tegen: een fout, een 413 van de route (dan opnieuw zonder) of een mislukte upload, en de comment gaat zonder screenshot.
 
-`varianten` gaat alleen naar Notion als de comment varianten heeft: een database zonder kolom `Varianten` blijft werken voor een project zonder varianten. Heeft het project ze wél, dan moet de kolom (tekst) bestaan, anders weigert Notion de pagina. De Vite-plugin vangt dat op door zonder varianten opnieuw te sturen.
+`varianten` gaat alleen naar Notion als de comment varianten heeft: een database zonder kolom `Varianten` blijft werken voor een project zonder varianten. Heeft het project ze wél, dan moet de kolom (tekst) bestaan, anders weigert Notion de pagina. `handleCommentsRequest` vangt dat op door zonder varianten opnieuw te sturen, en zo ook voor `Component`.
 
 ## Vite plugin (voor local dev)
 

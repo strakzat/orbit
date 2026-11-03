@@ -123,16 +123,20 @@ feedback Inspector by passing a `comments` config (below).
 
 ### 4. Deploy the comments API
 
-The widget POSTs comments to `/api/comments` and reads them back with GET. Build that
-endpoint with the server helpers and deploy it (e.g. on Vercel), setting the three
-Notion variables there:
+The widget POSTs comments to `/api/comments` and reads them back with GET. Orbit ships
+that endpoint; deploy it (e.g. on Vercel), setting the three Notion variables there:
 
-```ts
-import { buildNotionCommentProperties, parseNotionComment } from "@strakzat/orbit/server";
+```js
+// api/comments.js
+import { createCommentsHandler } from "@strakzat/orbit/server";
+
+export default createCommentsHandler();
 ```
 
-See [Server helpers](#server-helpers-for-the-comments-api) for the full handler. For
-local development you don't need the deployed API — add the Vite dev plugin instead:
+It takes every field the widget sends, so a field Orbit adds later (like `component` or
+`screenshot`) reaches Notion with a package update, without touching the route. `orbit-init`
+writes this file. See [Server helpers](#server-helpers-for-the-comments-api) to build your
+own instead. For local development you don't need the deployed API — add the Vite dev plugin instead:
 
 ```ts
 // vite.config.ts
@@ -432,7 +436,15 @@ This scans your `src/` folder for navigation, tables, forms, cards, modals, etc.
 
 ### Server helpers for the comments API
 
-The package exports server-side helpers for your Notion comments API:
+`createCommentsHandler()` is the whole API as a Node handler (Vercel, Express, a Vite dev
+server): it reads a body the framework parsed, or the request stream, and the query. Options
+`apiKey`, `databaseId` and `projectId` override the `NOTION_*` variables. For a runtime with
+its own request shape, `handleCommentsRequest({ method, query, body }, options)` returns
+`{ status, body, headers? }`. The Vite plugin uses the same handler, so dev and production
+take the same fields.
+
+A handler of your own is built from the helpers below. It has to pass on each field, and
+keep doing so as Orbit adds them:
 
 ```ts
 import {
@@ -446,9 +458,9 @@ import {
 page's body: the screenshot of the spot, uploaded to Notion.
 
 ```ts
-const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = req.body;
+const { annotationId, auteur, comment, pagina, label, varianten, component, screenshot } = req.body;
 const properties = buildNotionCommentProperties(
-  { annotationId, auteur, comment, pagina, label, varianten },
+  { annotationId, auteur, comment, pagina, label, varianten, component },
   NOTION_PROJECT_ID
 );
 const children = await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY);

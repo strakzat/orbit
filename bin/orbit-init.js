@@ -44,67 +44,11 @@ This project uses \`@strakzat/orbit\` for annotations and feedback.
 **Feedback/comments:** managed via the UI (Inspector mode) and the \`/api/comments\` endpoint, not via code.
 `;
 
-const API_COMMENTS_CONTENT = `import {
-  buildNotionCommentChildren,
-  buildNotionCommentProperties,
-  parseNotionComment,
-} from '@strakzat/orbit/server'
+const API_COMMENTS_CONTENT = `import { createCommentsHandler } from '@strakzat/orbit/server'
 
-const { NOTION_API_KEY, NOTION_DATABASE_ID, NOTION_PROJECT_ID } = process.env
-
-const NOTION_BASE = 'https://api.notion.com/v1'
-const headers = {
-  Authorization: \`Bearer \${NOTION_API_KEY}\`,
-  'Notion-Version': '2022-06-28',
-  'Content-Type': 'application/json',
-}
-
-export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const { project, annotationId } = req.query
-
-    const filter = {
-      and: [
-        { property: 'Project', relation: { contains: NOTION_PROJECT_ID } },
-      ],
-    }
-    if (annotationId) {
-      // The column buildNotionCommentProperties writes and parseNotionComment reads.
-      filter.and.push({ property: 'Annotatie ID', rich_text: { equals: annotationId } })
-    }
-
-    const response = await fetch(\`\${NOTION_BASE}/databases/\${NOTION_DATABASE_ID}/query\`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ filter }),
-    })
-    const data = await response.json()
-    if (!response.ok) return res.status(502).json({ error: data.message })
-    const comments = data.results.map(parseNotionComment)
-    return res.json(comments)
-  }
-
-  if (req.method === 'POST') {
-    const { annotationId, auteur, comment, pagina, label, varianten, screenshot } = req.body
-    const properties = buildNotionCommentProperties(
-      { annotationId, auteur, comment, pagina, label, varianten },
-      NOTION_PROJECT_ID
-    )
-    // The screenshot of the spot, as the page's body.
-    const children = await buildNotionCommentChildren({ annotationId, comment, screenshot }, NOTION_API_KEY)
-    const response = await fetch(\`\${NOTION_BASE}/pages\`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ parent: { database_id: NOTION_DATABASE_ID }, properties, children }),
-    })
-    const page = await response.json()
-    if (!response.ok) return res.status(502).json({ error: page.message })
-    return res.status(201).json(parseNotionComment(page))
-  }
-
-  res.setHeader('Allow', 'GET, POST')
-  return res.status(405).json({ error: 'Method not allowed' })
-}
+// Orbit's comments API: GET and POST against Notion, with every field Orbit sends. It reads
+// NOTION_API_KEY, NOTION_DATABASE_ID and NOTION_PROJECT_ID, and updates with the package.
+export default createCommentsHandler()
 `;
 
 // Entry points to search for, in priority order
@@ -172,6 +116,13 @@ function ensureApiRoute(rootDir) {
 
   if (fs.existsSync(apiFile)) {
     console.log(`  ${c("green", "✓")} ${c("dim", "api/comments.js bestaat al")}`);
+    // A handler of its own misses each field Orbit adds later (component, screenshot, ...).
+    if (!fs.readFileSync(apiFile, "utf-8").includes("createCommentsHandler")) {
+      console.log(
+        `    ${c("dim", "Tip: vervang hem door")} export default createCommentsHandler() ${c("dim", "uit @strakzat/orbit/server,")}\n` +
+          `    ${c("dim", "dan komt elk nieuw veld van Orbit vanzelf mee.")}`
+      );
+    }
     return false;
   }
 

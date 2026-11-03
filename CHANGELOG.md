@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.10.0
+
+- **Orbit ships the comments API.** `createCommentsHandler()` from `@strakzat/orbit/server` is
+  the whole `/api/comments` route: `export default createCommentsHandler()`. It takes every
+  field the widget sends, so new ones reach Notion with a package update. Before, each project
+  copied a handler that passed the fields on one by one, and `orbit-init`'s template left out
+  `component`: feedback on a component landed in production as feedback on one element, while
+  it worked in dev. `handleCommentsRequest()` is the same without a framework.
+- **Dev and production are the same handler.** The Vite plugin now serves
+  `createCommentsHandler()`. Its GET now also returns comments oldest first, and its POST refuses
+  a comment without `annotationId` or text (400), like the Vercel example.
+- **`orbit-init`** writes the one-line route, and suggests it when `api/comments.js` is a handler
+  of its own.
+
 ## 4.9.1
 
 - **The composer is part of the thread.** In a thread, in the panel and in a pin's popover, the
