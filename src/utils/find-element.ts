@@ -70,8 +70,6 @@ export function findElementByAnnotationId(annotationId: string, label?: string):
   return byLabel ?? bySelector;
 }
 
-const HOVER_ATTR = "data-orbit-hover-highlight";
-let hoverDispose: (() => void) | null = null;
 const HIGHLIGHT_PADDING = 4;
 const FLASH_DURATION = 2000;
 const FADE_DURATION = 200; // must match --orbit-duration-slow
@@ -123,23 +121,3 @@ export function scrollToAndHighlight(el: HTMLElement): void {
   }, FLASH_DURATION);
 }
 
-/** Shows a hover highlight over an element. Returns a cleanup function. */
-export function showHoverHighlight(el: HTMLElement): () => void {
-  removeHoverHighlight();
-
-  const { overlay, dispose } = createOverlay(el, "orbit-highlight orbit-highlight--hover");
-  overlay.setAttribute(HOVER_ATTR, "");
-  hoverDispose = dispose;
-
-  return () => {
-    if (hoverDispose === dispose) hoverDispose = null;
-    dispose();
-  };
-}
-
-export function removeHoverHighlight(): void {
-  hoverDispose?.();
-  hoverDispose = null;
-  // Belt and braces: an overlay left behind by an unmount that missed its cleanup.
-  document.querySelectorAll(`[${HOVER_ATTR}]`).forEach((el) => el.remove());
-}

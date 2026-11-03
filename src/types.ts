@@ -93,6 +93,8 @@ export interface AnnotationLabels {
   annotationMarker: string;
   /** One that hangs on no element, parked top left. */
   annotationMarkerUnplaced: string;
+  /** Added to a marker's name when its thread has something unread: "nieuwe reacties". */
+  markerUnseen: string;
   /** A feedback marker: "{count} open feedback". */
   feedbackOpen: string;
   /** One with nothing open: "{count} feedback, alles opgelost". */
@@ -141,6 +143,8 @@ export interface AnnotationLabels {
   profileMarkers: string;
   /** Under it, before the keys of its shortcut. */
   profileMarkersHint: string;
+  /** The profile's switch for the pins of resolved feedback. */
+  profileResolved: string;
   /** A relative time: just now, then minutes, hours and days as a suffix ("5m", "3u", "2d"). */
   timeNow: string;
   timeMinutes: string;
@@ -158,6 +162,8 @@ export interface OrbitViewer {
   language: OrbitLanguage | null;
   /** Whether the pins show on the page. Null until they choose: the project's `defaultVisible` then. */
   showMarkers: boolean | null;
+  /** Whether feedback that is all resolved keeps its pin. Null until they choose: shown then. */
+  showResolved: boolean | null;
 }
 
 /** One option of a `choice` or a `multi`. */
@@ -289,6 +295,10 @@ export interface AnnotationContextValue {
   commentsError: string | null;
   /** Fetches the project's comments now, outside the 30-second poll. */
   refreshComments: () => Promise<void>;
+  /** Threads with a comment or an answer the viewer has not read yet (not their own). */
+  unseenAnnotationIds: Set<string>;
+  /** Everything in this thread now counts as read. Called while a thread is open. */
+  markSeen: (annotationId: string) => void;
   currentRoute: string;
   registeredMarkerIds: Set<string>;
   /** The components (`data-orbit-component`) on the page now: their feedback shows here. */
@@ -305,6 +315,9 @@ export interface AnnotationContextValue {
   setViewerName: (name: string) => void;
   setViewerLanguage: (language: OrbitLanguage) => void;
   setViewerShowMarkers: (show: boolean) => void;
+  /** Feedback with everything resolved keeps its pin (dimmed): the viewer's choice, else yes. */
+  showResolvedPins: boolean;
+  setViewerShowResolved: (show: boolean) => void;
 }
 
 export interface AnnotationProviderProps {

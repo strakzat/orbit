@@ -28,9 +28,12 @@ interface ThreadPageProps {
  * page still says where it is.
  */
 export function ThreadPage({ thread, backLabel, backRef, onBack, onClose }: ThreadPageProps) {
-  const { labels, commentsConfig, refreshComments } = useAnnotations();
+  const { labels, commentsConfig, refreshComments, markSeen } = useAnnotations();
 
   const annotationId = thread.kind === "annotation" ? thread.annotation.id : thread.annotationId;
+
+  // Open, its thread is read: also what arrives while it is (markSeen follows the comments).
+  React.useEffect(() => markSeen(annotationId), [annotationId, markSeen]);
   const label = thread.kind === "annotation" ? thread.annotation.title : thread.label;
 
   const { comments, isLoading, error, submitComment } = useComments({

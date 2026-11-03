@@ -4,13 +4,22 @@ import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
-import { getFixedPopoverStyle } from "../utils/popover-position";
-import { isOnPage } from "../utils/route-matching";
+import { getPinPopoverStyle } from "../utils/popover-position";
+import { isOnPage, matchRoute } from "../utils/route-matching";
 import { fill } from "../labels";
+import { initials } from "../utils/format";
+import { ANONYMOUS } from "../constants";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
 import { ComponentHead } from "./component-chip";
-import { BADGE_GAP, BADGE_OFFSET, POPOVER_MAX_HEIGHT, unplacedBadgeRect } from "./marker-geometry";
+import {
+  BADGE_SIZE,
+  POPOVER_MAX_HEIGHT,
+  besidePin,
+  pinOnCorner,
+  unplacedBadgeRect,
+  type PinTail,
+} from "./marker-geometry";
 import { unplacedAnnotationIds } from "./marker-placement";
 import type { Comment } from "../types";
 
@@ -27,6 +36,16 @@ interface FeedbackBadgeInfo {
   unplaced: boolean;
   /** Feedback on a component: its name. */
   component?: string;
+  /** Who started the thread: the first comment's author. */
+  author: string;
+}
+
+/** Its own pin on the element's corner, or a plain badge beside the annotation's pin there,
+    or parked without a tail. */
+function pinFor(badge: FeedbackBadgeInfo): { left: number; top: number; tail?: PinTail } {
+  if (badge.unplaced) return { left: badge.rect.left, top: badge.rect.top };
+  const pin = pinOnCorner(badge.rect);
+  return badge.sharesCorner ? besidePin(pin) : pin;
 }
 
 /**
@@ -48,6 +67,7 @@ export function FeedbackMarkers() {
     currentRoute,
     registeredMarkerIds,
     componentsOnPage,
+    showResolvedPins,
     labels,
   } = useAnnotationsSafe();
 
@@ -79,11 +99,17 @@ export function FeedbackMarkers() {
       return;
     }
 
-    // Group comments by annotationId, excluding those handled by AnnotationMarker
-    // and filtering to current page only
+    // An annotation's own thread is on its pin, wrapped (AnnotationMarker) or found
+    // (AutoAnnotationMarkers): a dot there says what is unread, not a second badge here.
+    const pinned = new Set(registeredMarkerIds);
+    for (const a of allAnnotations) {
+      if (a.target === "global" || matchRoute(a.target, currentRoute)) pinned.add(a.id);
+    }
+
+    // Group comments by annotationId, filtering to current page only
     const grouped = new Map<string, Comment[]>();
     for (const c of allComments) {
-      if (!c.annotationId || registeredMarkerIds.has(c.annotationId)) continue;
+      if (!c.annotationId || pinned.has(c.annotationId)) continue;
       // Feedback on a component goes wherever the component is; the rest stays on its page.
       if (!c.component && !c.pagina) continue;
       if (!isOnPage(c, currentRoute, componentsOnPage)) continue;
@@ -114,6 +140,10 @@ export function FeedbackMarkers() {
       // it would sit in the corner of every page.
       if (component && !el) continue;
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
+      // Done is done, if the viewer says so: no pin, and no place in the column either.
+      if (openCount === 0 && !showResolvedPins) continue;
+      // The thread's first comment, whatever order the API gave them in.
+      const first = comments.reduce((a, b) => (b.aangemaakt < a.aangemaakt ? b : a));
 
       newBadges.push({
         annotationId,
@@ -127,6 +157,7 @@ export function FeedbackMarkers() {
         sharesCorner: !!el && (annotated.has(el) || !!el.closest(".orbit-marker-wrap")),
         unplaced: !el,
         component,
+        author: first.auteur,
       });
     }
 
@@ -139,6 +170,7 @@ export function FeedbackMarkers() {
     showMarkers,
     currentRoute,
     componentsOnPage,
+    showResolvedPins,
   ]);
 
   // Update positions on mount, scroll, resize, and when comments change
@@ -167,10 +199,7 @@ export function FeedbackMarkers() {
 
   for (const badge of badges) {
     const isActive = activeAnnotationId === badge.annotationId;
-    const offset = badge.unplaced ? 0 : BADGE_OFFSET;
-    const left = badge.unplaced
-      ? badge.rect.left
-      : badge.rect.right - offset + (badge.sharesCorner ? BADGE_GAP : 0);
+    const { left, top, tail } = pinFor(badge);
 
     elements.push(
       React.createElement(MarkerBadge, {
@@ -180,13 +209,17 @@ export function FeedbackMarkers() {
         count: badge.openCount,
         active: isActive,
         unplaced: badge.unplaced,
-        component: !!badge.component,
         placement: "fixed",
+        tail,
+        pinId: badge.annotationId,
         controls: popoverId,
-        style: { top: badge.rect.top - offset, left },
-        label: badge.allResolved
-          ? fill(labels.feedbackAllResolved, { count: badge.totalCount })
-          : fill(labels.feedbackOpen, { count: badge.openCount }),
+        style: { top, left },
+        // Who started it, as their avatar does on a comment. Without a name, the feedback icon.
+        monogram: badge.author && badge.author !== ANONYMOUS ? initials(badge.author) : undefined,
+        label:
+          (badge.allResolved
+            ? fill(labels.feedbackAllResolved, { count: badge.totalCount })
+            : fill(labels.feedbackOpen, { count: badge.openCount })) + `, ${badge.author}`,
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
           setActiveAnnotationId(isActive ? null : badge.annotationId);
@@ -213,7 +246,16 @@ export function FeedbackMarkers() {
         error,
         onSubmit: submitComment,
         onClose: close,
-        style: getFixedPopoverStyle(activeBadge.rect, 320, POPOVER_MAX_HEIGHT),
+        pinId: activeBadge.annotationId,
+        // On its pin, covering it.
+        style: (() => {
+          const { left, top } = pinFor(activeBadge);
+          return getPinPopoverStyle(
+            new DOMRect(left, top, BADGE_SIZE, BADGE_SIZE),
+            320,
+            POPOVER_MAX_HEIGHT
+          );
+        })(),
       })
     );
   }

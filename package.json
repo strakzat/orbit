@@ -1,6 +1,6 @@
 {
   "name": "@strakzat/orbit",
-  "version": "4.8.0",
+  "version": "4.9.0",
   "description": "Orbit — client-facing annotation & feedback engine voor alle projecten",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -50,6 +50,7 @@
   "devDependencies": {
     "@types/node": "^25.9.5",
     "@types/react": "^18",
+    "@types/react-dom": "^18.3.7",
     "html-to-image": "1.11.13",
     "tsup": "^8",
     "typescript": "~5.6",

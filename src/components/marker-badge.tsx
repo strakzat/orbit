@@ -2,6 +2,7 @@ import React from "react";
 import { cx } from "../utils/cx";
 import { TYPE_ICONS } from "../constants";
 import { MessageSquareTextIcon } from "../icons";
+import { CIRCLE_PATH, PIN_PATHS, type PinTail } from "./marker-geometry";
 import type { AnnotationType } from "../types";
 
 interface MarkerBadgeProps {
@@ -12,18 +13,23 @@ interface MarkerBadgeProps {
   resolved?: boolean;
   /** Shown instead of the icon. */
   count?: number;
+  /** Initials, shown instead of the icon and the count: who started a feedback thread. */
+  monogram?: string;
   /** The accessible name. Required — a coloured circle says nothing on its own. */
   label: string;
   placement: "fixed" | "absolute";
   /** Runtime coordinates only. Everything else belongs in the stylesheet. */
   style?: React.CSSProperties;
   active?: boolean;
-  /** Sits one layer below the annotation marker it is paired with. */
-  behind?: boolean;
+  /** The thread it opens: how the spotlight finds the pin, to leave it undimmed. */
+  pinId?: string;
+  /** Its thread has something the viewer has not read: a white dot. Say so in `label` too. */
+  unseen?: boolean;
   /** Not attached to an element — drawn with a dashed edge to say so. */
   unplaced?: boolean;
-  /** Feedback on a component: purple, like the component everywhere else in Orbit. */
-  component?: boolean;
+  /** Pinned to a spot: the way its tail points. Without one it is a plain circle, like a badge
+      beside a pin or one that is attached to nothing. */
+  tail?: PinTail;
   controls?: string;
   onClick?: (event: React.MouseEvent) => void;
   onMouseEnter?: () => void;
@@ -43,13 +49,15 @@ export function MarkerBadge({
   type = "documentation",
   resolved,
   count,
+  monogram,
   label,
   placement,
   style,
   active,
-  behind,
+  pinId,
+  unseen,
   unplaced,
-  component,
+  tail,
   controls,
   onClick,
   onMouseEnter,
@@ -63,16 +71,40 @@ export function MarkerBadge({
     "orbit-marker",
     placement === "fixed" ? "orbit-marker--fixed" : "orbit-marker--absolute",
     variant === "feedback" && "orbit-marker--feedback",
-    component && "orbit-marker--component",
     resolved && "orbit-marker--resolved",
     active && "orbit-marker--active",
-    behind && "orbit-marker--behind",
     unplaced && "orbit-marker--unplaced",
-    !interactive && "orbit-marker--static"
+    !interactive && "orbit-marker--static",
+    tail && `orbit-marker--tail-${tail}`
   );
 
-  const content =
-    count !== undefined && count > 0
+  // The shape is drawn rather than a rounded box, so the tail is one surface with the circle:
+  // two translucent shapes would show their overlap.
+  const outline = tail && !unplaced ? PIN_PATHS[tail] : CIRCLE_PATH;
+  const shape = React.createElement(
+    "svg",
+    {
+      className: "orbit-marker__shape",
+      width: 26,
+      height: 26,
+      viewBox: "0 0 26 26",
+      "aria-hidden": true,
+      focusable: false,
+    },
+    React.createElement("path", { className: "orbit-marker__body", d: outline })
+  );
+
+  const dot = unseen
+    ? React.createElement("span", { className: "orbit-marker__dot", "aria-hidden": true })
+    : null;
+
+  const content = monogram
+    ? React.createElement(
+        "span",
+        { className: "orbit-marker__monogram", "aria-hidden": true },
+        monogram
+      )
+    : count !== undefined && count > 0
       ? React.createElement(
           "span",
           { className: "orbit-marker__count", "aria-hidden": true },
@@ -87,9 +119,13 @@ export function MarkerBadge({
         className,
         style,
         "data-orbit-type": variant === "annotation" ? type : undefined,
+        "data-orbit-pin": pinId,
+        "data-orbit-tail": tail,
       },
       React.createElement("span", { className: "orbit-sr-only" }, label),
-      content
+      shape,
+      content,
+      dot
     );
   }
 
@@ -100,6 +136,8 @@ export function MarkerBadge({
       className,
       style,
       "data-orbit-type": variant === "annotation" ? type : undefined,
+      "data-orbit-pin": pinId,
+      "data-orbit-tail": tail,
       "aria-label": label,
       "aria-expanded": controls ? !!active : undefined,
       "aria-controls": controls && active ? controls : undefined,
@@ -107,6 +145,8 @@ export function MarkerBadge({
       onMouseEnter,
       onMouseLeave,
     },
-    content
+    shape,
+    content,
+    dot
   );
 }

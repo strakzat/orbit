@@ -3,28 +3,31 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
-import { findElementByAnnotationId, showHoverHighlight } from "../utils/find-element";
-import { getFixedPopoverStyle } from "../utils/popover-position";
+import { findElementByAnnotationId } from "../utils/find-element";
+import { getPinPopoverStyle } from "../utils/popover-position";
 import { matchRoute } from "../utils/route-matching";
 import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
 import {
-  BADGE_GAP,
-  BADGE_OFFSET,
+  BADGE_SIZE,
   POPOVER_MAX_HEIGHT,
+  pinOnCorner,
   unplacedBadgeRect,
+  type PinTail,
 } from "./marker-geometry";
 import { unplacedAnnotationIds } from "./marker-placement";
 import type { Annotation } from "../types";
 
+/** A placed pin points at the element's top-right corner; an unplaced one sits where the
+    geometry helper parked it, without a tail. */
+function pinFor(badge: AutoBadgeInfo): { left: number; top: number; tail?: PinTail } {
+  return badge.unplaced ? { left: badge.rect.left, top: badge.rect.top } : pinOnCorner(badge.rect);
+}
+
 interface AutoBadgeInfo {
   annotation: Annotation;
   rect: DOMRect;
-  openCommentCount: number;
-  commentCount: number;
-  hasComments: boolean;
-  allResolved: boolean;
   /** No element to sit on; parked in the column top-left instead. */
   unplaced: boolean;
 }
@@ -41,11 +44,10 @@ export function AutoAnnotationMarkers() {
     annotationMode,
     inspectorActive,
     activeAnnotationId,
-    hoveredAnnotationId,
     setActiveAnnotationId,
     setHoveredAnnotationId,
     allAnnotations,
-    allComments,
+    unseenAnnotationIds,
     commentsConfig,
     currentRoute,
     registeredMarkerIds,
@@ -106,21 +108,7 @@ export function AutoAnnotationMarkers() {
         ? el.getBoundingClientRect()
         : unplacedBadgeRect(unplacedSlots.get(annotation.id) ?? 0);
 
-      // Compute comment counts for this annotation
-      const elementComments = commentsConfig
-        ? allComments.filter((c) => c.annotationId === annotation.id)
-        : [];
-      const openCommentCount = elementComments.filter((c) => c.status !== "Opgelost").length;
-
-      newBadges.push({
-        annotation,
-        rect,
-        openCommentCount,
-        commentCount: elementComments.length,
-        hasComments: elementComments.length > 0,
-        allResolved: elementComments.length > 0 && openCommentCount === 0,
-        unplaced,
-      });
+      newBadges.push({ annotation, rect, unplaced });
     }
 
     // Bail out if badges haven't actually changed to avoid re-render loops
@@ -130,9 +118,6 @@ export function AutoAnnotationMarkers() {
         const n = newBadges[i];
         return (
           b.annotation.id === n.annotation.id &&
-          b.openCommentCount === n.openCommentCount &&
-          b.commentCount === n.commentCount &&
-          b.allResolved === n.allResolved &&
           Math.abs(b.rect.top - n.rect.top) < 1 &&
           Math.abs(b.rect.left - n.rect.left) < 1 &&
           Math.abs(b.rect.right - n.rect.right) < 1 &&
@@ -141,7 +126,7 @@ export function AutoAnnotationMarkers() {
       });
       return unchanged ? prev : newBadges;
     });
-  }, [allAnnotations, registeredMarkerIds, showMarkers, currentRoute, allComments, commentsConfig]);
+  }, [allAnnotations, registeredMarkerIds, showMarkers, currentRoute]);
 
   // Update positions on mount, scroll, resize, and when dependencies change
   useEffect(() => {
@@ -169,19 +154,6 @@ export function AutoAnnotationMarkers() {
     };
   }, [showMarkers, updateBadges]);
 
-  // Show hover highlight on hovered element
-  useEffect(() => {
-    if (!showMarkers || !hoveredAnnotationId) return;
-
-    const badge = badges.find((b) => b.annotation.id === hoveredAnnotationId);
-    if (!badge) return;
-
-    const el = findElementByAnnotationId(badge.annotation.elementId || badge.annotation.id);
-    if (!el) return;
-
-    return showHoverHighlight(el);
-  }, [hoveredAnnotationId, badges, showMarkers]);
-
   const close = useCallback(() => {
     setActiveAnnotationId(null);
     document
@@ -197,26 +169,26 @@ export function AutoAnnotationMarkers() {
     const { annotation } = badge;
     const isActive = activeAnnotationId === annotation.id;
     const annotationType = annotation.type ?? "documentation";
+    // Feedback in its thread that the viewer has not read: a dot on the pin.
+    const unseen = !!commentsConfig && unseenAnnotationIds.has(annotation.id);
 
-    // A placed badge hangs over the element's top-right corner; an unplaced one
-    // sits where the geometry helper parked it.
-    const offset = badge.unplaced ? 0 : BADGE_OFFSET;
-    const badgeLeft = badge.unplaced ? badge.rect.left : badge.rect.right - offset;
+    const pin = pinFor(badge);
 
     elements.push(
       React.createElement(MarkerBadge, {
         key: `auto-${annotation.id}`,
         variant: "annotation",
         type: annotationType,
-        label: fill(badge.unplaced ? labels.annotationMarkerUnplaced : labels.annotationMarker, {
-          title: annotation.title,
-        }),
+        label:
+          fill(badge.unplaced ? labels.annotationMarkerUnplaced : labels.annotationMarker, {
+            title: annotation.title,
+          }) + (unseen ? `, ${labels.markerUnseen}` : ""),
+        unseen,
         placement: "fixed",
         unplaced: badge.unplaced,
-        style: {
-          top: badge.rect.top - offset,
-          left: badgeLeft,
-        },
+        tail: pin.tail,
+        pinId: annotation.id,
+        style: { top: pin.top, left: pin.left },
         active: isActive,
         controls: popoverId,
         onClick: (e: React.MouseEvent) => {
@@ -227,26 +199,6 @@ export function AutoAnnotationMarkers() {
         onMouseLeave: () => setHoveredAnnotationId(null),
       })
     );
-
-    if (badge.hasComments) {
-      elements.push(
-        React.createElement(MarkerBadge, {
-          key: `auto-fb-${annotation.id}`,
-          variant: "feedback",
-          resolved: badge.allResolved,
-          count: badge.openCommentCount,
-          label: badge.allResolved
-            ? fill(labels.feedbackAllResolved, { count: badge.commentCount })
-            : fill(labels.feedbackOpen, { count: badge.openCommentCount }),
-          placement: "fixed",
-          behind: true,
-          style: {
-            top: badge.rect.top - offset,
-            left: badgeLeft + BADGE_GAP,
-          },
-        })
-      );
-    }
   }
 
   if (activeBadge && activeAnnotation) {
@@ -261,7 +213,16 @@ export function AutoAnnotationMarkers() {
         error,
         onSubmit: submitComment,
         onClose: close,
-        style: getFixedPopoverStyle(activeBadge.rect, 300, POPOVER_MAX_HEIGHT),
+        pinId: activeAnnotation.id,
+        // On its pin, covering it.
+        style: (() => {
+          const pin = pinFor(activeBadge);
+          return getPinPopoverStyle(
+            new DOMRect(pin.left, pin.top, BADGE_SIZE, BADGE_SIZE),
+            300,
+            POPOVER_MAX_HEIGHT
+          );
+        })(),
       })
     );
   }

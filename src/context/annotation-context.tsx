@@ -3,6 +3,7 @@ import type { AnnotationContextValue, AnnotationProviderProps, OrbitLanguage, Or
 import { COMPONENT_ATTR, DEFAULT_SETTINGS } from "../constants";
 import { resolveLabels } from "../labels";
 import { useViewer } from "../hooks/use-viewer";
+import { useSeen } from "../hooks/use-seen";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
 import { matchRoute } from "../utils/route-matching";
@@ -58,7 +59,9 @@ export function AnnotationProvider({
     [settingsOverride]
   );
   // The viewer's language when they chose one, else the project's.
-  const { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers } = useViewer();
+  const { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers, setViewerShowResolved } =
+    useViewer();
+  const showResolvedPins = viewer.showResolved ?? true;
   const language: OrbitLanguage = viewer.language ?? projectLanguage;
   const labels = useMemo(() => resolveLabels(language, labelsOverride), [language, labelsOverride]);
 
@@ -156,6 +159,25 @@ export function AnnotationProvider({
     return () => window.removeEventListener("keydown", handler);
   }, [settings.keyboardShortcut, commentsOn]);
 
+  // Shift + R: resolved feedback's pins on or off, as the profile's switch does. Figma has no key
+  // for its "Show resolved comments"; R for resolved, with Shift so a bare R stays the page's.
+  // The same stand-downs as C.
+  const showResolvedRef = useRef(showResolvedPins);
+  showResolvedRef.current = showResolvedPins;
+  useEffect(() => {
+    if (!settings.keyboardShortcut || !commentsOn) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "R" && e.key !== "r") return;
+      if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.repeat || e.isComposing) return;
+      if (e.defaultPrevented || isTyping(e.target)) return;
+      e.preventDefault();
+      setViewerShowResolved(!showResolvedRef.current);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [settings.keyboardShortcut, commentsOn, setViewerShowResolved]);
+
   // Track which annotation IDs are rendered by AnnotationMarker wrappers
   const [registeredMarkerIds, setRegisteredMarkerIds] = useState<Set<string>>(() => new Set());
   // Force re-render counter so consumers see registration changes
@@ -236,6 +258,17 @@ export function AnnotationProvider({
     enabled: !!commentsConfig?.enabled,
   });
 
+  // What the viewer has not read yet: a white dot on the annotation's pin. An open popover reads
+  // its thread, also what arrives while it is open; the panel's thread page does the same.
+  const { unseen: unseenAnnotationIds, markSeen } = useSeen(
+    commentsConfig?.project ?? "",
+    allComments,
+    viewer.name
+  );
+  useEffect(() => {
+    if (activeAnnotationId) markSeen(activeAnnotationId);
+  }, [activeAnnotationId, markSeen]);
+
   const currentContext = contextStack.length > 0
     ? contextStack[contextStack.length - 1]
     : currentRoute;
@@ -273,6 +306,8 @@ export function AnnotationProvider({
       commentsLoading,
       commentsError,
       refreshComments,
+      unseenAnnotationIds,
+      markSeen,
       currentRoute,
       registeredMarkerIds,
       componentsOnPage,
@@ -285,6 +320,8 @@ export function AnnotationProvider({
       setViewerName,
       setViewerLanguage,
       setViewerShowMarkers,
+      showResolvedPins,
+      setViewerShowResolved,
     }),
     [
       annotationMode,
@@ -304,6 +341,8 @@ export function AnnotationProvider({
       commentsLoading,
       commentsError,
       refreshComments,
+      unseenAnnotationIds,
+      markSeen,
       currentRoute,
       registeredMarkerIds,
       componentsOnPage,
@@ -316,6 +355,8 @@ export function AnnotationProvider({
       setViewerName,
       setViewerLanguage,
       setViewerShowMarkers,
+      showResolvedPins,
+      setViewerShowResolved,
     ]
   );
 

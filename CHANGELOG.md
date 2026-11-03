@@ -1,5 +1,32 @@
 # Changelog
 
+## 4.9.0
+
+- **Pins look like pins.** Glass like the component chip: a dark film tinted by the kind, a lit
+  edge, a light glyph, the same in both themes. A pin on an element has a tail, a square tip
+  recessed into the circle, pointing at the spot it is pinned to: the element's top-right corner,
+  the pin above and to the right of it. Without room there, it turns around. A parked pin has no
+  tail and keeps its dashed edge. Hovering grows it from its tip, with a pointer cursor. New
+  tokens: `--orbit-pin-glass`, `--orbit-pin-fg`, `--orbit-pin-shadow`, `-shadow_hover`, and a hue
+  per kind, `--orbit-pin-{documentation,pro,question,con,suggestion,critical,user-insight,feedback}`.
+- **No highlight on the page.** Hovering or opening a pin no longer lights its element; the
+  faint hover highlight and the outline around a wrapped element are gone.
+- **A thread opens on its pin**, the way a comment does in Figma: the popover's corner on the
+  pin, covering it, growing right and down (left or up without room). It grows out of the pin
+  as it opens and back into it as it closes; with reduced motion, a fade. An open thread is
+  always above every other pin: AnnotationMarker's popover now renders in `document.body`.
+- **A dot for what you have not read.** An annotation's pin no longer has a feedback count beside
+  it; a white dot says its thread has a comment or an answer you have not seen (not your own).
+  Opening the thread reads it. Kept in localStorage per project (`@strakzat/orbit:seen`). New on
+  the context: `unseenAnnotationIds`, `markSeen`. New label: `markerUnseen`.
+- **Feedback pins say who.** Grey for everyone, with the initials of whoever started the thread
+  (the feedback icon for `Anonymous`); feedback on a component looks the same. The count is in
+  the pin's name for screen readers.
+- **Resolved feedback, half there or not at all.** Pins with everything resolved are at 50%
+  opacity, whole on hover. A profile switch, "Opgeloste feedback tonen", or Shift + R hides
+  them. New on the context: `showResolvedPins`, `setViewerShowResolved`, and `viewer.showResolved`.
+  New label: `profileResolved`.
+
 ## 4.8.0
 
 - **The pins are the viewer's to show or hide.** Annotations and feedback on the page show by
