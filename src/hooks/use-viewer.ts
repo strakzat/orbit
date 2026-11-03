@@ -7,7 +7,7 @@ const STORAGE_KEY = "@strakzat/orbit:viewer";
 /** Where the comment form kept the name before there was a profile. */
 const LEGACY_NAME_KEY = "@strakzat/orbit:commentAuteur";
 
-const NOBODY: OrbitViewer = { name: "", language: null, showMarkers: null };
+const NOBODY: OrbitViewer = { name: "", language: null, showMarkers: null, showResolved: null };
 
 // Layout effect in the browser: the stored language is in before the first paint. On the server
 // the plain effect, which does not warn there.
@@ -22,9 +22,10 @@ function load(): OrbitViewer {
         name: typeof parsed.name === "string" ? parsed.name : "",
         language: parsed.language && parsed.language in LABELS ? parsed.language : null,
         showMarkers: typeof parsed.showMarkers === "boolean" ? parsed.showMarkers : null,
+        showResolved: typeof parsed.showResolved === "boolean" ? parsed.showResolved : null,
       };
     }
-    return { name: window.localStorage.getItem(LEGACY_NAME_KEY) ?? "", language: null, showMarkers: null };
+    return { ...NOBODY, name: window.localStorage.getItem(LEGACY_NAME_KEY) ?? "" };
   } catch {
     return NOBODY;
   }
@@ -60,5 +61,10 @@ export function useViewer() {
   const setViewerLanguage = useCallback((language: OrbitLanguage) => update({ language }), [update]);
   const setViewerShowMarkers = useCallback((showMarkers: boolean) => update({ showMarkers }), [update]);
 
-  return { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers };
+  const setViewerShowResolved = useCallback(
+    (showResolved: boolean) => update({ showResolved }),
+    [update]
+  );
+
+  return { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers, setViewerShowResolved };
 }

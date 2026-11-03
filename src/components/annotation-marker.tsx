@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
-import { getAbsolutePopoverStyle } from "../utils/popover-position";
+import { getPinPopoverStyle } from "../utils/popover-position";
 import { fill } from "../labels";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
-import { MARKER_CORNERS, POPOVER_MAX_HEIGHT, feedbackCorner } from "./marker-geometry";
+import {
+  CORNER_TAIL,
+  MARKER_CORNERS,
+  POPOVER_MAX_HEIGHT,
+  pinBoxAtCorner,
+} from "./marker-geometry";
 import type { MarkerPosition, Annotation } from "../types";
 
 interface AnnotationMarkerProps {
@@ -35,12 +41,11 @@ export function AnnotationMarker({
     annotationMode,
     inspectorActive,
     activeAnnotationId,
-    hoveredAnnotationId,
     setActiveAnnotationId,
     setHoveredAnnotationId,
     commentsConfig,
     allAnnotations,
-    allComments,
+    unseenAnnotationIds,
     registerMarkerId,
     unregisterMarkerId,
     labels,
@@ -69,16 +74,30 @@ export function AnnotationMarker({
 
   // Not while picking: the spotlight is about the one element feedback goes on.
   const showMarkers = mounted && annotationMode && !inspectorActive;
-  const isHovered = hoveredAnnotationId === annotationId;
   const annotationType = annotation?.type ?? "documentation";
 
-  // Feedback badge: filter allComments for this annotationId
-  const elementComments = commentsConfig
-    ? allComments.filter((c) => c.annotationId === annotationId)
-    : [];
-  const openCommentCount = elementComments.filter((c) => c.status !== "Opgelost").length;
-  const hasComments = elementComments.length > 0;
-  const allResolved = hasComments && openCommentCount === 0;
+  // Feedback in this annotation's thread that the viewer has not read: a dot on its pin.
+  const unseen = !!commentsConfig && unseenAnnotationIds.has(annotationId);
+
+  // Open, the thread follows its pin through scrolling and resizing, once a frame at most.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!isActive) return;
+    let frame = 0;
+    const update = () => {
+      if (!frame) frame = requestAnimationFrame(() => {
+        frame = 0;
+        setTick((t) => t + 1);
+      });
+    };
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [isActive]);
 
   // Closing puts focus back on the badge that opened the popover, so keyboard
   // users are not dropped at the top of the document.
@@ -102,11 +121,7 @@ export function AnnotationMarker({
         // Deliberately no `orbit-root` here: this element wraps the consumer's own
         // components, and the reset that comes with orbit-root would strip their
         // styling. The ring needs no reset, and the badges inside carry their own.
-        className: cx(
-          "orbit-marker-wrap",
-          showMarkers && (isActive || isHovered) && "orbit-marker-wrap--lit",
-          showMarkers && isActive && "orbit-marker-wrap--active"
-        ),
+        className: "orbit-marker-wrap",
         // Stamp the annotation id on the wrapper so the element is identified by the
         // *same* id everywhere: the inspector walking up for feedback resolves to this
         // id, findElementByAnnotationId() locates it, and annotation + feedback end up
@@ -121,9 +136,14 @@ export function AnnotationMarker({
           variant: "annotation",
           type: annotationType,
           count: matchingAnnotations.length > 1 ? matchingAnnotations.length : undefined,
-          label: fill(labels.annotationMarker, { title: annotationLabel }),
+          label:
+            fill(labels.annotationMarker, { title: annotationLabel }) +
+            (unseen ? `, ${labels.markerUnseen}` : ""),
           placement: "absolute",
           style: MARKER_CORNERS[position],
+          tail: CORNER_TAIL[position],
+          pinId: annotationId,
+          unseen,
           active: isActive,
           controls: popoverId,
           onClick: handleClick,
@@ -131,39 +151,30 @@ export function AnnotationMarker({
           onMouseLeave: () => setHoveredAnnotationId(null),
         }),
 
-      showMarkers &&
-        hasComments &&
-        React.createElement(MarkerBadge, {
-          variant: "feedback",
-          resolved: allResolved,
-          count: openCommentCount,
-          label: allResolved
-            ? fill(labels.feedbackAllResolved, { count: elementComments.length })
-            : fill(labels.feedbackOpen, { count: openCommentCount }),
-          placement: "absolute",
-          behind: true,
-          style: feedbackCorner(position),
-        }),
-
+      // The thread on its pin, covering it. Out of the frame, in the fixed layer with the other
+      // pins' threads: inside it, the pins out there would draw over it.
       showMarkers &&
         isActive &&
-        React.createElement(AnnotationPopover, {
-          id: popoverId,
-          annotation,
-          showComments: !!commentsConfig,
-          comments,
-          isLoading,
-          error,
-          onSubmit: submitComment,
-          onClose: close,
-          style: wrapperRef.current
-            ? getAbsolutePopoverStyle(
-                wrapperRef.current.getBoundingClientRect(),
-                300,
-                POPOVER_MAX_HEIGHT
-              )
-            : { position: "absolute", top: "100%", left: 0, marginTop: 8 },
-        })
+        wrapperRef.current &&
+        createPortal(
+          React.createElement(AnnotationPopover, {
+            id: popoverId,
+            annotation,
+            showComments: !!commentsConfig,
+            comments,
+            isLoading,
+            error,
+            onSubmit: submitComment,
+            onClose: close,
+            pinId: annotationId,
+            style: getPinPopoverStyle(
+              pinBoxAtCorner(wrapperRef.current.getBoundingClientRect(), position),
+              300,
+              POPOVER_MAX_HEIGHT
+            ),
+          }),
+          document.body
+        )
     )
   );
 }

@@ -1,3 +1,5 @@
+import { pickArea } from "./pick-element";
+
 /**
  * Computes optimal popover placement based on the target element's position
  * relative to viewport boundaries.
@@ -122,29 +124,30 @@ export function getBubblePlacement(
 }
 
 /**
- * Returns absolute-position CSS properties for a popover inside a relative container.
- * Used by AnnotationMarker where the popover is a child of the annotated element.
+ * A thread's popover on its pin, the way a comment opens in Figma: its corner on the pin's
+ * corner, covering the pin, growing right and down from it. Without room to the right it grows
+ * left from the pin's right edge; without room below, up from its bottom. Kept inside the
+ * frame (or the window), clear of the rail.
  */
-export function getAbsolutePopoverStyle(
-  containerRect: DOMRect,
-  popoverMinWidth: number,
+export function getPinPopoverStyle(
+  pin: DOMRect,
+  popoverWidth: number,
   popoverMaxHeight: number,
-  gap = 8
+  margin = 16
 ): React.CSSProperties {
-  const { vertical, horizontal } = computePopoverPlacement(
-    containerRect,
-    popoverMaxHeight,
-    popoverMinWidth
-  );
+  const area = pickArea();
+  const right = pin.left + popoverWidth <= area.right - margin;
+  const roomBelow = area.bottom - margin - pin.top;
+  const roomAbove = pin.bottom - area.top - margin;
+  const down = roomBelow >= Math.min(popoverMaxHeight, 240) || roomBelow >= roomAbove;
+  const left = right ? pin.left : pin.right - popoverWidth;
 
   return {
-    position: "absolute",
-    top: vertical === "below" ? "100%" : undefined,
-    bottom: vertical === "above" ? "100%" : undefined,
-    marginTop: vertical === "below" ? gap : undefined,
-    marginBottom: vertical === "above" ? gap : undefined,
-    left: horizontal === "align-left" ? 0 : undefined,
-    right: horizontal === "align-right" ? 0 : undefined,
-    maxHeight: availableHeight(containerRect, vertical, gap, popoverMaxHeight),
+    position: "fixed",
+    left: Math.max(area.left + margin, left),
+    top: down ? pin.top : undefined,
+    bottom: down ? undefined : window.innerHeight - pin.bottom,
+    width: popoverWidth,
+    maxHeight: Math.min(popoverMaxHeight, down ? roomBelow : roomAbove),
   };
 }

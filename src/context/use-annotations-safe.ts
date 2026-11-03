@@ -25,6 +25,8 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   commentsLoading: false,
   refreshComments: async () => {},
   commentsError: null,
+  unseenAnnotationIds: new Set(),
+  markSeen: () => {},
   currentRoute: "/",
   registeredMarkerIds: new Set(),
   componentsOnPage: new Set(),
@@ -33,10 +35,12 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   registerVariants: () => {},
   describeVariants: () => "",
   language: "nl",
-  viewer: { name: "", language: null, showMarkers: null },
+  viewer: { name: "", language: null, showMarkers: null, showResolved: null },
   setViewerName: () => {},
   setViewerLanguage: () => {},
   setViewerShowMarkers: () => {},
+  showResolvedPins: true,
+  setViewerShowResolved: () => {},
 };
 
 export function useAnnotationsSafe(): AnnotationContextValue {

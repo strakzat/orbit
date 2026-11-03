@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { cx } from "../utils/cx";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { formatDate } from "../utils/format";
 import { TypeBadge } from "./type-badge";
 import { CommentThread } from "./comment-thread";
 import { CommentForm } from "./comment-form";
+import { usePinMorph } from "../hooks/use-pin-morph";
 import { MessageSquareTextIcon, XIcon } from "../icons";
 import type { Annotation, Comment } from "../types";
 
@@ -24,6 +25,8 @@ interface AnnotationPopoverProps {
   style?: React.CSSProperties;
   variant?: "marker" | "inspector";
   extraProps?: Record<string, string>;
+  /** The pin that opened it (`data-orbit-pin`): it grows out of that pin, and back into it. */
+  pinId?: string;
 }
 
 /**
@@ -44,8 +47,11 @@ export function AnnotationPopover({
   style,
   variant = "marker",
   extraProps,
+  pinId,
 }: AnnotationPopoverProps) {
   const { labels, language } = useAnnotationsSafe();
+  const ref = useRef<HTMLDivElement>(null);
+  usePinMorph(ref, pinId);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -58,11 +64,13 @@ export function AnnotationPopover({
     "div",
     {
       id,
+      ref,
       className: cx(
         "orbit-root",
         "orbit-popover",
         "orbit-glass-pane",
-        "orbit-animate-in",
+        // Opened from a pin, it morphs out of the pin instead (usePinMorph).
+        !pinId && "orbit-animate-in",
         variant === "inspector" && "orbit-popover--inspector"
       ),
       style,

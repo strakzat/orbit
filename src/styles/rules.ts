@@ -109,6 +109,11 @@ const BASE = `
   transform-origin: top center;
 }
 
+/* The copy of a closed popover that goes back into its pin (usePinMorph): only to look at. */
+.orbit-popover--leaving {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .orbit-root,
   .orbit-root * {
@@ -994,20 +999,48 @@ const CHROME = `
 // ── Marker badges (pins) ──────────────────────────────────────────────────────
 
 const MARKER = `
+/* A pin is glass, like the component chip: a dark film tinted by one hue, a lit edge in that
+   hue, a light glyph. The outline is an SVG behind the glyph (\`.orbit-marker__shape\`), so the
+   tail and the circle are one surface. */
 .orbit-marker {
+  --orbit-marker-hue: var(--orbit-pin-documentation);
+  --orbit-marker-fill: color-mix(
+    in oklab,
+    color-mix(in oklab, var(--orbit-marker-hue) 30%, var(--orbit-pin-glass)) 88%,
+    transparent
+  );
+  --orbit-marker-edge: color-mix(in oklab, var(--orbit-marker-hue) 40%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
-  border: 1px solid var(--orbit-variant-border, var(--orbit-border-primary));
   border-radius: var(--orbit-radius-full);
-  background: var(--orbit-bg-primary);
-  color: var(--orbit-variant-fg, var(--orbit-text-secondary));
-  box-shadow: var(--orbit-shadow-sm);
-  transition:
-    transform var(--orbit-duration) var(--orbit-ease),
-    box-shadow var(--orbit-duration) var(--orbit-ease);
+  color: color-mix(in oklab, var(--orbit-marker-hue) 45%, var(--orbit-pin-fg));
+  cursor: pointer;
+  transition: transform var(--orbit-duration) var(--orbit-ease);
+}
+
+${ANNOTATION_TYPES.map(
+  (type) => `.orbit-marker[data-orbit-type="${type}"] {
+  --orbit-marker-hue: var(--orbit-pin-${type});
+}`
+).join("\n")}
+
+/* Behind the glyph, inside the pin's own stacking context (it always has a z-index). */
+.orbit-marker__shape {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: visible;
+  filter: var(--orbit-pin-shadow);
+  transition: filter var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-marker__body {
+  fill: var(--orbit-marker-fill);
+  stroke: var(--orbit-marker-edge);
+  stroke-width: 1px;
 }
 
 /* Extends the hit area to ~38px without growing the visible pin, which would
@@ -1019,19 +1052,22 @@ const MARKER = `
   border-radius: inherit;
 }
 
+/* It grows from its tip, which stays on the spot it is pinned to. */
+.orbit-marker--tail-bottom-left { transform-origin: left bottom; }
+.orbit-marker--tail-bottom-right { transform-origin: right bottom; }
+.orbit-marker--tail-top-left { transform-origin: left top; }
+.orbit-marker--tail-top-right { transform-origin: right top; }
+
 .orbit-marker:hover {
   transform: scale(1.12);
-  box-shadow: var(--orbit-shadow-md);
+}
+
+.orbit-marker:hover .orbit-marker__shape {
+  filter: var(--orbit-pin-shadow_hover);
 }
 
 .orbit-marker:active {
   transform: scale(0.96);
-}
-
-.orbit-marker--active {
-  box-shadow:
-    0 0 0 4px var(--orbit-variant-ring, var(--orbit-overlay-ring)),
-    var(--orbit-shadow-sm);
 }
 
 /* Mirrors of what the panel already lists take no hit area and no pointer. */
@@ -1043,43 +1079,52 @@ const MARKER = `
   content: none;
 }
 
-/* Feedback pins are the Vercel comment pin: solid blue, white glyph. */
 .orbit-marker--feedback {
-  border-color: var(--orbit-bg-feedback-solid);
-  background: var(--orbit-bg-feedback-solid);
-  color: var(--orbit-text-feedback_on-solid);
+  --orbit-marker-hue: var(--orbit-pin-feedback);
 }
 
-.orbit-marker--feedback.orbit-marker--active {
-  box-shadow:
-    0 0 0 4px var(--orbit-overlay-ring),
-    var(--orbit-shadow-sm);
-}
-
-/* Feedback on a component: the same pin in dark purple glass, on every page the component is on. */
-.orbit-marker--component {
-  border-color: transparent;
-  background: var(--orbit-component-glass);
-  box-shadow: var(--orbit-component-glass-edge), var(--orbit-shadow-sm);
-  color: var(--orbit-text-component_on-glass);
-  backdrop-filter: var(--orbit-glass-blur);
-}
-
-.orbit-marker--component:hover {
-  box-shadow: var(--orbit-component-glass-edge), var(--orbit-shadow-md);
-}
-
-.orbit-marker--component.orbit-marker--active {
-  box-shadow:
-    var(--orbit-component-glass-edge),
-    0 0 0 4px color-mix(in oklab, var(--orbit-component) 35%, transparent),
-    var(--orbit-shadow-sm);
-}
-
+/* Everything on it is resolved: the same pin, half there. Whole again under the mouse or the
+   keyboard, to be read. The profile can hide these (showResolvedPins). */
 .orbit-marker--resolved {
-  border-color: var(--orbit-border-primary);
-  background: var(--orbit-bg-tertiary);
-  color: var(--orbit-text-quaternary);
+  opacity: 0.5;
+  transition:
+    transform var(--orbit-duration) var(--orbit-ease),
+    opacity var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-marker--resolved:hover,
+.orbit-marker--resolved:focus-visible {
+  opacity: 1;
+}
+
+/* Open, the pin is its thread: the popover grows out of it and lies on top of it. Gone from
+   sight but not from the page, so closing can put the focus back on it. After the resolved
+   pin's hover, which it beats. */
+.orbit-marker--active,
+.orbit-marker--active:hover,
+.orbit-marker--active:focus-visible {
+  opacity: 0;
+}
+
+/* Something in its thread the viewer has not read: a white dot on the rim, top right, like the
+   one on Varianten. A ring of the pin's film keeps it apart from the rim. */
+.orbit-marker__dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-pin-fg);
+  box-shadow: 0 0 0 1.5px var(--orbit-pin-glass);
+}
+
+/* Who started the thread, as on their avatar beside a comment. */
+.orbit-marker__monogram {
+  font-size: var(--orbit-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  line-height: var(--orbit-leading-none);
 }
 
 .orbit-marker__count {
@@ -1099,36 +1144,20 @@ const MARKER = `
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-badge));
 }
 
-.orbit-marker--behind {
-  z-index: calc(var(--orbit-z-base) + var(--orbit-z-badge-feedback));
-}
-
 /* A dashed edge says this pin points at nothing in particular — the annotation is
-   page-level, or its element is not rendered right now. */
-.orbit-marker--unplaced {
-  border-style: dashed;
+   page-level, or its element is not rendered right now. It has no tail either. */
+.orbit-marker--unplaced .orbit-marker__body {
+  stroke: color-mix(in oklab, var(--orbit-marker-hue) 70%, transparent);
+  stroke-dasharray: 3 2.5;
 }
 
-/* Ring drawn around a wrapped element while its pin is hovered or open. */
+/* Around a wrapped element: the box its pin hangs from. Lit, it is in the spotlight. */
 .orbit-marker-wrap {
   position: relative;
   flex: 1;
   min-width: 0;
-  border-radius: var(--orbit-radius-lg);
-  outline: 1.5px solid transparent;
-  outline-offset: 2px;
-  transition:
-    outline-color var(--orbit-duration) var(--orbit-ease),
-    box-shadow var(--orbit-duration) var(--orbit-ease);
 }
 
-.orbit-marker-wrap--lit {
-  outline-color: var(--orbit-variant-fg, var(--orbit-text-feedback));
-}
-
-.orbit-marker-wrap--active {
-  box-shadow: 0 0 0 4px var(--orbit-variant-ring, var(--orbit-overlay-ring));
-}
 `;
 
 // ── Popover ──────────────────────────────────────────────────────────────────
@@ -2260,6 +2289,7 @@ const OVERLAYS = `
   opacity: 0;
 }
 
+
 .orbit-spotlight__cutout,
 .orbit-spotlight__tag,
 .orbit-spotlight-ring {
@@ -2375,11 +2405,6 @@ const OVERLAYS = `
   opacity: 1;
   pointer-events: none;
   transition: opacity var(--orbit-duration-slow) var(--orbit-ease);
-}
-
-.orbit-highlight--hover {
-  background: var(--orbit-overlay-fill);
-  box-shadow: none;
 }
 
 .orbit-highlight--leaving {

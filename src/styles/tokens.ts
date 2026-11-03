@@ -106,7 +106,7 @@ const LIGHT: Vars = {
 
   // Components (\`data-orbit-component\`): Figma's purple, apart from the suggestion type's.
   "--orbit-component": "#9747FF",
-  // Dark purple glass for what names a component (chip, tag, pin), in both themes like the
+  // Dark purple glass for what names a component (chip, tag), in both themes like the
   // spotlight's tag: dense enough over a white page that its light text keeps 4.5:1.
   "--orbit-component-glass": "rgba(59, 22, 120, 0.88)",
   "--orbit-component-glass-edge":
@@ -222,7 +222,7 @@ const DARK: Vars = {
   "--orbit-spotlight-tag-text": "#FCFCFD",
 
   "--orbit-component": "#9747FF",
-  // Dark purple glass for what names a component (chip, tag, pin), in both themes like the
+  // Dark purple glass for what names a component (chip, tag), in both themes like the
   // spotlight's tag: dense enough over a white page that its light text keeps 4.5:1.
   "--orbit-component-glass": "rgba(59, 22, 120, 0.88)",
   "--orbit-component-glass-edge":
@@ -381,6 +381,31 @@ const SCALES = `
   --orbit-z-inspector-popover: 1010;
 `;
 
+// ── Pins ─────────────────────────────────────────────────────────────────────
+
+// The pins on the page are glass, like the component chip: a dark film with light text, in
+// both themes, so they read on whatever the project paints. Each kind brings one hue, which
+// tints the glass, the edge and the glyph (see `.orbit-marker` in rules.ts).
+const PINS = `
+  /* Radial's neutral 900, the film every pin is made of. */
+  --orbit-pin-glass: #121926;
+  --orbit-pin-fg: #F8FAFC;
+  /* Feedback is grey, like the avatar beside a comment: the initials say who, the colour
+     nothing. Resolved is the same pin at half opacity. */
+  --orbit-pin-feedback: #CDD5DF;
+  /* Drop shadows, not box shadows: they follow the tail. */
+  --orbit-pin-shadow: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.32)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
+  --orbit-pin-shadow_hover: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.36)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+  /* The annotation types in their dark-theme tone: light enough to tint a dark film. */
+  --orbit-pin-documentation: #B4B4B4;
+  --orbit-pin-pro: #5FD08A;
+  --orbit-pin-question: #5EA8FF;
+  --orbit-pin-con: #FF6166;
+  --orbit-pin-suggestion: #B39DFF;
+  --orbit-pin-critical: #F5A15B;
+  --orbit-pin-user-insight: #F09BD0;
+`;
+
 function declarations(vars: Vars): string {
   return Object.entries(vars)
     .map(([name, value]) => `  ${name}: ${value};`)
@@ -393,6 +418,7 @@ const DARK_DECLS = `${declarations(DARK)}\n${BRAND_DARK.trim()}`;
 export const TOKENS_CSS = `
 :root {
 ${SCALES.trim()}
+${PINS.trim()}
 ${DARK_DECLS}
 }
 

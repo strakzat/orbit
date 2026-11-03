@@ -24,8 +24,19 @@ interface ProfilePaneProps {
  * press outside close it.
  */
 export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
-  const { labels, language, viewer, setViewerName, setViewerLanguage, annotationMode, setAnnotationMode, settings } =
-    useAnnotations();
+  const {
+    labels,
+    language,
+    viewer,
+    setViewerName,
+    setViewerLanguage,
+    annotationMode,
+    setAnnotationMode,
+    showResolvedPins,
+    setViewerShowResolved,
+    commentsConfig,
+    settings,
+  } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const nameId = useStableId("orbit-profile-name");
   const nameHintId = useStableId("orbit-profile-name-hint");
@@ -73,21 +84,30 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
     value: annotationMode,
     onChange: setAnnotationMode,
   };
-  // The shortcut as the keys themselves, a chip each.
-  const markersHint = settings.keyboardShortcut
-    ? React.createElement(
-        React.Fragment,
-        null,
-        labels.profileMarkersHint,
-        React.createElement(
-          "span",
-          { className: "orbit-keys" },
-          (isMac ? ["⌘", "."] : ["Ctrl", "."]).map((key) =>
-            React.createElement("kbd", { key, className: "orbit-key" }, key)
+  // Resolved feedback keeps a dimmed pin, or none: done is done.
+  const resolvedSwitch: OrbitSwitchVariant = {
+    type: "switch",
+    id: "orbit-resolved",
+    title: labels.profileResolved,
+    value: showResolvedPins,
+    onChange: setViewerShowResolved,
+  };
+  // A shortcut as the keys themselves, a chip each.
+  const keysHint = (keys: string[]) =>
+    settings.keyboardShortcut
+      ? React.createElement(
+          React.Fragment,
+          null,
+          labels.profileMarkersHint,
+          React.createElement(
+            "span",
+            { className: "orbit-keys" },
+            keys.map((key) => React.createElement("kbd", { key, className: "orbit-key" }, key))
           )
         )
-      )
-    : undefined;
+      : undefined;
+  const markersHint = keysHint(isMac ? ["⌘", "."] : ["Ctrl", "."]);
+  const resolvedHint = keysHint(isMac ? ["⇧", "R"] : ["Shift", "R"]);
 
   return React.createElement(
     "div",
@@ -138,7 +158,9 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
         React.createElement("p", { id: nameHintId, className: "orbit-profile__hint" }, labels.profileNameHint)
       ),
       React.createElement(Choice, { variant: languageChoice, onAnnounce }),
-      React.createElement(Switch, { variant: markersSwitch, onAnnounce, hint: markersHint })
+      React.createElement(Switch, { variant: markersSwitch, onAnnounce, hint: markersHint }),
+      // Only with feedback: without it there is nothing to resolve.
+      commentsConfig && React.createElement(Switch, { variant: resolvedSwitch, onAnnounce, hint: resolvedHint })
     )
   );
 }
