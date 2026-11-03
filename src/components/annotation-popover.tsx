@@ -112,7 +112,7 @@ type ThreadSectionsProps = Pick<
 >;
 
 /**
- * What a thread is: the annotation, if there is one, and the feedback on it with the composer.
+ * What a thread is: the annotation, if there is one, the feedback on it, and the composer.
  * The popover on the page and the thread page in the panel both show it.
  */
 export function ThreadSections({
@@ -158,7 +158,15 @@ export function ThreadSections({
           comments.length > 0 &&
             React.createElement("span", { className: "orbit-count" }, comments.length)
         ),
-        React.createElement(CommentThread, { comments, isLoading, error }),
+        React.createElement(CommentThread, { comments, isLoading, error })
+      ),
+
+    // The composer is the thread's last section, under a divider like the others: part of the
+    // thread, not a field floating in it.
+    showComments &&
+      React.createElement(
+        "div",
+        { className: "orbit-popover__section orbit-popover__compose" },
         React.createElement(CommentForm, { onSubmit })
       )
   );

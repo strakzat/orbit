@@ -1977,9 +1977,17 @@ const FORM = `
   box-shadow: var(--orbit-glass-field-edge);
 }
 
-/* In a popover, under its comments (or the line that says there are none). */
-.orbit-popover__section > .orbit-composer {
-  margin-top: var(--orbit-space-4);
+/* In a thread, its own section under a divider: no field of its own, the section is the field.
+   The section's padding plus the composer's lines the text up with the content above. */
+.orbit-popover__section.orbit-popover__compose {
+  padding: var(--orbit-space-2) var(--orbit-space-3) var(--orbit-space-2) var(--orbit-space-1);
+}
+
+.orbit-popover__compose .orbit-composer {
+  padding: var(--orbit-space-1) var(--orbit-space-1) var(--orbit-space-1) var(--orbit-space-3);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .orbit-composer__field {
