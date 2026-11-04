@@ -38,6 +38,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     labels,
     language,
     viewer,
+    settings,
     tourStep,
     setTourStep,
     endTour,
@@ -148,9 +149,10 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   };
 
   const hasComments = !!commentsConfig;
+  const projectName = settings.projectName.trim();
   const copy: Record<TourStepId, { title: string; body: string; note?: string }> = {
     welcome: {
-      title: labels.tourWelcomeTitle,
+      title: projectName ? fill(labels.tourWelcomeTitleNamed, { name: projectName }) : labels.tourWelcomeTitle,
       body: hasComments ? labels.tourWelcomeBody : labels.tourWelcomeBodyAnnotations,
     },
     pins: {

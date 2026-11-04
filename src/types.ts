@@ -22,6 +22,8 @@ export interface AnnotationSettings {
   keyboardShortcut?: boolean;
   /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
   tour?: boolean;
+  /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype". */
+  projectName?: string;
 }
 
 export interface AnnotationLabels {
@@ -163,6 +165,8 @@ export interface AnnotationLabels {
   timeDays: string;
   /** The tour. Its titles are the names of the buttons it points at, where it can. */
   tourWelcomeTitle: string;
+  /** With `settings.projectName`. */
+  tourWelcomeTitleNamed: string;
   tourWelcomeBody: string;
   /** Without comments: nothing to share, and no name to set. */
   tourWelcomeBodyAnnotations: string;

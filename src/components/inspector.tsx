@@ -343,7 +343,7 @@ export function Inspector() {
   // than left to the button's colour.
   const announcement = React.createElement(
     "div",
-    { key: "status", className: "orbit-root orbit-sr-only", role: "status" },
+    { key: "status", className: "orbit-root orbit-sr-only orbit-sr-only--pinned", role: "status" },
     notice || (active && !selected ? labels.inspectorActive : "")
   );
 

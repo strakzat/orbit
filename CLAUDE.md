@@ -98,6 +98,7 @@ interface CommentsConfig {
   zIndex: 9000,
   keyboardShortcut: true,   // Cmd+. / Ctrl+. (pins tonen/verbergen), C (feedback plaatsen), Shift+R (opgeloste pins)
   tour: true,               // de rondleiding start één keer vanzelf; terugkijken kan altijd in het profiel
+  projectName: "",          // de naam zoals de klant hem kent, voor de welkomstkaart; leeg is "dit prototype"
 }
 ```
 
@@ -200,6 +201,7 @@ Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, k
 
 Een kijker die hem nog niet zag, krijgt één keer een rondleiding door Orbit (niet door het project), ook op bestaande projecten na een update: `tourSeen` ontbreekt daar in `@strakzat/orbit:viewer`, dus niet gezien. Hij telt als gezien na Klaar of Overslaan, niet bij de start: een reload halverwege begint opnieuw. Zonder storage start hij niet, anders kwam hij bij elke load terug. `settings.tour: false` zet alleen de automatische start uit; "Rondleiding opnieuw bekijken" staat in het profiel. Alleen met `OrbitShell`: `OrbitRail` start en rendert hem, want die kent de varianten.
 
+- **De welkomstkaart gaat over het prototype, niet over Orbit.** De klant komt voor z'n prototype en kent de naam van de tool niet. De kaart zegt dat hij mag zeggen wat hij ervan vindt: zo leest het als onaf, en daar komt feedback op. Met `settings.projectName` noemt de titel het project.
 - **De stappen** (`tourSteps()`): welkom (naam en taal, `ViewerIdentity` en `LanguageChoice` uit het profiel; de naam alleen met comments), pins, feedback plaatsen (met comments), het paneel, Varianten (met `variants`), het profiel. De welkomstkaart telt niet mee in "1 van 5". Elke stap zet zelf het toneel: de inspector aan voor de oefening, het paneel open voor het paneel.
 - **Voorbeelddata vervangt de echte data.** Zolang `tourStep` niet null is, geeft de provider `tourSample()` door als `allAnnotations`, `currentAnnotations` en `allComments`, dus pins, paneel, tellers en threads zijn de echte, zonder eigen UI. Niet gemengd: een voorbeeld is nooit met echte feedback te verwarren. `AnnotationMarker` toont dan geen pin (z'n annotatie is geen voorbeeld) en `registeredMarkerIds` is leeg, anders kreeg feedback op een wrapper geen pin. **Een oefencomment wordt nergens bewaard,** ook niet voor de rest van de tour: versturen telt alleen (`tourPractised`) en gaat door naar de volgende stap, en de status-regio zegt niet dat hij geplaatst is. Een antwoord in een voorbeeldthread blijft staan zolang die thread op de pagina is (`tourComments`) en verdwijnt zodra de pins-stap voorbij is. Het paneel opent in de tour op Annotaties, en staat erna weer op z'n gewone view.
 - **Niets gaat de deur uit.** `useComments` is de enige plek die threads ophaalt of POST: in de tour leest hij uit de context en schrijft hij met `addTourComment()`, zonder fetch of screenshot. `useSeen` krijgt de echte comments en `markSeen` doet niets, dus er komt geen voorbeeld in `@strakzat/orbit:seen`. De poller loopt gewoon door. **Een nieuwe schrijfactie naar de API hoort achter dezelfde guard.**

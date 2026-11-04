@@ -93,6 +93,14 @@ const BASE = `
   border-width: 0;
 }
 
+/* After the app in the page: left where it stands, it lies under a full-height shell, and its
+   1px makes the window scroll. */
+.orbit-sr-only--pinned {
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
 @keyframes orbit-enter {
   from {
     opacity: 0;
