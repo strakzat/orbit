@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { LABELS } from "../../labels";
-import { tourCardPosition, tourSample, tourSteps } from "../tour";
+import { hexToRgb, tourCardPosition, tourSample, tourSteps } from "../tour";
 
 const labels = LABELS.nl;
 const viewport = { width: 1000, height: 700 };
 const card = { width: 340, height: 200 };
+
+describe("hexToRgb", () => {
+  it("reads a token as the shader takes it", () => {
+    expect(hexToRgb(" #FF0080 ")).toEqual([1, 0, 128 / 255]);
+  });
+
+  it("falls back to white rather than to a black star", () => {
+    expect(hexToRgb("")).toEqual([1, 1, 1]);
+  });
+});
 
 describe("tourSteps", () => {
   it("has everything for a project with variants and comments", () => {

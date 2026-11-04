@@ -399,7 +399,30 @@ const CHROME = `
   border-radius: var(--orbit-radius-2xl);
   transition:
     left var(--orbit-duration-slow) var(--orbit-ease),
-    top var(--orbit-duration-slow) var(--orbit-ease);
+    top var(--orbit-duration-slow) var(--orbit-ease),
+    opacity var(--orbit-duration-boot) var(--orbit-ease),
+    transform var(--orbit-duration-boot) var(--orbit-ease);
+}
+
+/* Until the stars are in. Still in the page: it has a size for them to land around. */
+.orbit-tour--waiting {
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+/* The boot: everything starts black, the rail too, and comes up under the stars. */
+.orbit-tour__black {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-popover));
+  background: var(--orbit-boot-bg);
+  transition: opacity var(--orbit-duration-boot) var(--orbit-ease);
+}
+
+.orbit-tour__black--up {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .orbit-tour__title {
@@ -490,6 +513,21 @@ const CHROME = `
 .orbit-tour__scrim--clear {
   z-index: calc(var(--orbit-z-base) + 1);
   background: transparent;
+}
+
+/* Above the black, under the card. */
+.orbit-tour__stars {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-tour-stars));
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: opacity var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-tour__stars--off {
+  opacity: 0;
 }
 
 /* The profile's way back to the tour: quiet, under the settings it isn't one of. */

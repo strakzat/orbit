@@ -10,6 +10,7 @@ import { useStableId } from "../utils/use-stable-id";
 import { fill } from "../labels";
 import { LanguageChoice, ViewerIdentity } from "./profile-pane";
 import { Spotlight } from "./spotlight";
+import { TourStars } from "./tour-stars";
 import type { TourStepId } from "../types";
 
 // The rail's button a step points at.
@@ -61,6 +62,9 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const titleId = useStableId("orbit-tour-title");
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+  // The boot: black, the stars come in, and then the page and the card come up together.
+  const [landed, setLanded] = useState(false);
+  const land = useCallback(() => setLanded(true), []);
 
   const next = useCallback(() => {
     if (last) endTour();
@@ -90,8 +94,8 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   // The focus goes with the step: to the name when there is one to fill in, else its title.
   useEffect(() => {
     const field = step === "welcome" ? cardRef.current?.querySelector("input") : null;
-    (field ?? titleRef.current)?.focus({ preventScroll: true });
-  }, [step]);
+    if (landed) (field ?? titleRef.current)?.focus({ preventScroll: true });
+  }, [step, landed]);
 
   useLayoutEffect(() => {
     const place = () => {
@@ -191,6 +195,12 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         style: { left: area.left, top: area.top, width: area.width, height: area.height },
       }),
     lit && React.createElement(Spotlight, { el: lit, still: true }),
+    React.createElement("div", {
+      [ORBIT_UI_ATTR]: "",
+      "aria-hidden": true,
+      className: cx("orbit-root orbit-tour__black", landed && "orbit-tour__black--up"),
+    }),
+    React.createElement(TourStars, { cardRef, on: step === "welcome", onLanded: land }),
     React.createElement(
       "div",
       {
@@ -201,8 +211,9 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         lang: language,
         [ORBIT_UI_ATTR]: "",
         className: cx(
-          "orbit-root orbit-tour orbit-glass-pane orbit-animate-in",
-          step === "welcome" && "orbit-tour--welcome"
+          "orbit-root orbit-tour orbit-glass-pane",
+          step === "welcome" && "orbit-tour--welcome",
+          !landed && "orbit-tour--waiting"
         ),
         // Measured before the first paint. Not hidden until then: it has to take the focus.
         style: position ?? undefined,

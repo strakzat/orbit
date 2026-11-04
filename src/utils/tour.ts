@@ -116,6 +116,13 @@ export function tourAnchors(): TourAnchor[] {
   return found.map((el) => ({ locator: getLocator(el), label: getElementLabel(el) }));
 }
 
+/** A token's `#RRGGBB` as a shader takes it: 0 to 1 a channel. White for anything else. */
+export function hexToRgb(hex: string): [number, number, number] {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!match) return [1, 1, 1];
+  return [parseInt(match[1], 16) / 255, parseInt(match[2], 16) / 255, parseInt(match[3], 16) / 255];
+}
+
 const EDGE = 16;
 const GAP = 12;
 

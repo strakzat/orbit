@@ -55,6 +55,8 @@ const STYLE_PROPERTY = new RegExp(`^\\s*(${STYLE_PROPERTIES.join("|")})\\s*:`);
 function walk(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
+    // Tests don't ship, and a colour can be what they're about.
+    if (entry === "__tests__") return [];
     if (statSync(full).isDirectory()) return walk(full);
     return /\.tsx?$/.test(entry) ? [full] : [];
   });

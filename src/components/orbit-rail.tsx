@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
@@ -82,8 +82,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const count = currentAnnotations.length + openFeedback;
 
   // The tour starts by itself once for each viewer. The viewer is loaded by now: the shell only
-  // renders the rail after mounting.
-  useEffect(() => {
+  // renders the rail after mounting. Before the paint, so its black comes before the page does.
+  useLayoutEffect(() => {
     if (!viewer.tourSeen && settings.tour) startTour();
   }, []);
 

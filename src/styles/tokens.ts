@@ -366,9 +366,16 @@ const SCALES = `
   --orbit-duration-fast: 100ms;
   --orbit-duration: 150ms;
   --orbit-duration-slow: 200ms;
+  --orbit-duration-boot: 800ms;
   --orbit-ease: cubic-bezier(0.2, 0, 0, 1);
 
   /* Base is rewritten at runtime from settings.zIndex; the rest are offsets on it. */
+  --orbit-boot-bg: #000000;
+  --orbit-star-amber: #FF9640;
+  --orbit-star-peach: #FFD49E;
+  --orbit-star-ice: #B2D0FF;
+  --orbit-star-cyan: #60E2FF;
+  --orbit-star-blue: #6078FF;
   --orbit-z-base: 9000;
   --orbit-z-badge-feedback: 19;
   --orbit-z-badge: 20;
@@ -379,6 +386,7 @@ const SCALES = `
      an element the panel overlaps is never hidden behind it. */
   --orbit-z-popover: 1000;
   --orbit-z-inspector-popover: 1010;
+  --orbit-z-tour-stars: 1015;
   --orbit-z-tour: 1020;
 `;
 
