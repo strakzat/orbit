@@ -1,0 +1,83 @@
+# Publishes to GitHub Packages and creates the GitHub release when a version
+# bump lands on main. Each step skips what already exists, so a failed run can
+# be re-run, and a package.json change without a bump does nothing.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      # .npmrc authenticates via ${NPM_TOKEN}. GITHUB_TOKEN works if this repo
+      # has write access under the package's "Manage Actions access"; otherwise
+      # set ORBIT_NPM_TOKEN to a PAT with write:packages.
+      NPM_TOKEN: ${{ secrets.ORBIT_NPM_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Before publishing, so a version never ships without its notes.
+      - name: Extract release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v heading="## $VERSION" '$0 == heading { found = 1; next } /^## / { found = 0 } found' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no entry for $VERSION"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Publish to GitHub Packages
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          name=$(node -p "require('./package.json').name")
+          published=$(npm view "$name@$VERSION" version 2>/dev/null || true)
+          if [ "$published" = "$VERSION" ]; then
+            echo "$name@$VERSION is already published"
+          else
+            npm publish
+          fi
+
+      - name: Create GitHub release
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "v$VERSION is already released"
+          else
+            gh release create "v$VERSION" \
+              --target "$GITHUB_SHA" \
+              --title "Orbit v$VERSION" \
+              --notes-file "$RUNNER_TEMP/notes.md"
+          fi

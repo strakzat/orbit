@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.10.1
+
+- **Releases publish themselves.** A version bump merged to `main` runs
+  `.github/workflows/release.yml`: tests, `npm publish` to GitHub Packages, and a GitHub
+  release with this file's entry as its notes. A version without an entry here stops before
+  publishing. Each step skips what already exists, so a failed run can be re-run.
+
 ## 4.10.0
 
 - **Orbit ships the comments API.** `createCommentsHandler()` from `@strakzat/orbit/server` is

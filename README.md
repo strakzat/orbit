@@ -614,10 +614,11 @@ Annotations are filtered by `target` against `currentRoute`:
 
 ```bash
 # In this package:
-npm version patch   # bug fix
-npm version minor   # new feature
-npm version major   # breaking change
-npm publish
+npm version patch --no-git-tag-version   # bug fix
+npm version minor --no-git-tag-version   # new feature
+npm version major --no-git-tag-version   # breaking change
+# Add an entry to CHANGELOG.md and open a PR. Merging it publishes the package
+# and creates the GitHub release (.github/workflows/release.yml).
 
 # In each project:
 npm update @strakzat/orbit
