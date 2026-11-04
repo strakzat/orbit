@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.10.3
+
+- **Feedback lands on the instance by default.** Inside a component, the bubble's choice now
+  starts on Instance, and Instance comes first: feedback is usually about the one element in
+  front of you. Component is one click away, for feedback that holds on every page.
+
 ## 4.10.2
 
 - **The spotlight's pill stays visible.** On an element too tall for room above or below the

@@ -61,9 +61,9 @@ function isAnnotationButton(el: HTMLElement): boolean {
 }
 
 /**
- * Component ❖ or Instance ◇: Radial's pill as a radio group, icons only, each with a tooltip
- * that says what it means. Only there when the element is part of a component; the component
- * is the default, the one a component's feedback is usually about.
+ * Instance ◇ or Component ❖: Radial's pill as a radio group, icons only, each with a tooltip
+ * that says what it means. Only there when the element is part of a component; the instance
+ * is the default, since feedback is usually about the one in front of you.
  */
 function ScopeChoice({
   scope,
@@ -80,8 +80,8 @@ function ScopeChoice({
   const groupRef = useRef<HTMLDivElement>(null);
   const tipId = useStableId("orbit-scope-tip");
   const options: [Scope, string, string, typeof ComponentIcon][] = [
-    ["component", labels.scopeComponent, fill(labels.scopeComponentHint, { name }), ComponentIcon],
     ["element", labels.scopeInstance, fill(labels.scopeInstanceHint, { name }), InstanceIcon],
+    ["component", labels.scopeComponent, fill(labels.scopeComponentHint, { name }), ComponentIcon],
   ];
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -206,7 +206,7 @@ export function Inspector() {
   useEffect(() => setMounted(true), []);
   const [hover, setHover] = useState<Hover | null>(null);
   const [selected, setSelected] = useState<SelectedElement | null>(null);
-  const [scope, setScope] = useState<Scope>("component");
+  const [scope, setScope] = useState<Scope>("element");
   // Bumped on scroll and resize: the rects are read at render, from the elements.
   const [, setTick] = useState(0);
   const hitRef = useRef<HTMLElement | null>(null);
@@ -280,7 +280,7 @@ export function Inspector() {
         label: getElementLabel(target),
         component: componentOf(target),
       });
-      setScope("component");
+      setScope("element");
       setHover(null);
       hitRef.current = null;
     },
