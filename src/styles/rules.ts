@@ -2388,14 +2388,15 @@ const OVERLAYS = `
     top var(--orbit-duration-fast) var(--orbit-ease),
     left var(--orbit-duration-fast) var(--orbit-ease),
     width var(--orbit-duration-fast) var(--orbit-ease),
-    height var(--orbit-duration-fast) var(--orbit-ease);
+    height var(--orbit-duration-fast) var(--orbit-ease),
+    border-radius var(--orbit-duration-fast) var(--orbit-ease);
 }
 
 /* A spread shadow rounds its outer corners by as much as it spreads, so the scrim is a circle
    around each corner of the hole. 100vmax left the far corner of the area bare; 200vmax clears
    the diagonal of any window, from a hole anywhere in it. */
 .orbit-spotlight__cutout {
-  border-radius: var(--orbit-radius-xs);
+  border-radius: var(--orbit-spotlight-radius, var(--orbit-radius-xs));
   box-shadow: var(--orbit-spotlight-edge), 0 0 0 200vmax var(--orbit-scrim);
 }
 
@@ -2404,7 +2405,7 @@ const OVERLAYS = `
 .orbit-spotlight-ring {
   position: fixed;
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-overlay));
-  border-radius: var(--orbit-radius-xs);
+  border-radius: var(--orbit-spotlight-radius, var(--orbit-radius-xs));
   outline: 1px solid var(--orbit-spotlight-ring);
   box-shadow: 0 0 8px 0 var(--orbit-spotlight-glow);
   mix-blend-mode: plus-lighter;

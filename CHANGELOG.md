@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.10.5
+
+- **The spotlight follows the element's shape.** The ring and the cutout were always a rectangle
+  with small corners. They now run concentric with what is lit, corner by corner: a round button
+  gets a round ring, a pill a pill. A square `img` in a round avatar counts as round too.
+
 ## 4.10.4
 
 - **The scrim reaches every corner.** On a large window, an element in one corner left the

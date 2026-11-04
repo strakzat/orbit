@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { cx } from "../utils/cx";
 import { componentOf, getElementLabel } from "../utils/element-id";
-import { pickArea } from "../utils/pick-element";
+import { pickArea, ringRadius } from "../utils/pick-element";
 import { ORBIT_UI_ATTR } from "../constants";
 import { ComponentChip } from "./component-chip";
 
@@ -129,6 +129,11 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
   // The hole in the scrim is the cutout, kept near the area: its shadow only reaches so far, and
   // an element scrolled far out of view would take the whole scrim with it.
   const hole = cutout ? scrimHole(cutout, area) : null;
+  // A measurement, so it comes in as a variable: cutout and ring follow the element's own corners.
+  const radius =
+    el && cutout
+      ? ({ "--orbit-spotlight-radius": ringRadius(el, SPOTLIGHT_PAD) } as React.CSSProperties)
+      : undefined;
   const tag = rect ? spotlightTag(rect) : null;
   const tagLeft = cutout ? Math.max(cutout.left - SPOTLIGHT_RING, TAG_EDGE) : 0;
   // In a component, the tag starts with its pill: a pill in the pill, before the element.
@@ -148,7 +153,7 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
       ),
       style: { left: area.left, top: area.top, width: area.width, height: area.height },
     },
-    hole && React.createElement("div", { className: "orbit-spotlight__cutout", style: hole }),
+    hole && React.createElement("div", { className: "orbit-spotlight__cutout", style: { ...hole, ...radius } }),
     cutout &&
       tag &&
       el &&
@@ -197,6 +202,7 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
           top: area.top + cutout.top,
           width: cutout.width,
           height: cutout.height,
+          ...radius,
         }
       : undefined,
   });
