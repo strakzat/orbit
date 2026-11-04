@@ -279,9 +279,10 @@ De plugin laadt `.env` uit de project root en waarschuwt als `NOTION_API_KEY`, `
 
 ```bash
 npm run build     # tsup → dist/ (ESM + CJS + DTS)
-npm version patch # bump version
-npm publish       # publishes to GitHub Packages (npm.pkg.github.com)
+npm version patch --no-git-tag-version # bump version
 ```
+
+**Publiceren doet de merge.** Komt er een nieuwe versie op `main`, dan draait `.github/workflows/release.yml`: tests, `npm publish` naar GitHub Packages (npm.pkg.github.com), en een GitHub-release `vX.Y.Z` met de entry uit `CHANGELOG.md` als notes. Zonder entry stopt hij vóór het publiceren. Wat al bestaat slaat hij over, dus een mislukte run kan opnieuw (ook handmatig, via `workflow_dispatch`). De token is `GITHUB_TOKEN`, of `ORBIT_NPM_TOKEN` als die secret gezet is. Publiceren met de hand is niet meer nodig.
 
 **Elke PR bumpt de versie.** `npm version patch|minor|major --no-git-tag-version` (package.json én package-lock.json), met een entry bovenaan `CHANGELOG.md`, en de titel van de PR begint met de nieuwe versie (`4.9.1: …`). Patch voor een fix of kleine UI-aanpassing, minor voor nieuwe functionaliteit, major voor een breaking change (zoals een hernoemde CSS-variabele).
 
