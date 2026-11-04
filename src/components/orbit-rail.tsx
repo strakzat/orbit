@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
@@ -10,8 +10,19 @@ import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
 import { VariantsPane } from "./variants-pane";
 import { ProfilePane } from "./profile-pane";
+import { OrbitTour } from "./orbit-tour";
 import { isChanged, variantsHere } from "../utils/variants";
-import type { OrbitVariant } from "../types";
+import { tourSteps } from "../utils/tour";
+import type { OrbitVariant, TourStepId } from "../types";
+
+// The step that points at each button of the rail, and the buttons the viewer may press then.
+const TOUR_TARGET: Record<string, TourStepId> = {
+  variants: "variants",
+  inspector: "feedback",
+  panel: "panel",
+  profile: "profile",
+};
+const TOUR_PRESSABLE: TourStepId[] = ["feedback", "panel"];
 
 interface OrbitRailProps {
   variants?: OrbitVariant[];
@@ -40,6 +51,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     viewer,
     setActiveAnnotationId,
     settings,
+    tourStep,
+    startTour,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -47,6 +60,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const [spoken, setSpoken] = useState("");
   const [focusIndex, setFocusIndex] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
+  const touring = tourStep !== null;
   const paneId = useStableId("orbit-variants");
   const profileId = useStableId("orbit-profile");
 
@@ -66,6 +80,24 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     (c) => c.status !== "Opgelost" && isOnPage(c, currentRoute, componentsOnPage)
   ).length;
   const count = currentAnnotations.length + openFeedback;
+
+  // The tour starts by itself once for each viewer. The viewer is loaded by now: the shell only
+  // renders the rail after mounting.
+  useEffect(() => {
+    if (!viewer.tourSeen && settings.tour) startTour();
+  }, []);
+
+  // The stage is the tour's, and it ends where it left off: on the profile.
+  const wasTouring = useRef(false);
+  useEffect(() => {
+    if (touring) {
+      setVariantsOpen(false);
+      setProfileOpen(false);
+    } else if (wasTouring.current) {
+      railRef.current?.querySelector<HTMLElement>("[data-orbit-profile-toggle]")?.focus();
+    }
+    wasTouring.current = touring;
+  }, [touring]);
 
   const closeVariants = useCallback((returnFocus: boolean) => {
     setVariantsOpen(false);
@@ -88,6 +120,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     dot?: boolean
   ) => {
     const index = buttons.length;
+    const pointedAt = tourStep !== null && TOUR_TARGET[key] === tourStep;
     buttons.push(
       React.createElement(
         "button",
@@ -97,7 +130,13 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           tabIndex: index === tabStop ? 0 : -1,
           onFocus: () => setFocusIndex(index),
           ...extra,
-          className: cx("orbit-rail__item", isOn && "orbit-rail__item--on", extra.className as string | undefined),
+          disabled: touring && !(pointedAt && TOUR_PRESSABLE.includes(tourStep)),
+          className: cx(
+            "orbit-rail__item",
+            isOn && "orbit-rail__item--on",
+            pointedAt && "orbit-rail__item--tour",
+            extra.className as string | undefined
+          ),
         },
         icon,
         label,
@@ -244,6 +283,12 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       : null,
     profileOpen
       ? React.createElement(ProfilePane, { id: profileId, onClose: closeProfile, onAnnounce: setSpoken })
+      : null,
+    touring
+      ? React.createElement(OrbitTour, {
+          steps: tourSteps({ hasVariants, hasComments: !!commentsConfig }),
+          onAnnounce: setSpoken,
+        })
       : null
   );
 }

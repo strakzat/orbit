@@ -7,7 +7,7 @@ const STORAGE_KEY = "@strakzat/orbit:viewer";
 /** Where the comment form kept the name before there was a profile. */
 const LEGACY_NAME_KEY = "@strakzat/orbit:commentAuteur";
 
-const NOBODY: OrbitViewer = { name: "", language: null, showMarkers: null, showResolved: null };
+const NOBODY: OrbitViewer = { name: "", language: null, showMarkers: null, showResolved: null, tourSeen: false };
 
 // Layout effect in the browser: the stored language is in before the first paint. On the server
 // the plain effect, which does not warn there.
@@ -23,11 +23,14 @@ function load(): OrbitViewer {
         language: parsed.language && parsed.language in LABELS ? parsed.language : null,
         showMarkers: typeof parsed.showMarkers === "boolean" ? parsed.showMarkers : null,
         showResolved: typeof parsed.showResolved === "boolean" ? parsed.showResolved : null,
+        // A viewer from before the tour has no such field: they get it once too.
+        tourSeen: parsed.tourSeen === true,
       };
     }
     return { ...NOBODY, name: window.localStorage.getItem(LEGACY_NAME_KEY) ?? "" };
   } catch {
-    return NOBODY;
+    // Without storage "seen" lasts as long as the page: the tour would start on every load.
+    return { ...NOBODY, tourSeen: true };
   }
 }
 
@@ -66,5 +69,14 @@ export function useViewer() {
     [update]
   );
 
-  return { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers, setViewerShowResolved };
+  const setViewerTourSeen = useCallback(() => update({ tourSeen: true }), [update]);
+
+  return {
+    viewer,
+    setViewerName,
+    setViewerLanguage,
+    setViewerShowMarkers,
+    setViewerShowResolved,
+    setViewerTourSeen,
+  };
 }

@@ -1,5 +1,12 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
-import type { AnnotationContextValue, AnnotationProviderProps, OrbitLanguage, OrbitVariant } from "../types";
+import type {
+  AnnotationContextValue,
+  AnnotationProviderProps,
+  Comment,
+  OrbitLanguage,
+  OrbitVariant,
+  TourStepId,
+} from "../types";
 import { COMPONENT_ATTR, DEFAULT_SETTINGS } from "../constants";
 import { resolveLabels } from "../labels";
 import { useViewer } from "../hooks/use-viewer";
@@ -13,6 +20,7 @@ import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
 import { describeVariants as describe } from "../utils/variants";
+import { tourAnchors, tourSample, type TourAnchor } from "../utils/tour";
 
 /** The names of the components on the page now. */
 function readComponents(): Set<string> {
@@ -23,6 +31,10 @@ function readComponents(): Set<string> {
   });
   return names;
 }
+
+// During the tour no wrapper shows a pin, so none of them stands in for feedback's own pin.
+const NO_MARKERS: Set<string> = new Set();
+const NOTHING_TO_MARK = () => {};
 
 const sameSet = (a: Set<string>, b: Set<string>) =>
   a.size === b.size && Array.from(a).every((name) => b.has(name));
@@ -60,8 +72,14 @@ export function AnnotationProvider({
     [settingsOverride]
   );
   // The viewer's language when they chose one, else the project's.
-  const { viewer, setViewerName, setViewerLanguage, setViewerShowMarkers, setViewerShowResolved } =
-    useViewer();
+  const {
+    viewer,
+    setViewerName,
+    setViewerLanguage,
+    setViewerShowMarkers,
+    setViewerShowResolved,
+    setViewerTourSeen,
+  } = useViewer();
   const showResolvedPins = viewer.showResolved ?? true;
   const language: OrbitLanguage = viewer.language ?? projectLanguage;
   const labels = useMemo(() => resolveLabels(language, labelsOverride), [language, labelsOverride]);
@@ -93,6 +111,52 @@ export function AnnotationProvider({
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null);
   const [inspectorActive, setInspectorActive] = useState(false);
   const [contextStack, setContextStack] = useState<string[]>([]);
+
+  // The tour. While it runs, the context holds its samples instead of the project's data.
+  const [tourStep, setTourStep] = useState<TourStepId | null>(null);
+  const [tourComments, setTourComments] = useState<Comment[]>([]);
+  const [anchors, setAnchors] = useState<TourAnchor[] | null>(null);
+  const touring = tourStep !== null;
+  const touringRef = useRef(touring);
+  touringRef.current = touring;
+
+  const leaveEverything = useCallback(() => {
+    setPanelOpen(false);
+    setInspectorActive(false);
+    setActiveAnnotationId(null);
+  }, []);
+
+  const startTour = useCallback(() => {
+    leaveEverything();
+    setTourStep("welcome");
+  }, [leaveEverything]);
+
+  const endTour = useCallback(() => {
+    leaveEverything();
+    setTourStep(null);
+    setTourComments([]);
+    setAnchors(null);
+    setViewerTourSeen();
+  }, [leaveEverything, setViewerTourSeen]);
+
+  const addTourComment = useCallback<AnnotationContextValue["addTourComment"]>((comment) => {
+    setTourComments((prev) => [
+      ...prev,
+      {
+        ...comment,
+        id: `orbit-tour-own-${prev.length}`,
+        status: "Open",
+        antwoord: null,
+        aangemaakt: new Date().toISOString(),
+        pagina: routeRef.current,
+      },
+    ]);
+  }, []);
+
+  // Where the samples sit, read once the welcome card is done: by then the page has rendered.
+  useEffect(() => {
+    if (touring && tourStep !== "welcome") setAnchors((prev) => prev ?? tourAnchors());
+  }, [touring, tourStep]);
 
   const contextStackRef = useRef(contextStack);
   contextStackRef.current = contextStack;
@@ -135,6 +199,7 @@ export function AnnotationProvider({
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === ".") {
         e.preventDefault();
+        if (touringRef.current) return;
         setAnnotationMode(!annotationModeRef.current);
       }
     };
@@ -152,7 +217,7 @@ export function AnnotationProvider({
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "c" && e.key !== "C") return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat || e.isComposing) return;
-      if (e.defaultPrevented || isTyping(e.target)) return;
+      if (e.defaultPrevented || isTyping(e.target) || touringRef.current) return;
       e.preventDefault();
       setInspectorActive((prev) => !prev);
     };
@@ -171,7 +236,7 @@ export function AnnotationProvider({
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "R" && e.key !== "r") return;
       if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.repeat || e.isComposing) return;
-      if (e.defaultPrevented || isTyping(e.target)) return;
+      if (e.defaultPrevented || isTyping(e.target) || touringRef.current) return;
       e.preventDefault();
       setViewerShowResolved(!showResolvedRef.current);
     };
@@ -265,7 +330,7 @@ export function AnnotationProvider({
     commentsConfig?.project ?? ""
   );
   const [deletedCommentIds, setDeletedCommentIds] = useState<Set<string>>(() => new Set());
-  const allComments = useMemo(
+  const realComments = useMemo(
     () => (deletedCommentIds.size ? fetchedComments.filter((c) => !deletedCommentIds.has(c.id)) : fetchedComments),
     [fetchedComments, deletedCommentIds]
   );
@@ -291,14 +356,33 @@ export function AnnotationProvider({
 
   // What the viewer has not read yet: a white dot on the annotation's pin. An open popover reads
   // its thread, also what arrives while it is open; the panel's thread page does the same.
-  const { unseen: unseenAnnotationIds, markSeen } = useSeen(
+  const { unseen: unseenAnnotationIds, markSeen: markRealSeen } = useSeen(
     commentsConfig?.project ?? "",
-    allComments,
+    realComments,
     viewer.name
   );
+  // Reading a sample is not reading the project's feedback.
+  const markSeen = touring ? NOTHING_TO_MARK : markRealSeen;
   useEffect(() => {
     if (activeAnnotationId) markSeen(activeAnnotationId);
   }, [activeAnnotationId, markSeen]);
+
+  // The tour's stand-ins for the project's data. Nothing until the anchors are known, so the
+  // pins don't first appear parked. Everything that reads the context gets them, so the tour
+  // shows the real pins, panel and threads; the network stops at `useComments`.
+  const sample = useMemo(
+    () =>
+      touring
+        ? tourSample({ labels, route: currentRoute, anchors, comments: commentsOn })
+        : null,
+    [touring, labels, currentRoute, anchors, commentsOn]
+  );
+  const shownAnnotations = sample ? sample.annotations : annotations;
+  const allComments = useMemo(
+    // Newest first: what the viewer wrote tops the panel's list.
+    () => (sample ? [...tourComments.slice().reverse(), ...sample.comments] : realComments),
+    [sample, tourComments, realComments]
+  );
 
   const currentContext = contextStack.length > 0
     ? contextStack[contextStack.length - 1]
@@ -306,17 +390,18 @@ export function AnnotationProvider({
 
   const currentAnnotations = useMemo(
     () =>
-      annotations.filter(
+      shownAnnotations.filter(
         (a) =>
           matchRoute(a.target, currentContext) ||
           a.target === "global"
       ),
-    [annotations, currentContext]
+    [shownAnnotations, currentContext]
   );
 
   const value = useMemo<AnnotationContextValue>(
     () => ({
-      annotationMode,
+      // The tour shows pins, also to a viewer who hid them. Their choice stays as it is.
+      annotationMode: annotationMode || touring,
       setAnnotationMode,
       panelOpen,
       setPanelOpen,
@@ -327,15 +412,15 @@ export function AnnotationProvider({
       inspectorActive,
       setInspectorActive,
       currentAnnotations,
-      allAnnotations: annotations,
+      allAnnotations: shownAnnotations,
       pushContext,
       popContext,
       labels,
       settings,
       commentsConfig: commentsConfig?.enabled ? commentsConfig : null,
       allComments,
-      commentsLoading,
-      commentsError,
+      commentsLoading: !touring && commentsLoading,
+      commentsError: touring ? null : commentsError,
       refreshComments,
       unseenAnnotationIds,
       markSeen,
@@ -344,7 +429,7 @@ export function AnnotationProvider({
       deleteComment,
       deletedCommentIds,
       currentRoute,
-      registeredMarkerIds,
+      registeredMarkerIds: touring ? NO_MARKERS : registeredMarkerIds,
       componentsOnPage,
       registerMarkerId,
       unregisterMarkerId,
@@ -357,6 +442,12 @@ export function AnnotationProvider({
       setViewerShowMarkers,
       showResolvedPins,
       setViewerShowResolved,
+      tourStep,
+      setTourStep,
+      startTour,
+      endTour,
+      tourComments,
+      addTourComment,
     }),
     [
       annotationMode,
@@ -366,7 +457,7 @@ export function AnnotationProvider({
       hoveredAnnotationId,
       inspectorActive,
       currentAnnotations,
-      annotations,
+      shownAnnotations,
       pushContext,
       popContext,
       labels,
@@ -396,6 +487,12 @@ export function AnnotationProvider({
       setViewerShowMarkers,
       showResolvedPins,
       setViewerShowResolved,
+      touring,
+      tourStep,
+      startTour,
+      endTour,
+      tourComments,
+      addTourComment,
     ]
   );
 

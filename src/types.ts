@@ -20,6 +20,8 @@ export interface AnnotationSettings {
   panelHeight?: number;
   zIndex?: number;
   keyboardShortcut?: boolean;
+  /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
+  tour?: boolean;
 }
 
 export interface AnnotationLabels {
@@ -150,6 +152,8 @@ export interface AnnotationLabels {
   profileMarkers: string;
   /** Under it, before the keys of its shortcut. */
   profileMarkersHint: string;
+  /** The profile's button that plays the tour again. */
+  profileTour: string;
   /** The profile's switch for the pins of resolved feedback. */
   profileResolved: string;
   /** A relative time: just now, then minutes, hours and days as a suffix ("5m", "3u", "2d"). */
@@ -157,12 +161,46 @@ export interface AnnotationLabels {
   timeMinutes: string;
   timeHours: string;
   timeDays: string;
+  /** The tour. Its titles are the names of the buttons it points at, where it can. */
+  tourWelcomeTitle: string;
+  tourWelcomeBody: string;
+  /** Without comments: nothing to share, and no name to set. */
+  tourWelcomeBodyAnnotations: string;
+  tourStart: string;
+  tourSkip: string;
+  tourNext: string;
+  tourBack: string;
+  tourDone: string;
+  /** Where the viewer is in the tour: "{current} van {total}". */
+  tourProgress: string;
+  tourPinsTitle: string;
+  tourPinsBody: string;
+  /** Without comments: only the annotation's pin is there. */
+  tourPinsBodyAnnotations: string;
+  tourFeedbackBody: string;
+  /** Under the text, quieter: that practice stays in the browser. */
+  tourFeedbackNote: string;
+  tourPanelBody: string;
+  /** With something they wrote during the tour: the panel opens on Feedback, with it on top. */
+  tourPanelBodyPractice: string;
+  tourPanelBodyAnnotations: string;
+  tourVariantsBody: string;
+  tourProfileBody: string;
+  /** The sample annotation and feedback the tour shows. */
+  tourSampleAuthor: string;
+  tourSampleTitle: string;
+  tourSampleBody: string;
+  tourSampleQuestion: string;
+  tourSampleComment: string;
+  tourSampleAnswer: string;
 }
 
 /** The languages Orbit speaks: its own interface, not the project's content. */
 export type OrbitLanguage = "nl" | "en";
 
 /** Who is looking: their name for feedback, and the language they chose. Kept in localStorage. */
+export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "profile";
+
 export interface OrbitViewer {
   name: string;
   /** Null until they choose: the project's `language` then. */
@@ -171,6 +209,8 @@ export interface OrbitViewer {
   showMarkers: boolean | null;
   /** Whether feedback that is all resolved keeps its pin. Null until they choose: shown then. */
   showResolved: boolean | null;
+  /** Whether they finished or skipped the tour. */
+  tourSeen: boolean;
 }
 
 /** One option of a `choice` or a `multi`. */
@@ -333,6 +373,16 @@ export interface AnnotationContextValue {
   /** Feedback with everything resolved keeps its pin (dimmed): the viewer's choice, else yes. */
   showResolvedPins: boolean;
   setViewerShowResolved: (show: boolean) => void;
+  /** The tour's step, null without a tour. While there is one, the context holds samples. */
+  tourStep: TourStepId | null;
+  setTourStep: (step: TourStepId) => void;
+  /** Closes everything Orbit has open and starts at the welcome card. */
+  startTour: () => void;
+  /** Finished or skipped: the real data is back, and the tour won't start by itself again. */
+  endTour: () => void;
+  /** What the viewer wrote during the tour. Kept here and dropped with it, never sent. */
+  tourComments: Comment[];
+  addTourComment: (comment: Pick<Comment, "annotationId" | "auteur" | "comment" | "label" | "component">) => void;
 }
 
 export interface AnnotationProviderProps {

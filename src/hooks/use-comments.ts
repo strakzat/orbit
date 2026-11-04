@@ -39,7 +39,17 @@ export function useComments({
   }, [apiBaseProp]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { describeVariants, commentsConfig, rememberOwnComment, deletedCommentIds } = useAnnotationsSafe();
+  const {
+    describeVariants,
+    commentsConfig,
+    rememberOwnComment,
+    deletedCommentIds,
+    tourStep,
+    allComments,
+    addTourComment,
+  } = useAnnotationsSafe();
+  // During the tour the threads are samples: nothing is fetched, and nothing leaves the browser.
+  const touring = tourStep !== null;
   const setting = commentsConfig?.screenshot ?? true;
   const capture = setting === false ? null : setting === true ? renderWithHtmlToImage : setting;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -47,7 +57,7 @@ export function useComments({
   const warnedRef = useRef(false);
 
   const fetchComments = useCallback(async () => {
-    if (!enabled || failedRef.current) return;
+    if (!enabled || touring || failedRef.current) return;
 
     const url = `${apiBase}/api/comments?project=${encodeURIComponent(project)}&annotationId=${encodeURIComponent(annotationId)}`;
 
@@ -67,10 +77,10 @@ export function useComments({
         console.warn(`[@strakzat/orbit] Comments API niet beschikbaar: ${message}`);
       }
     }
-  }, [apiBase, project, annotationId, enabled]);
+  }, [apiBase, project, annotationId, enabled, touring]);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || touring) {
       setComments([]);
       return;
     }
@@ -82,10 +92,11 @@ export function useComments({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchComments, enabled]);
+  }, [fetchComments, enabled, touring]);
 
   const submitComment = useCallback(
     async (data: { auteur: string; comment: string }) => {
+      if (touring) return addTourComment({ ...data, annotationId, label, component });
       // First, while the page is still as the viewer saw it.
       const shooting = capture ? screenshotFeedback(annotationId, capture, label, target) : Promise.resolve(null);
       const url = `${apiBase}/api/comments`;
@@ -119,14 +130,28 @@ export function useComments({
       }
       await fetchComments();
     },
-    [apiBase, project, annotationId, label, component, target, describeVariants, capture, fetchComments, rememberOwnComment]
+    [
+      apiBase,
+      project,
+      annotationId,
+      label,
+      component,
+      target,
+      describeVariants,
+      capture,
+      fetchComments,
+      rememberOwnComment,
+      touring,
+      addTourComment,
+    ]
   );
 
   // A comment deleted here leaves at once, not on the next poll.
-  const shown = useMemo(
-    () => (deletedCommentIds.size ? comments.filter((c) => !deletedCommentIds.has(c.id)) : comments),
-    [comments, deletedCommentIds]
-  );
+  const shown = useMemo(() => {
+    // Oldest first, as a thread reads, from the context's newest-first list.
+    if (touring) return enabled ? allComments.filter((c) => c.annotationId === annotationId).reverse() : [];
+    return deletedCommentIds.size ? comments.filter((c) => !deletedCommentIds.has(c.id)) : comments;
+  }, [comments, deletedCommentIds, touring, enabled, allComments, annotationId]);
 
   return { comments: shown, isLoading, error, submitComment };
 }

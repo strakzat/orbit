@@ -1,0 +1,241 @@
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useAnnotations } from "../context/use-annotations";
+import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
+import { ORBIT_UI_ATTR } from "../constants";
+import { cx } from "../utils/cx";
+import { findElementByAnnotationId } from "../utils/find-element";
+import { pickArea } from "../utils/pick-element";
+import { tourCardPosition } from "../utils/tour";
+import { useStableId } from "../utils/use-stable-id";
+import { fill } from "../labels";
+import { LanguageChoice, ViewerIdentity } from "./profile-pane";
+import { Spotlight } from "./spotlight";
+import type { TourStepId } from "../types";
+
+// The rail's button a step points at.
+const TARGETS: Partial<Record<TourStepId, string>> = {
+  feedback: `[${INSPECTOR_TOGGLE_ATTR}]`,
+  variants: "[data-orbit-variants-toggle]",
+  profile: "[data-orbit-profile-toggle]",
+};
+// These steps are looked at, not used: the viewer can do nothing but read on.
+const MODAL: TourStepId[] = ["welcome", "variants", "profile"];
+
+interface OrbitTourProps {
+  steps: TourStepId[];
+  onAnnounce: (text: string) => void;
+}
+
+/**
+ * How Orbit works, once for each viewer: a card that walks through it, on Orbit's real pins, panel
+ * and picker. The provider swaps the project's data for samples while the tour runs (and
+ * `useComments` keeps them from the network), so this is only the card and what's around it.
+ * Rendered by the rail, which knows which steps this project has.
+ */
+export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
+  const {
+    labels,
+    language,
+    viewer,
+    tourStep,
+    setTourStep,
+    endTour,
+    tourComments,
+    allAnnotations,
+    commentsConfig,
+    panelOpen,
+    setPanelOpen,
+    inspectorActive,
+    setInspectorActive,
+    activeAnnotationId,
+    setActiveAnnotationId,
+  } = useAnnotations();
+
+  const step = tourStep ?? "welcome";
+  const index = Math.max(steps.indexOf(step), 0);
+  const last = index === steps.length - 1;
+  const modal = MODAL.includes(step);
+  // Feedback has to say who it's from, so with comments on the way in is through the name.
+  const needsName = step === "welcome" && !!commentsConfig && !viewer.name.trim();
+  const cardRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const titleId = useStableId("orbit-tour-title");
+  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
+
+  const next = useCallback(() => {
+    if (last) endTour();
+    else setTourStep(steps[index + 1]);
+  }, [last, endTour, setTourStep, steps, index]);
+
+  // Each step sets the stage: the picker for practice, the panel to review in.
+  useEffect(() => {
+    setActiveAnnotationId(null);
+    setInspectorActive(step === "feedback");
+    setPanelOpen(step === "panel");
+  }, [step, setActiveAnnotationId, setInspectorActive, setPanelOpen]);
+
+  // The pins rise above the spotlight's scrim (rules.ts).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-orbit-tour", step);
+    return () => document.documentElement.removeAttribute("data-orbit-tour");
+  }, [step]);
+
+  // Practice done: on to where it ended up.
+  const written = useRef(tourComments.length);
+  useEffect(() => {
+    if (step === "feedback" && tourComments.length > written.current) next();
+    written.current = tourComments.length;
+  }, [step, tourComments.length, next]);
+
+  // The focus goes with the step: to the name when there is one to fill in, else its title.
+  useEffect(() => {
+    const field = step === "welcome" ? cardRef.current?.querySelector("input") : null;
+    (field ?? titleRef.current)?.focus({ preventScroll: true });
+  }, [step]);
+
+  useLayoutEffect(() => {
+    const place = () => {
+      const card = cardRef.current;
+      if (!card) return;
+      const size = { width: card.offsetWidth, height: card.offsetHeight };
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const button = TARGETS[step] ? document.querySelector(TARGETS[step]!) : null;
+      const panel = step === "panel" ? document.querySelector(".orbit-panel") : null;
+      setPosition(
+        tourCardPosition(
+          button
+            ? { at: "above", target: button.getBoundingClientRect() }
+            : panel
+              ? { at: "left", target: panel.getBoundingClientRect() }
+              : { at: step === "pins" ? "corner" : "center", area: pickArea() },
+          size,
+          viewport
+        )
+      );
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [step, language, panelOpen, tourComments.length]);
+
+  // Escape closes the innermost thing: a thread, the picker and the panel see to their own.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || needsName) return;
+      if (inspectorActive || activeAnnotationId) return;
+      if (document.activeElement?.closest(".orbit-panel")) return;
+      endTour();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [needsName, inspectorActive, activeAnnotationId, endTour]);
+
+  // With nothing else to do on these steps, Tab stays in the card.
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Tab" || !modal || !cardRef.current) return;
+    const stops = Array.from(
+      cardRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([tabindex="-1"]), [tabindex="0"]')
+    );
+    const at = stops.indexOf(document.activeElement as HTMLElement);
+    const edge = e.shiftKey ? at <= 0 : at === stops.length - 1;
+    if (!edge) return;
+    e.preventDefault();
+    stops[e.shiftKey ? stops.length - 1 : 0]?.focus();
+  };
+
+  const hasComments = !!commentsConfig;
+  const copy: Record<TourStepId, { title: string; body: string; note?: string }> = {
+    welcome: {
+      title: labels.tourWelcomeTitle,
+      body: hasComments ? labels.tourWelcomeBody : labels.tourWelcomeBodyAnnotations,
+    },
+    pins: {
+      title: labels.tourPinsTitle,
+      body: hasComments ? labels.tourPinsBody : labels.tourPinsBodyAnnotations,
+    },
+    feedback: { title: labels.placeFeedback, body: labels.tourFeedbackBody, note: labels.tourFeedbackNote },
+    panel: {
+      title: labels.panelTitle,
+      body: !hasComments
+        ? labels.tourPanelBodyAnnotations
+        : tourComments.length > 0
+          ? labels.tourPanelBodyPractice
+          : labels.tourPanelBody,
+    },
+    variants: { title: labels.variants, body: labels.tourVariantsBody },
+    profile: { title: labels.profile, body: labels.tourProfileBody },
+  };
+  const { title, body, note } = copy[step];
+
+  const quiet = (label: string, onClick: () => void, disabled?: boolean) =>
+    React.createElement("button", { type: "button", className: "orbit-tour__quiet", onClick, disabled }, label);
+
+  const area = pickArea();
+  const framed = !!document.querySelector(".orbit-frame");
+  const sample = allAnnotations[0];
+  const lit = step === "pins" && sample?.elementId ? findElementByAnnotationId(sample.elementId) : null;
+
+  return React.createElement(
+    React.Fragment,
+    null,
+    // While practising, the page belongs to the picker.
+    step !== "feedback" &&
+      React.createElement("div", {
+        [ORBIT_UI_ATTR]: "",
+        "aria-hidden": true,
+        className: cx(
+          "orbit-root orbit-tour__scrim",
+          framed && "orbit-tour__scrim--framed",
+          !modal && "orbit-tour__scrim--clear"
+        ),
+        style: { left: area.left, top: area.top, width: area.width, height: area.height },
+      }),
+    lit && React.createElement(Spotlight, { el: lit, still: true }),
+    React.createElement(
+      "div",
+      {
+        ref: cardRef,
+        role: "dialog",
+        "aria-modal": modal,
+        "aria-labelledby": titleId,
+        lang: language,
+        [ORBIT_UI_ATTR]: "",
+        className: cx(
+          "orbit-root orbit-tour orbit-glass-pane orbit-animate-in",
+          step === "welcome" && "orbit-tour--welcome"
+        ),
+        // Measured before the first paint. Not hidden until then: it has to take the focus.
+        style: position ?? undefined,
+        onKeyDown,
+      },
+      React.createElement(
+        "h2",
+        { ref: titleRef, id: titleId, tabIndex: -1, className: "orbit-tour__title" },
+        title
+      ),
+      React.createElement("p", { className: "orbit-tour__body" }, body),
+      note && React.createElement("p", { className: "orbit-tour__note" }, note),
+      step === "welcome" && hasComments && React.createElement(ViewerIdentity, { required: true }),
+      step === "welcome" && React.createElement(LanguageChoice, { onAnnounce }),
+      React.createElement(
+        "div",
+        { className: "orbit-tour__foot" },
+        // The welcome card isn't a step of what it announces.
+        index > 0 &&
+          React.createElement(
+            "span",
+            { className: "orbit-tour__progress" },
+            fill(labels.tourProgress, { current: index, total: steps.length - 1 })
+          ),
+        // Skipping is a choice at the door. Once under way, Escape still leaves.
+        step === "welcome" && quiet(labels.tourSkip, endTour, needsName),
+        index > 0 && quiet(labels.tourBack, () => setTourStep(steps[index - 1])),
+        React.createElement(
+          "button",
+          { type: "button", className: "orbit-button", onClick: next, disabled: needsName },
+          step === "welcome" ? labels.tourStart : last ? labels.tourDone : labels.tourNext
+        )
+      )
+    )
+  );
+}

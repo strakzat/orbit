@@ -31,7 +31,8 @@ AnnotationProvider (context + state, één poller voor alle comments)
 ├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
 │   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
 │   │   ├── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
-│   │   └── ProfilePane     — de avatar rechts op de rail: naam, taal en pins van de kijker
+│   │   ├── ProfilePane     — de avatar rechts op de rail: naam, taal en pins van de kijker
+│   │   └── OrbitTour       — de rondleiding: eenmalig per kijker, op voorbeelddata
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
 ├── Inspector               — element picker met spotlight voor feedback comments (de knop staat op de rail)
 ├── FeedbackMarkers         — floating badges op elementen met comments (niet gewrapt in AnnotationMarker)
@@ -96,6 +97,7 @@ interface CommentsConfig {
   panelHeight: 640,         // ook de hoogte van het variantenpaneel
   zIndex: 9000,
   keyboardShortcut: true,   // Cmd+. / Ctrl+. (pins tonen/verbergen), C (feedback plaatsen), Shift+R (opgeloste pins)
+  tour: true,               // de rondleiding start één keer vanzelf; terugkijken kan altijd in het profiel
 }
 ```
 
@@ -129,6 +131,7 @@ src/
 │   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
 │   ├── variants-pane.tsx              — Het variantenpaneel: titel, tabs Deze pagina / Alle pagina's
 │   ├── profile-pane.tsx               — Het profiel: naam voor feedback, taal
+│   ├── orbit-tour.tsx                 — De rondleiding: kaart, scrim, focus; de stappen zetten het toneel
 │   ├── annotation-panel.tsx           — Side panel: annotation list + feedback list + filters + search
 │   ├── annotation-card.tsx            — Annotation card in panel
 │   ├── annotation-marker.tsx          — Wrapper component: ring + badges + popover
@@ -157,6 +160,7 @@ src/
 └── utils/
     ├── cx.ts                          — Class names samenvoegen
     ├── format.ts                      — initials() + relativeTime() voor de comment-UI
+    ├── tour.ts                        — Stappen, voorbeelddata, ankers en de plek van de kaart
     ├── element-id.ts                  — getLocator() selector vanaf een anker + getElementLabel() preview
     ├── pick-element.ts                — levelsFrom(): de elementen onder de cursor die de inspector aanbiedt
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
@@ -188,6 +192,20 @@ Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, k
 
 **Annotatie en feedback delen één id per component.** `AnnotationMarker` stempelt `data-annotation-id={annotationId}` op z'n wrapper, en wrapper en component hebben één box, dus het niveau van de kaart heet naar de annotatie. Kies je dat niveau (klik op de rand, of ↑ vanuit de inhoud), dan landt de feedback in dezelfde bak als de annotatie (de popover van de annotatie toont beide); `FeedbackMarkers` slaat geregistreerde marker-id's over. Klik je iets ín de kaart aan, het bedrag, dan krijgt dat element eigen feedback met een eigen pin, onder het anker van de annotatie.
 
+
+## De rondleiding
+
+Een kijker die hem nog niet zag, krijgt één keer een rondleiding door Orbit (niet door het project), ook op bestaande projecten na een update: `tourSeen` ontbreekt daar in `@strakzat/orbit:viewer`, dus niet gezien. Hij telt als gezien na Klaar of Overslaan, niet bij de start: een reload halverwege begint opnieuw. Zonder storage start hij niet, anders kwam hij bij elke load terug. `settings.tour: false` zet alleen de automatische start uit; "Rondleiding opnieuw bekijken" staat in het profiel. Alleen met `OrbitShell`: `OrbitRail` start en rendert hem, want die kent de varianten.
+
+- **De stappen** (`tourSteps()`): welkom (naam en taal, `ViewerIdentity` en `LanguageChoice` uit het profiel; de naam alleen met comments), pins, feedback plaatsen (met comments), het paneel, Varianten (met `variants`), het profiel. De welkomstkaart telt niet mee in "1 van 5". Elke stap zet zelf het toneel: de inspector aan voor de oefening, het paneel open voor het paneel.
+- **Voorbeelddata vervangt de echte data.** Zolang `tourStep` niet null is, geeft de provider `tourSample()` door als `allAnnotations`, `currentAnnotations` en `allComments`, dus pins, paneel, tellers en threads zijn de echte, zonder eigen UI. Niet gemengd: een voorbeeld is nooit met echte feedback te verwarren. `AnnotationMarker` toont dan geen pin (z'n annotatie is geen voorbeeld) en `registeredMarkerIds` is leeg, anders kreeg feedback op een wrapper geen pin. Wat de kijker schrijft staat in `tourComments` en verdwijnt met de tour. In de lijst staat het bovenaan (`allComments` is dan nieuwste eerst, een thread leest `useComments` omgekeerd), en het paneel opent er op Feedback op; zonder iets geschreven op Annotaties. Na de tour staat het paneel weer op z'n gewone view.
+- **Niets gaat de deur uit.** `useComments` is de enige plek die threads ophaalt of POST: in de tour leest hij uit de context en schrijft hij met `addTourComment()`, zonder fetch of screenshot. `useSeen` krijgt de echte comments en `markSeen` doet niets, dus er komt geen voorbeeld in `@strakzat/orbit:seen`. De poller loopt gewoon door. **Een nieuwe schrijfactie naar de API hoort achter dezelfde guard.**
+- **Waar de voorbeelden staan.** `tourAnchors()` zoekt twee losse elementen van het project rond het midden van het frame, leest pas na de welkomstkaart (dan is de pagina er), en parkeert ze in de kolom linksboven als er niets is. De spotlight staat op het eerste; `[data-orbit-tour="pins"]` tilt de pins boven z'n scrim.
+- **Modaal of niet.** Welkom, Varianten en het profiel zijn om te lezen: de scrim (`.orbit-tour__scrim`, zelfde vlak als de spotlight, de rail blijft licht) vangt de klikken, Tab blijft in de kaart, `aria-modal`. Pins en paneel zijn om te gebruiken: de scrim is doorzichtig en ligt onder de pins, dus het project reageert nog steeds niet. Bij de oefening is er geen scrim, want daar is de pagina van de picker; versturen gaat vanzelf door naar het paneel. Op de rail zijn knoppen `disabled`, behalve die van de oefening en het paneel. `C`, `Shift + R` en Cmd/Ctrl + `.` doen niets.
+- **De welkomstkaart vraagt een naam.** Met comments aan staan Start en Rondleiding overslaan op `disabled` en doet Escape niets tot er een naam is (spaties tellen niet): feedback moet zeggen van wie hij komt. Zonder comments is er geen naamveld en geen drempel. Dit is geen garantie: de naam kan later leeg in het profiel, en zonder tour (`settings.tour: false`, geen storage) blijft `Anonymous` mogelijk.
+- **Overslaan staat alleen op de welkomstkaart.** Eenmaal onderweg is er geen knop meer, wel Escape.
+- **Escape sluit het binnenste eerst**: een thread, de ballon, de picker, de focus in het paneel. Daarna slaat hij de tour over. Aan het eind staat de focus op de profielknop.
+- **De kaart** (`tourCardPosition()`) staat boven z'n knop, links naast het paneel, in het midden (welkom) of linksonder in het frame (pins), altijd binnen het venster, gemeten vóór de eerste paint. Hij reist mee tussen stappen en is niet verborgen tot de meting, want hij moet de focus kunnen krijgen.
 
 ## Feedback op een component
 
@@ -371,7 +389,7 @@ Overschrijf ze op `:root` of op een ancestor. Hernoemen is breaking, dus dat geb
 | Type | `--orbit-type-{documentation,pro,question,con,suggestion,critical,user-insight}-{bg,border,fg}` |
 | Schaal | `--orbit-space-*`, `--orbit-radius-*`, `--orbit-text-*`, `--orbit-shadow-*`, `--orbit-font-body`, `--orbit-font-mono` |
 | Motion | `--orbit-duration-fast`, `--orbit-duration`, `--orbit-duration-slow`, `--orbit-ease` |
-| Stapeling | `--orbit-z-base` (uit `settings.zIndex`) plus vaste offsets |
+| Stapeling | `--orbit-z-base` (uit `settings.zIndex`) plus vaste offsets, de hoogste `--orbit-z-tour` |
 | Chrome | `--orbit-bg-chrome`, `--orbit-glass-*` (film, chip, edge, pane, hairline, blur), `--orbit-shadow-pane`, `--orbit-rail-height`, `--orbit-frame-bg` |
 
 De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-tertiary`, `*_hover`, `*_on-brand`), zodat het vocabulaire hetzelfde is als in onze Tailwind-projecten. De donkere *waarden*, de standaard, zijn die van Radial (strakzat/radial): de neutrale ladder van de site, glas als een paar procent wit met een belichte bovenrand (`--orbit-glass-*`), een bijna-witte primaire knop en Radials blauwe focusring. Een paneel dat over het project opent is Radials chrome-glas met een dichte tint (88%), zodat lichte tekst boven een witte pagina 4.5:1 houdt. De lichte waarden zijn nog die van Geist. Beide lettertypes zitten gebundeld (`styles/font.ts`), zodat Orbit op elke site hetzelfde oogt: Inter, zoals Radial, als variabel font (gewicht 100–900 in één woff2, Latin, ~48 KB), en Geist Mono voor mono (Latin, gewicht 400, ~10 KB). tsup lijft ze in als data-URL (`loader` in `tsup.config.ts`), als `@font-face` vooraan in de sheet. De familienamen zijn `"Orbit Inter"` en `"Orbit Geist Mono"`, zodat ze nooit botsen met een `Inter` of `Geist Mono` van het project; daarna volgen die van het project en het systeem. Geen Google Fonts: dat zou op elke klantsite een verzoek naar Google doen (AVG) en strandt op een strikte CSP. Satoshi kan niet: de ITF Free Font License verbiedt herdistributie via een publieke repo of package. De licenties (OFL) staan in `THIRD-PARTY-NOTICES.md`. Tailwind zelf zit hier niet in: dat zou elke consumer een buildstap opleggen.
@@ -404,7 +422,7 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image, en de lettertypes Inter en Geist Mono) zit gebundeld in `dist`, met de licenties in `THIRD-PARTY-NOTICES.md`.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
-- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam, taal en pins, en wat hij per thread gelezen heeft.
+- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam, taal, pins en of hij de rondleiding zag, en wat hij per thread gelezen heeft.
 - Comments worden door de provider gepolled, één keer voor alles, elke 30 seconden zolang comments aanstaan — ook als het paneel dicht is, voor de teller op de rail. Een verborgen tab slaat over; na een fout wordt het twee minuten later opnieuw geprobeerd.
 
 ## Checks

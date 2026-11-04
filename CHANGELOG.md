@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.11.0
+
+- **A tour of Orbit.** A viewer who hasn't seen it gets a short tour once, also on existing
+  projects after this update: a welcome card for their name and language, sample pins and threads,
+  a try at placing feedback with the real picker, the real panel, then Varianten and the profile.
+  With comments on, the welcome card needs a name before it can be left, so feedback says who it's from.
+  During the tour the context holds samples instead of the project's data and nothing reaches
+  the API. It can be replayed from the profile; `settings.tour: false` turns off the automatic
+  start only.
+
 ## 4.10.4
 
 - **The scrim reaches every corner.** On a large window, an element in one corner left the

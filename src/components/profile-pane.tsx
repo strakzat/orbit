@@ -8,6 +8,54 @@ import { useStableId } from "../utils/use-stable-id";
 import { Choice, Switch } from "./variants-pane";
 import type { OrbitChoiceVariant, OrbitLanguage, OrbitSwitchVariant } from "../types";
 
+/** Who they are, as the rail and a comment will show them: the monogram over the name. The name
+    is typed straight in, on the pane rather than in a field. The profile and the tour's welcome. */
+export function ViewerIdentity({ required }: { required?: boolean }) {
+  const { labels, viewer, setViewerName } = useAnnotations();
+  const nameId = useStableId("orbit-profile-name");
+  const nameHintId = useStableId("orbit-profile-name-hint");
+  const name = viewer.name.trim();
+
+  return React.createElement(
+    "div",
+    { className: "orbit-profile__identity" },
+    React.createElement(
+      "span",
+      { className: "orbit-profile__avatar", "aria-hidden": true },
+      name ? initials(name) : React.createElement(UserIcon, { size: 28 })
+    ),
+    React.createElement("label", { htmlFor: nameId, className: "orbit-sr-only" }, labels.formName),
+    React.createElement("input", {
+      id: nameId,
+      className: "orbit-profile__name",
+      type: "text",
+      ...NO_AUTOFILL,
+      spellCheck: false,
+      placeholder: labels.profileNamePlaceholder,
+      value: viewer.name,
+      "aria-describedby": nameHintId,
+      "aria-required": required || undefined,
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setViewerName(e.target.value),
+    }),
+    React.createElement("p", { id: nameHintId, className: "orbit-profile__hint" }, labels.profileNameHint)
+  );
+}
+
+/** The variants pane's own control, so the switch looks and answers the keys as a variant does. */
+export function LanguageChoice({ onAnnounce }: { onAnnounce: (text: string) => void }) {
+  const { labels, language, setViewerLanguage } = useAnnotations();
+  const variant: OrbitChoiceVariant = {
+    type: "choice",
+    id: "orbit-language",
+    title: labels.profileLanguage,
+    display: "segments",
+    options: (Object.keys(LABELS) as OrbitLanguage[]).map((code) => ({ id: code, label: LANGUAGE_NAMES[code] })),
+    value: language,
+    onChange: (code) => setViewerLanguage(code as OrbitLanguage),
+  };
+  return React.createElement(Choice, { variant, onAnnounce });
+}
+
 interface ProfilePaneProps {
   id: string;
   /** `true` when the focus should go back to the rail's button: Escape or the close button. */
@@ -27,20 +75,15 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const {
     labels,
     language,
-    viewer,
-    setViewerName,
-    setViewerLanguage,
     annotationMode,
     setAnnotationMode,
     showResolvedPins,
     setViewerShowResolved,
     commentsConfig,
     settings,
+    startTour,
   } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
-  const nameId = useStableId("orbit-profile-name");
-  const nameHintId = useStableId("orbit-profile-name-hint");
-  const name = viewer.name.trim();
 
   useEffect(() => {
     paneRef.current?.querySelector<HTMLElement>("input")?.focus();
@@ -63,17 +106,6 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [onClose]);
-
-  // The variants pane's own control, so the switch looks and answers the keys as a variant does.
-  const languageChoice: OrbitChoiceVariant = {
-    type: "choice",
-    id: "orbit-language",
-    title: labels.profileLanguage,
-    display: "segments",
-    options: (Object.keys(LABELS) as OrbitLanguage[]).map((code) => ({ id: code, label: LANGUAGE_NAMES[code] })),
-    value: language,
-    onChange: (code) => setViewerLanguage(code as OrbitLanguage),
-  };
 
   // The pins on the page: the viewer's own, so they see what is there, or a clean prototype.
   const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
@@ -133,34 +165,23 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
     React.createElement(
       "div",
       { className: "orbit-profile__body" },
-      // Who they are, as the rail and a comment will show them: the monogram over the name. The
-      // name is typed straight in, on the pane rather than in a field.
-      React.createElement(
-        "div",
-        { className: "orbit-profile__identity" },
-        React.createElement(
-          "span",
-          { className: "orbit-profile__avatar", "aria-hidden": true },
-          name ? initials(name) : React.createElement(UserIcon, { size: 28 })
-        ),
-        React.createElement("label", { htmlFor: nameId, className: "orbit-sr-only" }, labels.formName),
-        React.createElement("input", {
-          id: nameId,
-          className: "orbit-profile__name",
-          type: "text",
-          ...NO_AUTOFILL,
-          spellCheck: false,
-          placeholder: labels.profileNamePlaceholder,
-          value: viewer.name,
-          "aria-describedby": nameHintId,
-          onChange: (e: React.ChangeEvent<HTMLInputElement>) => setViewerName(e.target.value),
-        }),
-        React.createElement("p", { id: nameHintId, className: "orbit-profile__hint" }, labels.profileNameHint)
-      ),
-      React.createElement(Choice, { variant: languageChoice, onAnnounce }),
+      React.createElement(ViewerIdentity),
+      React.createElement(LanguageChoice, { onAnnounce }),
       React.createElement(Switch, { variant: markersSwitch, onAnnounce, hint: markersHint }),
       // Only with feedback: without it there is nothing to resolve.
-      commentsConfig && React.createElement(Switch, { variant: resolvedSwitch, onAnnounce, hint: resolvedHint })
+      commentsConfig && React.createElement(Switch, { variant: resolvedSwitch, onAnnounce, hint: resolvedHint }),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "orbit-profile__tour",
+          onClick: () => {
+            onClose(false);
+            startTour();
+          },
+        },
+        labels.profileTour
+      )
     )
   );
 }

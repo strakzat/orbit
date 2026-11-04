@@ -260,6 +260,11 @@ const CHROME = `
   font-weight: 600;
 }
 
+/* What the tour points at: lit, on the rail it keeps lit. */
+.orbit-rail__item--tour {
+  box-shadow: 0 0 0 1px var(--orbit-spotlight-ring);
+}
+
 .orbit-rail__item--on svg {
   color: var(--orbit-text-primary);
 }
@@ -375,6 +380,130 @@ const CHROME = `
   max-height: calc(100dvh - var(--orbit-rail-height) - var(--orbit-space-8));
   overflow: hidden;
   border-radius: var(--orbit-radius-2xl);
+}
+
+/* The tour's card: over everything Orbit opens, a thread included, because it says what's next.
+   Where it stands is a measurement, inline; between steps it travels there. */
+.orbit-tour {
+  position: fixed;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-tour));
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-3);
+  width: 340px;
+  max-width: calc(100vw - var(--orbit-space-8));
+  max-height: calc(100vh - var(--orbit-space-8));
+  max-height: calc(100dvh - var(--orbit-space-8));
+  padding: var(--orbit-space-4);
+  overflow-y: auto;
+  border-radius: var(--orbit-radius-2xl);
+  transition:
+    left var(--orbit-duration-slow) var(--orbit-ease),
+    top var(--orbit-duration-slow) var(--orbit-ease);
+}
+
+.orbit-tour__title {
+  font-size: var(--orbit-text-md);
+  font-weight: 600;
+  color: var(--orbit-text-primary);
+}
+
+/* It takes the focus so the step is read out, by script: nothing to act on, so no ring. */
+.orbit-root .orbit-tour__title:focus-visible {
+  outline: none;
+}
+
+.orbit-tour__body {
+  font-size: var(--orbit-text-sm);
+  line-height: 1.5;
+  color: var(--orbit-text-secondary);
+}
+
+/* Closer to the text it qualifies than the card's gap. */
+.orbit-tour__note {
+  margin-top: calc(var(--orbit-space-1) * -1);
+  font-size: var(--orbit-text-xs);
+  line-height: 1.5;
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-tour__foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--orbit-space-2);
+  margin-top: var(--orbit-space-1);
+}
+
+/* Under the fields, the buttons need more air than under a line of text. */
+.orbit-tour--welcome .orbit-tour__foot {
+  margin-top: var(--orbit-space-4);
+}
+
+.orbit-tour__progress {
+  margin-right: auto;
+  font-size: var(--orbit-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-tour__foot button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.orbit-tour__quiet {
+  min-height: 36px;
+  padding: 0 var(--orbit-space-3);
+  border-radius: var(--orbit-radius-full);
+  font-size: var(--orbit-text-sm);
+  font-weight: 500;
+  color: var(--orbit-text-secondary);
+  transition:
+    background-color var(--orbit-duration) var(--orbit-ease),
+    color var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-tour__quiet:hover:not(:disabled) {
+  background: var(--orbit-glass-chip);
+  color: var(--orbit-text-primary);
+}
+
+.orbit-tour__quiet:disabled {
+  color: var(--orbit-text-disabled);
+}
+
+/* Over the frame, or the window, as the spotlight's scrim is: the rail stays lit. It takes the
+   clicks, so nothing happens to the project during the tour. */
+.orbit-tour__scrim {
+  position: fixed;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-overlay));
+  background: var(--orbit-scrim);
+  transition: background-color var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-tour__scrim--framed {
+  border-radius: 0 0 24px 24px;
+}
+
+/* Clear, and under the pins, where the viewer is meant to click those and not the project. */
+.orbit-tour__scrim--clear {
+  z-index: calc(var(--orbit-z-base) + 1);
+  background: transparent;
+}
+
+/* The profile's way back to the tour: quiet, under the settings it isn't one of. */
+.orbit-profile__tour {
+  align-self: center;
+  padding: var(--orbit-space-1) var(--orbit-space-2);
+  border-radius: var(--orbit-radius-xs);
+  font-size: var(--orbit-text-xs);
+  color: var(--orbit-text-tertiary);
+  transition: color var(--orbit-duration) var(--orbit-ease);
+}
+
+.orbit-profile__tour:hover {
+  color: var(--orbit-text-primary);
 }
 
 /* The profile pane: over the rail's right end, where its button is, as the variants pane is
@@ -2357,6 +2486,11 @@ const OVERLAYS = `
 /* While the screenshot for a comment is taken: the page without Orbit on it. */
 [data-orbit-capturing] .orbit-root {
   visibility: hidden;
+}
+
+/* The pins the tour is about, above the spotlight's scrim. */
+[data-orbit-tour="pins"] .orbit-marker--fixed {
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-highlight) + 1);
 }
 
 /* The inspector's spotlight. The box is the picking area (the frame, or the window) and
