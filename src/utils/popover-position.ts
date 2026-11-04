@@ -92,13 +92,15 @@ function availableHeight(
  * The inspector's comment bubble: under the element, its top-left corner on the element's,
  * so the element stays in view and the bubble reads as said about it. Above the element when
  * there is no room below, and over its foot when there is room on neither side. `area` is
- * where the bubble may go: the frame, so it never covers the rail.
+ * where the bubble may go: the frame, so it never covers the rail. `foot` is where the element
+ * itself ends, when `rect` reaches further.
  */
 export function getBubblePlacement(
   rect: DOMRect,
   area: DOMRect,
   width: number,
   height: number,
+  foot = rect.bottom,
   gap = 6,
   margin = 12
 ): { style: React.CSSProperties; above: boolean } {
@@ -119,8 +121,8 @@ export function getBubblePlacement(
     };
   }
   // The element fills the view: the bubble sits inside its foot, as low as the area allows.
-  const foot = Math.min(rect.bottom, area.bottom) - margin;
-  return { style: { position: "fixed", left, width, bottom: viewportH - foot }, above: true };
+  const bottom = viewportH - (Math.min(foot, area.bottom) - margin);
+  return { style: { position: "fixed", left, width, bottom }, above: true };
 }
 
 /**
