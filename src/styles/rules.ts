@@ -2391,9 +2391,12 @@ const OVERLAYS = `
     height var(--orbit-duration-fast) var(--orbit-ease);
 }
 
+/* A spread shadow rounds its outer corners by as much as it spreads, so the scrim is a circle
+   around each corner of the hole. 100vmax left the far corner of the area bare; 200vmax clears
+   the diagonal of any window, from a hole anywhere in it. */
 .orbit-spotlight__cutout {
   border-radius: var(--orbit-radius-xs);
-  box-shadow: var(--orbit-spotlight-edge), 0 0 0 100vmax var(--orbit-scrim);
+  box-shadow: var(--orbit-spotlight-edge), 0 0 0 200vmax var(--orbit-scrim);
 }
 
 /* A hairline of light rather than a line of paint: plus-lighter adds it to the page under
