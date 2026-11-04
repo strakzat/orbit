@@ -17,6 +17,8 @@ const TAG_MIN_WITH_COMPONENT = 280;
 const TAG_ROOM = 32;
 // The tag's distance to the edge of the area, where it can't line up with the ring.
 const TAG_EDGE = 6;
+// How far the scrim's hole may lie outside the area: past its rounded corners, out of sight.
+const HOLE_OVERSCAN = 32;
 
 /**
  * Where the tag goes for `rect`, so it stays readable: above the ring, under it when there is
@@ -52,6 +54,26 @@ export function spotlightAnchor(rect: DOMRect): { box: DOMRect; foot: number } {
       rect.height + out * 2 + above + below
     ),
     foot: rect.bottom + out,
+  };
+}
+
+interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** `box`, in area coordinates, with what lies well outside the area cut off. */
+function scrimHole(box: Box, area: DOMRect): Box {
+  const clamp = (n: number, size: number) => Math.min(Math.max(n, -HOLE_OVERSCAN), size + HOLE_OVERSCAN);
+  const left = clamp(box.left, area.width);
+  const top = clamp(box.top, area.height);
+  return {
+    left,
+    top,
+    width: clamp(box.left + box.width, area.width) - left,
+    height: clamp(box.top + box.height, area.height) - top,
   };
 }
 
@@ -104,6 +126,9 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
         height: rect.height + SPOTLIGHT_PAD * 2,
       }
     : null;
+  // The hole in the scrim is the cutout, kept near the area: its shadow only reaches so far, and
+  // an element scrolled far out of view would take the whole scrim with it.
+  const hole = cutout ? scrimHole(cutout, area) : null;
   const tag = rect ? spotlightTag(rect) : null;
   const tagLeft = cutout ? Math.max(cutout.left - SPOTLIGHT_RING, TAG_EDGE) : 0;
   // In a component, the tag starts with its pill: a pill in the pill, before the element.
@@ -123,7 +148,7 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
       ),
       style: { left: area.left, top: area.top, width: area.width, height: area.height },
     },
-    cutout && React.createElement("div", { className: "orbit-spotlight__cutout", style: cutout }),
+    hole && React.createElement("div", { className: "orbit-spotlight__cutout", style: hole }),
     cutout &&
       tag &&
       el &&

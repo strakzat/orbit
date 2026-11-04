@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.10.4
+
+- **The scrim reaches every corner.** On a large window, an element in one corner left the
+  opposite corner of the frame undimmed, behind a curved edge: a spread shadow rounds its outer
+  corners by as much as it spreads, and 100vmax is less than the window's diagonal. The spread
+  is now 200vmax, and an element scrolled far out of view no longer takes the scrim with it.
+
 ## 4.10.3
 
 - **Feedback lands on the instance by default.** Inside a component, the bubble's choice now
