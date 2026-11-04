@@ -15,6 +15,15 @@
   `settings.tour: false` turns off the automatic start only.
 - **No more 1px window scroll** under a full-height shell, from the inspector's status region.
 
+## 4.10.5
+
+- **The spotlight follows the element's shape.** The ring and the cutout were always a rectangle
+  with small corners. They now run concentric with what is lit, corner by corner: a round button
+  gets a round ring, a pill a pill. A square `img` in a round avatar counts as round too.
+- **The spotlight's pill stays readable on small elements.** It was capped at the width of the
+  ring, so on a small button the name ellipsed away. It can now grow to 180px past the ring, and
+  moves left at the right edge of the frame to get that room.
+
 ## 4.10.4
 
 - **The scrim reaches every corner.** On a large window, an element in one corner left the

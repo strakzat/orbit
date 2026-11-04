@@ -64,6 +64,9 @@ export function pickArea(): DOMRect {
   return frame ? frame.getBoundingClientRect() : new DOMRect(0, 0, window.innerWidth, window.innerHeight);
 }
 
+const isFrame = (el: Element) =>
+  el.classList.contains("orbit-frame") || el.classList.contains("orbit-frame__scroll");
+
 const sameBox = (a: DOMRect, b: DOMRect) =>
   Math.abs(a.left - b.left) < 1 &&
   Math.abs(a.top - b.top) < 1 &&
@@ -81,7 +84,7 @@ export function levelsFrom(hit: HTMLElement): HTMLElement[] {
   const levels: { el: HTMLElement; rect: DOMRect }[] = [];
 
   for (let el: HTMLElement | null = hit; el && el !== document.body; el = el.parentElement) {
-    if (el.classList.contains("orbit-frame") || el.classList.contains("orbit-frame__scroll")) break;
+    if (isFrame(el)) break;
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) continue;
     if (rect.width >= area.width * 0.9 && rect.height >= area.height * 0.9) continue;
@@ -96,4 +99,65 @@ export function levelsFrom(hit: HTMLElement): HTMLElement[] {
   }
 
   return levels.map((level) => level.el);
+}
+
+const cornerRadii = (el: Element) => {
+  const style = getComputedStyle(el);
+  return [
+    style.borderTopLeftRadius,
+    style.borderTopRightRadius,
+    style.borderBottomRightRadius,
+    style.borderBottomLeftRadius,
+  ];
+};
+
+const isRounded = (el: Element) => cornerRadii(el).some((radius) => parseFloat(radius) > 0);
+
+/**
+ * Whichever element gives `el`'s box its shape. Picking keeps one element per box, and that
+ * need not be the round one: the square `img` in a round avatar, the wrapper around a pill.
+ */
+function shapeOf(el: HTMLElement): Element {
+  if (isRounded(el)) return el;
+  const rect = el.getBoundingClientRect();
+
+  for (let inner: Element | undefined = el; inner; ) {
+    inner = Array.from(inner.children).find((child) => sameBox(child.getBoundingClientRect(), rect));
+    if (inner && isRounded(inner)) return inner;
+  }
+  for (let outer = el.parentElement; outer && outer !== document.body; outer = outer.parentElement) {
+    if (isFrame(outer) || !sameBox(outer.getBoundingClientRect(), rect)) break;
+    if (isRounded(outer)) return outer;
+  }
+  return el;
+}
+
+/**
+ * `border-radius` for a box `pad` outside a `width` by `height` box with these computed corners
+ * (top left, clockwise), so both curves share a centre. Corners come as `8px`, `50%` or `8px 12px`;
+ * radii that don't fit are shrunk as CSS does, or a `9999px` pill would stay 9999px here.
+ */
+export function concentricRadius(corners: string[], width: number, height: number, pad: number): string {
+  const px = (value: string, size: number) =>
+    (value.endsWith("%") ? (parseFloat(value) / 100) * size : parseFloat(value)) || 0;
+  const axes = corners.map((corner) => {
+    const [x, y = x] = corner.split(" ");
+    return [px(x, width), px(y, height)];
+  });
+  const [tl, tr, br, bl] = axes;
+  const fit = (sum: number, size: number) => (sum > size ? size / sum : 1);
+  const scale = Math.min(
+    fit(tl[0] + tr[0], width),
+    fit(bl[0] + br[0], width),
+    fit(tl[1] + bl[1], height),
+    fit(tr[1] + br[1], height)
+  );
+  const axis = (i: number) => axes.map((corner) => `${corner[i] * scale + pad}px`).join(" ");
+  return `${axis(0)} / ${axis(1)}`;
+}
+
+/** The radius of a ring `pad` outside `el`: a round button gets a round ring. */
+export function ringRadius(el: HTMLElement, pad: number): string {
+  const { width, height } = el.getBoundingClientRect();
+  return concentricRadius(cornerRadii(shapeOf(el)), width, height, pad);
 }
