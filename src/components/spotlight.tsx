@@ -12,6 +12,8 @@ const SPOTLIGHT_RING = 1;
 // The tag's height and its gap to the ring (.orbit-spotlight__tag).
 const SPOTLIGHT_TAG_HEIGHT = 30;
 const TAG_MAX_WIDTH = 320;
+// A ring on a small element is too narrow to read the tag by: past it, the tag gets this much.
+const TAG_MIN_WIDTH = 180;
 const TAG_MIN_WITH_COMPONENT = 280;
 // Room the tag needs above or below the ring; with less on both sides, it goes inside.
 const TAG_ROOM = 32;
@@ -135,9 +137,13 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
       ? ({ "--orbit-spotlight-radius": ringRadius(el, SPOTLIGHT_PAD) } as React.CSSProperties)
       : undefined;
   const tag = rect ? spotlightTag(rect) : null;
-  const tagLeft = cutout ? Math.max(cutout.left - SPOTLIGHT_RING, TAG_EDGE) : 0;
   // In a component, the tag starts with its pill: a pill in the pill, before the element.
   const component = el && cutout ? componentOf(el) : null;
+  const tagMin = component ? TAG_MIN_WITH_COMPONENT : TAG_MIN_WIDTH;
+  // Lined up with the ring, unless that leaves it too little room at the right edge of the area.
+  const tagLeft = cutout
+    ? Math.max(Math.min(cutout.left - SPOTLIGHT_RING, area.width - tagMin - TAG_EDGE), TAG_EDGE)
+    : 0;
 
   const scrim = React.createElement(
     "div",
@@ -168,12 +174,12 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
           style: {
             left: tagLeft,
             top: tag.top,
-            // Never wider than the ring it belongs to, the text ellipses instead; with a
-            // component's pill in front, wide enough that the element still reads beside it.
+            // As wide as the ring it belongs to, the text ellipses instead; on a small element
+            // or with a component's pill in front, wide enough that the name still reads.
             maxWidth: Math.min(
               TAG_MAX_WIDTH,
               area.width - tagLeft - TAG_EDGE,
-              Math.max(cutout.width + SPOTLIGHT_RING * 2, component ? TAG_MIN_WITH_COMPONENT : 0)
+              Math.max(cutout.width + SPOTLIGHT_RING * 2, tagMin)
             ),
           },
         },
