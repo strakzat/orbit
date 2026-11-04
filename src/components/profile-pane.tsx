@@ -5,6 +5,7 @@ import { LABELS, LANGUAGE_NAMES } from "../labels";
 import { UserIcon, XIcon } from "../icons";
 import { initials } from "../utils/format";
 import { useStableId } from "../utils/use-stable-id";
+import { ORBIT_VERSION } from "../version";
 import { Choice, Switch } from "./variants-pane";
 import type { OrbitChoiceVariant, OrbitLanguage, OrbitSwitchVariant } from "../types";
 
@@ -171,16 +172,22 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       // Only with feedback: without it there is nothing to resolve.
       commentsConfig && React.createElement(Switch, { variant: resolvedSwitch, onAnnounce, hint: resolvedHint }),
       React.createElement(
-        "button",
-        {
-          type: "button",
-          className: "orbit-profile__tour",
-          onClick: () => {
-            onClose(false);
-            startTour();
+        "div",
+        { className: "orbit-profile__foot" },
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "orbit-profile__tour",
+            onClick: () => {
+              onClose(false);
+              startTour();
+            },
           },
-        },
-        labels.profileTour
+          labels.profileTour
+        ),
+        // For when a client has an issue: which Orbit are they on? Theirs to read out or copy.
+        React.createElement("span", { className: "orbit-profile__version" }, `Orbit ${ORBIT_VERSION}`)
       )
     )
   );

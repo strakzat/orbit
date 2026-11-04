@@ -526,9 +526,18 @@ const CHROME = `
 }
 
 /* The profile's way back to the tour: quiet, under the settings it isn't one of. */
+.orbit-profile__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orbit-space-3);
+  /* On the same lines as the switches above it. */
+  padding: 0 var(--orbit-space-3);
+}
+
 .orbit-profile__tour {
-  align-self: center;
-  padding: var(--orbit-space-1) var(--orbit-space-2);
+  padding: var(--orbit-space-1) 0;
+  white-space: nowrap;
   border-radius: var(--orbit-radius-xs);
   font-size: var(--orbit-text-xs);
   color: var(--orbit-text-tertiary);
@@ -537,6 +546,15 @@ const CHROME = `
 
 .orbit-profile__tour:hover {
   color: var(--orbit-text-primary);
+}
+
+/* Real content, so a tint that reads, and text a client can select. */
+.orbit-profile__version {
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-text-xs);
+  color: var(--orbit-text-quaternary);
+  white-space: nowrap;
+  user-select: text;
 }
 
 /* The profile pane: over the rail's right end, where its button is, as the variants pane is

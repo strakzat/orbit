@@ -2,6 +2,7 @@
 
 ## 4.11.0
 
+- **The profile says which version is running,** for when a client reports something.
 - **A tour of Orbit.** A viewer who hasn't seen it gets a short tour once, also on existing
   projects after this update: a welcome card for their name and language, sample pins and threads,
   a try at placing feedback with the real picker, the real panel, then Varianten and the profile.
