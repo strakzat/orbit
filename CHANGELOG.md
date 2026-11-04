@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.10.2
+
+- **The spotlight's pill stays visible.** On an element too tall for room above or below the
+  ring, or at the top of the view, the pill fell outside the frame. It now sits inside the
+  ring, at the top of what shows, and stays within the frame when an element is scrolled out of
+  view or wider than the frame. The comment bubble no longer covers the pill when it opens
+  above the element.
+
 ## 4.10.1
 
 - **Releases publish themselves.** A version bump merged to `main` runs

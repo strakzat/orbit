@@ -137,14 +137,14 @@ function CommentBubble({
   selected,
   scope,
   onScope,
-  ring,
+  anchor,
   onSent,
 }: {
   selected: SelectedElement;
   scope: Scope;
   onScope: (scope: Scope) => void;
-  /** The spotlight's ring around the element: the bubble's corner goes on its corner. */
-  ring: DOMRect;
+  /** The spotlight around the element: the bubble's corner goes on its corner, clear of the tag. */
+  anchor: ReturnType<typeof spotlightAnchor>;
   /** After the comment is in: picking is done, so the bubble and the inspector close. */
   onSent: () => void;
 }) {
@@ -166,7 +166,7 @@ function CommentBubble({
     target: selected.el,
   });
 
-  const { style, above } = getBubblePlacement(ring, pickArea(), BUBBLE_WIDTH, BUBBLE_HEIGHT);
+  const { style, above } = getBubblePlacement(anchor.box, pickArea(), BUBBLE_WIDTH, BUBBLE_HEIGHT, anchor.foot);
 
   return React.createElement(
     "div",
@@ -367,8 +367,8 @@ export function Inspector() {
           selected,
           scope,
           onScope: setScope,
-          // The spotlight says where it drew the ring, and the tag when it is under the ring.
-          ring: spotlightAnchor(litRect),
+          // The spotlight says where it drew the ring and the tag.
+          anchor: spotlightAnchor(litRect),
           onSent: () => {
             setActive(false);
             setNotice(labels.feedbackPlaced);
