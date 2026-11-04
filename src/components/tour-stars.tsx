@@ -1,8 +1,14 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { ORBIT_UI_ATTR } from "../constants";
-import { cx } from "../utils/cx";
 import { pickArea } from "../utils/pick-element";
-import { hexToRgb } from "../utils/tour";
+import { buildProgram, createCorona, prismColours } from "./tour-corona";
+
+/**
+ * The boot: the tour opening on black, a galaxy gathering into a ball, one ripple, and the page and
+ * the card coming up with it. Finished and tested (Firefox too), and switched off for now because
+ * it was a lot for a viewer who came to review a prototype. True brings all of it back.
+ */
+export const TOUR_BOOT = false;
 
 // Radial's stars: one size on one grid, in CSS pixels, told apart by light alone.
 const GRID = 7;
@@ -16,10 +22,9 @@ const BOOT = 3;
 // The moment it has gathered, as a share of the boot. The card and the page come up from there.
 const GATHER = 1.6 / BOOT;
 const MAX_RATIO = 2;
-// The fade out (.orbit-tour__stars--off), and a little room.
-const OFF_MS = 400;
-
-const PRISM = ["amber", "peach", "ice", "cyan", "blue"];
+// Seconds for the field to spread out from the card, and to draw back in.
+const FIELD_IN = 1.4;
+const FIELD_OUT = 0.5;
 
 const VERT = /* glsl */ `#version 300 es
 uniform vec2 uRes;
@@ -34,6 +39,7 @@ uniform float uSize;
 uniform float uRatio;
 uniform float uTime;
 uniform float uBoot;
+uniform float uField;
 uniform vec3 uPrism[5];
 out vec4 vInk;
 
@@ -102,6 +108,8 @@ void main() {
   float twinkle = step(0.92, id) * (0.5 + 0.5 * sin(uTime * 1.6 + id * 90.0));
   float wave = exp(-square((reach - fract(uTime / 9.0) * 1.6) * 7.0));
   float still = (0.16 + 0.95 * current + 0.6 * twinkle + 0.5 * wave) * pow(max(1.0 - reach, 0.0), 1.3) * float(ring);
+  // It spreads out from the card, and draws back in.
+  still *= smoothstep(0.0, 0.25, uField * 1.25 - reach);
   vec3 stillInk = prism((rest.y - uCard.y + uHalf.y + uReach) / (2.0 * (uHalf.y + uReach)) + (id - 0.5) * 0.12);
 
   // The boot: no star moves. A shape of light is drawn across them by each one's opacity and
@@ -184,31 +192,15 @@ void main() {
 function createStars(canvas: HTMLCanvasElement) {
   const gl = canvas.getContext("webgl2", { alpha: true, antialias: false, premultipliedAlpha: true });
   if (!gl) return null;
-  const compile = (type: number, source: string) => {
-    const shader = gl.createShader(type);
-    if (!shader) return null;
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
-  };
-  const vert = compile(gl.VERTEX_SHADER, VERT);
-  const frag = compile(gl.FRAGMENT_SHADER, FRAG);
-  const program = gl.createProgram();
-  if (!vert || !frag || !program) return null;
-  gl.attachShader(program, vert);
-  gl.attachShader(program, frag);
-  gl.linkProgram(program);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+  const program = buildProgram(gl, VERT, FRAG);
+  if (!program) return null;
   gl.useProgram(program);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
   const uniform = (name: string) => gl.getUniformLocation(program, name);
   const styles = getComputedStyle(canvas);
-  gl.uniform3fv(
-    uniform("uPrism"),
-    PRISM.flatMap((name) => hexToRgb(styles.getPropertyValue(`--orbit-star-${name}`)))
-  );
+  gl.uniform3fv(uniform("uPrism"), prismColours(styles));
   const uniforms = {
     res: uniform("uRes"),
     card: uniform("uCard"),
@@ -222,10 +214,12 @@ function createStars(canvas: HTMLCanvasElement) {
     ratio: uniform("uRatio"),
     time: uniform("uTime"),
     boot: uniform("uBoot"),
+    field: uniform("uField"),
   };
+  const corona = createCorona(gl, styles, FRAG);
 
   return {
-    draw(card: DOMRect, time: number, boot: number) {
+    draw(card: DOMRect, time: number, boot: number, field: number, target: Element | null) {
       const ratio = Math.min(window.devicePixelRatio || 1, MAX_RATIO);
       const width = Math.round(window.innerWidth * ratio);
       const height = Math.round(window.innerHeight * ratio);
@@ -240,6 +234,7 @@ function createStars(canvas: HTMLCanvasElement) {
       const rows = Math.ceil(window.innerHeight / pitch);
       const area = pickArea();
 
+      gl.useProgram(program);
       gl.uniform2f(uniforms.res, window.innerWidth, window.innerHeight);
       gl.uniform2f(uniforms.card, card.left + card.width / 2, card.top + card.height / 2);
       gl.uniform2f(uniforms.half, card.width / 2, card.height / 2);
@@ -252,34 +247,45 @@ function createStars(canvas: HTMLCanvasElement) {
       gl.uniform1f(uniforms.ratio, ratio);
       gl.uniform1f(uniforms.time, time);
       gl.uniform1f(uniforms.boot, boot);
+      gl.uniform1f(uniforms.field, field);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.POINTS, 0, columns * rows);
+      if (field > 0 || boot < 1) gl.drawArrays(gl.POINTS, 0, columns * rows);
+      corona?.draw(target, time);
     },
   };
 }
 
 interface TourStarsProps {
   cardRef: React.RefObject<HTMLElement>;
-  /** Off, it fades out and stops drawing. */
+  /** Whether the field around the card shows. Off, it draws back into the card. */
   on: boolean;
+  /** What lets the corona go, read every frame: it can move, or come late. */
+  target: () => Element | null;
+  /** Changes when the target does: with reduced motion, there is no next frame to pick it up. */
+  step: string;
   /** Time for the card and the page. At once when there is no boot to wait for. */
   onLanded: () => void;
 }
 
 /**
- * Radial's stars around a card, on Radial's grid in the prism's colours, with currents of light
- * running through them. They boot once: no star moves, a shape is drawn across them by their opacity
- * and colour, a tipped disc of arms that fills the window, gathers in the heart and stays there,
- * while a ripple goes out from it and the field at rest spreads after it. One draw of points on one canvas, drawn only while `on`. Decoration, so
- * it gives way easily: one still frame with reduced motion, and nothing without WebGL2.
+ * Everything the tour draws in stars, on one canvas for as long as it runs. Radial's stars around
+ * the welcome card, on Radial's grid in the prism's colours, with currents of light running through
+ * them; and from what a step points at, a corona (`createCorona`). `TOUR_BOOT` adds the
+ * boot: no star moves, a shape is drawn across them by their opacity and colour, a tipped disc of
+ * arms that fills the window, gathers in the heart and stays there, while a ripple goes out from it
+ * and the field at rest spreads after it. Decoration, so it gives way easily: one still frame with
+ * reduced motion, and nothing without WebGL2.
  */
-export function TourStars({ cardRef, on, onLanded }: TourStarsProps) {
+export function TourStars({ cardRef, on, target, step, onLanded }: TourStarsProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stopRef = useRef<() => void>(() => {});
-  const startRef = useRef<() => void>(() => {});
+  const redrawRef = useRef<() => void>(() => {});
   const landedRef = useRef(onLanded);
   landedRef.current = onLanded;
+  const onRef = useRef(on);
+  onRef.current = on;
+  const targetRef = useRef(target);
+  targetRef.current = target;
 
   // Before the first paint: without a boot, there is no black to see.
   useLayoutEffect(() => {
@@ -287,7 +293,8 @@ export function TourStars({ cardRef, on, onLanded }: TourStarsProps) {
     if (!canvas) return;
     const stars = createStars(canvas);
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!stars || still) landedRef.current();
+    const booting = TOUR_BOOT && !!stars && !still;
+    if (!booting) landedRef.current();
     if (!stars) return;
 
     let drawing: typeof stars | null = stars;
@@ -296,13 +303,16 @@ export function TourStars({ cardRef, on, onLanded }: TourStarsProps) {
     let last = 0;
     // The boot goes by the clock: on a slow machine it drops frames, it doesn't take longer, so
     // nobody sits in the black.
-    let began = still ? -Infinity : 0;
-    let landed = still;
+    let began = 0;
+    let landed = !booting;
+    let field = booting || still ? 1 : 0;
 
     const draw = (now: number) => {
       const card = cardRef.current;
-      const boot = began === 0 ? 0 : Math.min((now - began) / 1000 / BOOT, 1);
-      if (card) drawing?.draw(card.getBoundingClientRect(), time, boot);
+      const boot = !booting ? 1 : began === 0 ? 0 : Math.min((now - began) / 1000 / BOOT, 1);
+      if (still) field = onRef.current ? 1 : 0;
+      // Standing still, an element has no stars to let go: its own look says it all.
+      if (card) drawing?.draw(card.getBoundingClientRect(), time, boot, field, still ? null : targetRef.current());
       if (!landed && boot >= GATHER) {
         landed = true;
         landedRef.current();
@@ -312,64 +322,54 @@ export function TourStars({ cardRef, on, onLanded }: TourStarsProps) {
       frame = requestAnimationFrame(tick);
       if (!began) began = now;
       // A hidden tab stops the frames; the stars pick up where they were.
-      time += Math.min(0.1, (now - (last || now)) / 1000);
+      const step = Math.min(0.1, (now - (last || now)) / 1000);
+      time += step;
       last = now;
+      field = onRef.current ? Math.min(field + step / FIELD_IN, 1) : Math.max(field - step / FIELD_OUT, 0);
       draw(now);
     };
-    const stop = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-    };
-    const start = () => {
-      if (still) return draw(performance.now());
-      if (frame) return;
-      last = 0;
-      frame = requestAnimationFrame(tick);
-    };
-    stopRef.current = stop;
-    startRef.current = start;
+    if (still) draw(performance.now());
+    else frame = requestAnimationFrame(tick);
 
-    // Only needed while nothing else draws: with reduced motion, and once it stands still.
+    // Only needed while nothing else draws: with reduced motion.
     const redraw = () => {
       if (!frame) draw(performance.now());
     };
+    redrawRef.current = redraw;
     const resize = new ResizeObserver(redraw);
     if (cardRef.current) resize.observe(cardRef.current);
     window.addEventListener("resize", redraw);
+    window.addEventListener("scroll", redraw, true);
 
     const onLost = (e: Event) => {
       e.preventDefault();
-      stop();
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
       drawing = null;
       landedRef.current();
     };
     canvas.addEventListener("webglcontextlost", onLost);
 
     return () => {
-      stop();
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
       resize.disconnect();
       window.removeEventListener("resize", redraw);
+      window.removeEventListener("scroll", redraw, true);
       canvas.removeEventListener("webglcontextlost", onLost);
-      stopRef.current = () => {};
-      startRef.current = () => {};
+      redrawRef.current = () => {};
       // The context stays: a canvas gives the same one back, and StrictMode runs this effect
       // twice. It goes with the canvas.
     };
   }, [cardRef]);
 
-  useEffect(() => {
-    if (on) {
-      startRef.current();
-      return;
-    }
-    const timer = window.setTimeout(() => stopRef.current(), OFF_MS);
-    return () => window.clearTimeout(timer);
-  }, [on]);
+  // After the render, so the step's target is in the page.
+  useEffect(() => redrawRef.current(), [on, step]);
 
   return React.createElement("canvas", {
     ref: canvasRef,
     [ORBIT_UI_ATTR]: "",
     "aria-hidden": true,
-    className: cx("orbit-root orbit-tour__stars", !on && "orbit-tour__stars--off"),
+    className: "orbit-root orbit-tour__stars",
   });
 }

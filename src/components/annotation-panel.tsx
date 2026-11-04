@@ -46,7 +46,6 @@ export function AnnotationPanel() {
     language,
     inspectorActive,
     tourStep,
-    tourComments,
   } = useAnnotations();
 
   // A project that writes no annotations uses Orbit for its feedback: open there.
@@ -104,9 +103,9 @@ export function AnnotationPanel() {
     wasThreadOpen.current = threadOpen;
   }, [threadOpen, thread]);
 
-  // In the tour the panel opens on what the viewer wrote, and after it on what it usually does.
+  // In the tour the panel opens on the sample annotation, and after it on what it usually does.
   useEffect(() => {
-    if (tourStep === "panel") setView(tourComments.length > 0 ? "feedback" : "annotations");
+    if (tourStep === "panel") setView("annotations");
     else if (tourStep === null) setView(allAnnotations.length > 0 ? "annotations" : "feedback");
   }, [tourStep]);
 

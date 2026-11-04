@@ -49,7 +49,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   setTourStep: () => {},
   startTour: () => {},
   endTour: () => {},
-  tourComments: [],
+  tourPractised: 0,
   addTourComment: () => {},
 };
 

@@ -115,6 +115,9 @@ export function AnnotationProvider({
   // The tour. While it runs, the context holds its samples instead of the project's data.
   const [tourStep, setTourStep] = useState<TourStepId | null>(null);
   const [tourComments, setTourComments] = useState<Comment[]>([]);
+  const [tourPractised, setTourPractised] = useState(0);
+  const tourStepRef = useRef(tourStep);
+  tourStepRef.current = tourStep;
   const [anchors, setAnchors] = useState<TourAnchor[] | null>(null);
   const touring = tourStep !== null;
   const touringRef = useRef(touring);
@@ -134,12 +137,16 @@ export function AnnotationProvider({
   const endTour = useCallback(() => {
     leaveEverything();
     setTourStep(null);
-    setTourComments([]);
     setAnchors(null);
     setViewerTourSeen();
   }, [leaveEverything, setViewerTourSeen]);
 
   const addTourComment = useCallback<AnnotationContextValue["addTourComment"]>((comment) => {
+    // Practice: it's kept nowhere, not even for the rest of the tour. It only says it happened.
+    if (tourStepRef.current === "feedback") {
+      setTourPractised((count) => count + 1);
+      return;
+    }
     setTourComments((prev) => [
       ...prev,
       {
@@ -152,6 +159,11 @@ export function AnnotationProvider({
       },
     ]);
   }, []);
+
+  // A reply in a sample thread stays for as long as that thread is on the page, and no longer.
+  useEffect(() => {
+    if (tourStep !== "pins") setTourComments([]);
+  }, [tourStep]);
 
   // Where the samples sit, read once the welcome card is done: by then the page has rendered.
   useEffect(() => {
@@ -446,7 +458,7 @@ export function AnnotationProvider({
       setTourStep,
       startTour,
       endTour,
-      tourComments,
+      tourPractised,
       addTourComment,
     }),
     [
@@ -491,7 +503,7 @@ export function AnnotationProvider({
       tourStep,
       startTour,
       endTour,
-      tourComments,
+      tourPractised,
       addTourComment,
     ]
   );

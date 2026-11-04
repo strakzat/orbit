@@ -260,11 +260,6 @@ const CHROME = `
   font-weight: 600;
 }
 
-/* What the tour points at: lit, on the rail it keeps lit. */
-.orbit-rail__item--tour {
-  box-shadow: 0 0 0 1px var(--orbit-spotlight-ring);
-}
-
 .orbit-rail__item--on svg {
   color: var(--orbit-text-primary);
 }
@@ -415,7 +410,7 @@ const CHROME = `
 .orbit-tour__black {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--orbit-z-base) + var(--orbit-z-popover));
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-tour-black));
   background: var(--orbit-boot-bg);
   transition: opacity var(--orbit-duration-boot) var(--orbit-ease);
 }
@@ -515,7 +510,7 @@ const CHROME = `
   background: transparent;
 }
 
-/* Above the black, under the card. */
+/* Above the page and the rail, under what opens: the panel, a thread, the card. */
 .orbit-tour__stars {
   position: fixed;
   inset: 0;
@@ -523,11 +518,11 @@ const CHROME = `
   width: 100%;
   height: 100%;
   pointer-events: none;
-  transition: opacity var(--orbit-duration-slow) var(--orbit-ease);
 }
 
-.orbit-tour__stars--off {
-  opacity: 0;
+/* Without a frame the rail is laid over the window: under the stars while they're around it. */
+[data-orbit-tour] .orbit-rail--overlay {
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-tour-black) - 1);
 }
 
 /* The profile's way back to the tour: quiet, under the settings it isn't one of. */

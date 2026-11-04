@@ -386,7 +386,8 @@ const SCALES = `
      an element the panel overlaps is never hidden behind it. */
   --orbit-z-popover: 1000;
   --orbit-z-inspector-popover: 1010;
-  --orbit-z-tour-stars: 1015;
+  --orbit-z-tour-black: 997;
+  --orbit-z-tour-stars: 998;
   --orbit-z-tour: 1020;
 `;
 

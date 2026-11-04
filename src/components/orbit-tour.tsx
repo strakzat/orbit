@@ -10,7 +10,7 @@ import { useStableId } from "../utils/use-stable-id";
 import { fill } from "../labels";
 import { LanguageChoice, ViewerIdentity } from "./profile-pane";
 import { Spotlight } from "./spotlight";
-import { TourStars } from "./tour-stars";
+import { TOUR_BOOT, TourStars } from "./tour-stars";
 import type { TourStepId } from "../types";
 
 // The rail's button a step points at.
@@ -41,7 +41,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     tourStep,
     setTourStep,
     endTour,
-    tourComments,
+    tourPractised,
     allAnnotations,
     commentsConfig,
     panelOpen,
@@ -63,7 +63,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   const titleId = useStableId("orbit-tour-title");
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   // The boot: black, the stars come in, and then the page and the card come up together.
-  const [landed, setLanded] = useState(false);
+  const [landed, setLanded] = useState(!TOUR_BOOT);
   const land = useCallback(() => setLanded(true), []);
 
   const next = useCallback(() => {
@@ -84,12 +84,12 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     return () => document.documentElement.removeAttribute("data-orbit-tour");
   }, [step]);
 
-  // Practice done: on to where it ended up.
-  const written = useRef(tourComments.length);
+  // Practice done: on to the next step.
+  const practised = useRef(tourPractised);
   useEffect(() => {
-    if (step === "feedback" && tourComments.length > written.current) next();
-    written.current = tourComments.length;
-  }, [step, tourComments.length, next]);
+    if (step === "feedback" && tourPractised > practised.current) next();
+    practised.current = tourPractised;
+  }, [step, tourPractised, next]);
 
   // The focus goes with the step: to the name when there is one to fill in, else its title.
   useEffect(() => {
@@ -120,7 +120,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [step, language, panelOpen, tourComments.length]);
+  }, [step, language, panelOpen]);
 
   // Escape closes the innermost thing: a thread, the picker and the panel see to their own.
   useEffect(() => {
@@ -160,11 +160,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     feedback: { title: labels.placeFeedback, body: labels.tourFeedbackBody, note: labels.tourFeedbackNote },
     panel: {
       title: labels.panelTitle,
-      body: !hasComments
-        ? labels.tourPanelBodyAnnotations
-        : tourComments.length > 0
-          ? labels.tourPanelBodyPractice
-          : labels.tourPanelBody,
+      body: hasComments ? labels.tourPanelBody : labels.tourPanelBodyAnnotations,
     },
     variants: { title: labels.variants, body: labels.tourVariantsBody },
     profile: { title: labels.profile, body: labels.tourProfileBody },
@@ -178,6 +174,13 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   const framed = !!document.querySelector(".orbit-frame");
   const sample = allAnnotations[0];
   const lit = step === "pins" && sample?.elementId ? findElementByAnnotationId(sample.elementId) : null;
+  // What lets the corona go. The panel itself on its step, since it stands right
+  // over its button; asked for every frame, because it opens after the step does.
+  const target = () => {
+    if (step === "pins") return lit;
+    if (step === "panel") return document.querySelector(".orbit-panel");
+    return TARGETS[step] ? document.querySelector(TARGETS[step]!) : null;
+  };
 
   return React.createElement(
     React.Fragment,
@@ -190,17 +193,18 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         className: cx(
           "orbit-root orbit-tour__scrim",
           framed && "orbit-tour__scrim--framed",
-          !modal && "orbit-tour__scrim--clear"
+          step === "pins" && "orbit-tour__scrim--clear"
         ),
         style: { left: area.left, top: area.top, width: area.width, height: area.height },
       }),
     lit && React.createElement(Spotlight, { el: lit, still: true }),
-    React.createElement("div", {
-      [ORBIT_UI_ATTR]: "",
-      "aria-hidden": true,
-      className: cx("orbit-root orbit-tour__black", landed && "orbit-tour__black--up"),
-    }),
-    React.createElement(TourStars, { cardRef, on: step === "welcome", onLanded: land }),
+    TOUR_BOOT &&
+      React.createElement("div", {
+        [ORBIT_UI_ATTR]: "",
+        "aria-hidden": true,
+        className: cx("orbit-root orbit-tour__black", landed && "orbit-tour__black--up"),
+      }),
+    React.createElement(TourStars, { cardRef, on: step === "welcome", target, step, onLanded: land }),
     React.createElement(
       "div",
       {
@@ -212,6 +216,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         [ORBIT_UI_ATTR]: "",
         className: cx(
           "orbit-root orbit-tour orbit-glass-pane",
+          !TOUR_BOOT && "orbit-animate-in",
           step === "welcome" && "orbit-tour--welcome",
           !landed && "orbit-tour--waiting"
         ),

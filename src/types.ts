@@ -181,8 +181,6 @@ export interface AnnotationLabels {
   /** Under the text, quieter: that practice stays in the browser. */
   tourFeedbackNote: string;
   tourPanelBody: string;
-  /** With something they wrote during the tour: the panel opens on Feedback, with it on top. */
-  tourPanelBodyPractice: string;
   tourPanelBodyAnnotations: string;
   tourVariantsBody: string;
   tourProfileBody: string;
@@ -380,8 +378,8 @@ export interface AnnotationContextValue {
   startTour: () => void;
   /** Finished or skipped: the real data is back, and the tour won't start by itself again. */
   endTour: () => void;
-  /** What the viewer wrote during the tour. Kept here and dropped with it, never sent. */
-  tourComments: Comment[];
+  /** How many practice comments the viewer sent. Only the count: they're kept nowhere. */
+  tourPractised: number;
   addTourComment: (comment: Pick<Comment, "annotationId" | "auteur" | "comment" | "label" | "component">) => void;
 }
 

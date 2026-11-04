@@ -85,7 +85,7 @@ describe("tourCardPosition", () => {
 
   it("stands above a button, centred on it", () => {
     const target = { left: 400, top: 650, width: 100, bottom: 690 };
-    expect(tourCardPosition({ at: "above", target }, card, viewport)).toEqual({ left: 280, top: 438 });
+    expect(tourCardPosition({ at: "above", target }, card, viewport)).toEqual({ left: 280, top: 428 });
   });
 
   it("stays in the window at both edges", () => {
@@ -97,6 +97,6 @@ describe("tourCardPosition", () => {
 
   it("stands left of a panel, level with its foot", () => {
     const target = { left: 560, top: 100, width: 420, bottom: 620 };
-    expect(tourCardPosition({ at: "left", target }, card, viewport)).toEqual({ left: 208, top: 420 });
+    expect(tourCardPosition({ at: "left", target }, card, viewport)).toEqual({ left: 198, top: 420 });
   });
 });

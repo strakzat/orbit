@@ -101,11 +101,9 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     tourPinsBodyAnnotations:
       "Een pin hangt aan iets op de pagina: een toelichting van het team. Deze is een voorbeeld. Open hem om hem te lezen.",
     tourFeedbackBody: "Probeer het zelf. Klik op iets op de pagina en schrijf wat je opvalt.",
-    tourFeedbackNote: "Dit is een oefening: er wordt niets verstuurd.",
+    tourFeedbackNote: "Dit is een oefening: je comment wordt niet verstuurd of bewaard.",
     tourPanelBody:
       "Hier staat alles op een rij. Wissel bovenin tussen annotaties en feedback, en open een kaart om de thread te lezen.",
-    tourPanelBodyPractice:
-      "Wat je net schreef staat erbij. Wissel bovenin tussen feedback en annotaties, en open een kaart om de thread te lezen.",
     tourPanelBodyAnnotations: "Hier staan alle annotaties op een rij. Open een kaart om hem te lezen.",
     tourVariantsBody: "Bekijk andere versies van het prototype. Wat je kiest, gaat mee met je feedback.",
     tourProfileBody:
@@ -217,11 +215,9 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     tourPinsBodyAnnotations:
       "A pin sits on something on the page: a note from the team. This one is an example. Open it to read it.",
     tourFeedbackBody: "Try it yourself. Click something on the page and write what you notice.",
-    tourFeedbackNote: "This is practice: nothing gets sent.",
+    tourFeedbackNote: "This is practice: your comment isn't sent or saved.",
     tourPanelBody:
       "Everything is listed here. Switch between annotations and feedback at the top, and open a card to read its thread.",
-    tourPanelBodyPractice:
-      "What you just wrote is here too. Switch between feedback and annotations at the top, and open a card to read its thread.",
     tourPanelBodyAnnotations: "All annotations are listed here. Open a card to read it.",
     tourVariantsBody: "See other versions of the prototype. What you choose goes along with your feedback.",
     tourProfileBody:

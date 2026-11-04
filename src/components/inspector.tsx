@@ -201,6 +201,7 @@ export function Inspector() {
     inspectorActive: active,
     setInspectorActive: setActive,
     labels,
+    tourStep,
   } = useAnnotationsSafe();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -371,7 +372,8 @@ export function Inspector() {
           anchor: spotlightAnchor(litRect),
           onSent: () => {
             setActive(false);
-            setNotice(labels.feedbackPlaced);
+            // Practice is placed nowhere, so it isn't said to be.
+            if (tourStep === null) setNotice(labels.feedbackPlaced);
             focusToggle();
           },
         })

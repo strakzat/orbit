@@ -6,8 +6,9 @@
   projects after this update: a welcome card for their name and language, sample pins and threads,
   a try at placing feedback with the real picker, the real panel, then Varianten and the profile.
   With comments on, the welcome card needs a name before it can be left, so feedback says who it's from.
-  It boots from black: Radial's stars swirl in around the card, and the prototype and the card
-  come up together. One small WebGL2 draw that stops when the card goes.
+  Radial's stars drift around the welcome card, and each step's target lets stars go in a slow corona,
+  after Radial's home core. One small WebGL2 canvas, for as long as the
+  tour runs. A full boot from black is in the code, switched off (`TOUR_BOOT`).
   During the tour the context holds samples instead of the project's data and nothing reaches
   the API. It can be replayed from the profile; `settings.tour: false` turns off the automatic
   start only.

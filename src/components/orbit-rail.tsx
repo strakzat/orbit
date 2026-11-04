@@ -133,8 +133,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           disabled: touring && !(pointedAt && TOUR_PRESSABLE.includes(tourStep)),
           className: cx(
             "orbit-rail__item",
-            isOn && "orbit-rail__item--on",
-            pointedAt && "orbit-rail__item--tour",
+            // What the tour points at looks as it does when it's on, in the live rail.
+            (isOn || pointedAt) && "orbit-rail__item--on",
             extra.className as string | undefined
           ),
         },

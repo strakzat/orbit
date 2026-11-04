@@ -124,7 +124,8 @@ export function hexToRgb(hex: string): [number, number, number] {
 }
 
 const EDGE = 16;
-const GAP = 12;
+// Past the ring and the first of the corona around what the card points at.
+const GAP = 22;
 
 interface Size {
   width: number;
