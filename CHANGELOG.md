@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.11.0
+
+- **The profile says which version is running,** for when a client reports something.
+- **A tour of Orbit.** A viewer who hasn't seen it gets a short tour once, also on existing
+  projects after this update: a welcome to the prototype, which asks their name and language and
+  names the project with the new `settings.projectName`, then sample pins and threads, a try at
+  placing feedback with the real picker, the real panel, Varianten and the profile. With comments
+  on, the welcome needs a name before it can be left, so feedback says who it's from. Radial's
+  stars drift around the welcome card, and each step's target lets stars go in a slow corona,
+  after Radial's home core. One small WebGL2 canvas, for as long as the tour runs. A full boot from
+  black is in the code, switched off (`TOUR_BOOT`). During the tour the context holds samples
+  instead of the project's data and nothing reaches the API. It can be replayed from the profile;
+  `settings.tour: false` turns off the automatic start only.
+- **No more 1px window scroll** under a full-height shell, from the inspector's status region.
+
 ## 4.10.5
 
 - **The spotlight follows the element's shape.** The ring and the cutout were always a rectangle

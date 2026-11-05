@@ -39,12 +39,18 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   registerVariants: () => {},
   describeVariants: () => "",
   language: "nl",
-  viewer: { name: "", language: null, showMarkers: null, showResolved: null },
+  viewer: { name: "", language: null, showMarkers: null, showResolved: null, tourSeen: false },
   setViewerName: () => {},
   setViewerLanguage: () => {},
   setViewerShowMarkers: () => {},
   showResolvedPins: true,
   setViewerShowResolved: () => {},
+  tourStep: null,
+  setTourStep: () => {},
+  startTour: () => {},
+  endTour: () => {},
+  tourPractised: 0,
+  addTourComment: () => {},
 };
 
 export function useAnnotationsSafe(): AnnotationContextValue {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import { FrameContext } from "../context/frame-context";
 import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useAnnotationStyles } from "../styles/inject";
@@ -6,6 +6,10 @@ import { SHELL_LAYOUT_CSS } from "../styles/rules";
 import { AnnotationPanel } from "./annotation-panel";
 import { OrbitRail } from "./orbit-rail";
 import type { OrbitShellProps } from "../types";
+
+// Layout effect in the browser: the rail and the tour are there before the first paint. On the
+// server the plain effect, which does not warn there.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * Orbit around a project: the app in a frame on top, its corners rounded at the foot, and the rail
@@ -30,7 +34,7 @@ export function OrbitShell({ children, variants, frame = true }: OrbitShellProps
   });
 
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useIsomorphicLayoutEffect(() => setMounted(true), []);
   const [frameElement, setFrameElement] = useState<HTMLElement | null>(null);
 
   const chrome = mounted

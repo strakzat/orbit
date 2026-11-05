@@ -28,6 +28,9 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   panelHeight: 640,
   zIndex: 9000,
   keyboardShortcut: true,
+  // Once for each viewer; a project can leave it to the profile's button.
+  tour: true,
+  projectName: "",
 };
 
 /**

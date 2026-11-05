@@ -49,6 +49,7 @@ export function AnnotationMarker({
     registerMarkerId,
     unregisterMarkerId,
     labels,
+    tourStep,
   } = useAnnotationsSafe();
 
   // Register this marker so AutoAnnotationMarkers skips it
@@ -73,7 +74,8 @@ export function AnnotationMarker({
   });
 
   // Not while picking: the spotlight is about the one element feedback goes on.
-  const showMarkers = mounted && annotationMode && !inspectorActive;
+  // Nor during the tour: its annotation isn't one of the samples. The wrapper and what it wraps stay.
+  const showMarkers = mounted && annotationMode && !inspectorActive && tourStep === null;
   const annotationType = annotation?.type ?? "documentation";
 
   // Feedback in this annotation's thread that the viewer has not read: a dot on its pin.

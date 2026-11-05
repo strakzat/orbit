@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "tsup";
+
+const { version } = JSON.parse(readFileSync("package.json", "utf8"));
 
 export default defineConfig([
   {
@@ -8,6 +11,8 @@ export default defineConfig([
     banner: {
       js: '"use client";',
     },
+    // The profile says which version is running (src/version.ts).
+    define: { __ORBIT_VERSION__: JSON.stringify(version) },
     // Geist Mono, inlined: Orbit makes no font request of its own.
     loader: { ".woff2": "dataurl" },
   },
