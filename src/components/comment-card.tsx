@@ -155,7 +155,9 @@ export function CommentCard({
           { className: "orbit-comment__failure" },
           React.createElement(FailureText, { failure: comment.deliveryFailure })
         ),
+      // Not in the panel's list: the card opens the thread, and the button is there.
       comment.delivery === "failed" &&
+        !onSelect &&
         canRetry(comment.deliveryFailure) &&
         React.createElement(
           "button",

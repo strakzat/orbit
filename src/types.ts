@@ -379,6 +379,8 @@ export interface AnnotationContextValue {
     deliver: () => Promise<{ id: string } | null>
   ) => void;
   retryComment: (id: string) => void;
+  /** The toast of a failed comment has gone. It leaves the page; the panel still has it. */
+  settleFailedComment: (id: string) => void;
   discardComment: (id: string) => void;
   /** Deletes a comment of the viewer's own; throws when the API refuses. */
   deleteComment: (id: string) => Promise<void>;
@@ -453,6 +455,8 @@ export interface Comment {
   delivery?: "sending" | "sent" | "failed";
   /** Why, with `delivery: "failed"`. */
   deliveryFailure?: SendFailure;
+  /** Failed, and its toast has gone: `hasPin()` takes its pin away. */
+  deliveryToastGone?: boolean;
 }
 
 /**

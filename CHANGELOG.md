@@ -11,13 +11,15 @@
   hides it for a moment.
 - **A failed send says why.** A toast tells the viewer what happened and what to do: offline, server
   unreachable, no answer in 30 seconds, busy, not set up (with info@strakzat.com, as a link), too
-  long, or a server error. Retry is its only action, and only where it can help. After 10 seconds
-  the toast goes, but the comment stays in its thread, marked as not sent, with the same retry and
-  the bin. The alert is Untitled UI's floating alert rebuilt in Orbit's styles; Sonner does the
+  long, or a server error. Retry is its only action, and only where it can help. The pin goes too:
+  at once if a retry can't help, otherwise when the toast has gone after 10 seconds. The comment
+  stays in the panel, marked as not sent, and its thread has the same retry and the bin. The alert is Untitled UI's floating alert rebuilt in Orbit's styles; Sonner does the
   placing, stacking and timing, bundled into `dist`. Sonner adds about 13 KB gzipped and injects its
   own `[data-sonner-*]` CSS when Orbit loads.
-- **A comment is at most 1000 characters.** The composer shows a counter from 800 and won't send past
+- **A comment is at most 500 characters.** The composer shows a counter from 400 and won't send past
   the limit; the API refuses more with a 413. Pasted text isn't cut off.
+- **The bubble grows to fit a full comment,** and stops at the edge of the frame instead of running
+  over the rail; the field scrolls there.
 - **The API passes Notion's `code` on,** next to `error`, so a failure can be named.
 - **The tour stops when the shell goes,** and then doesn't count as seen.
 - **Fixes in the tour:** crash on `projectName: undefined`, the rail's enabled button out of keyboard

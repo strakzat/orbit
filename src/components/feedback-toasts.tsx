@@ -62,7 +62,7 @@ function FailedAlert({
  */
 export function FeedbackToasts() {
   useAnnotationStyles();
-  const { commentsConfig, allComments, labels, language, retryComment } = useAnnotationsSafe();
+  const { commentsConfig, allComments, labels, language, retryComment, settleFailedComment } = useAnnotationsSafe();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -82,7 +82,13 @@ export function FeedbackToasts() {
             language,
             onRetry: () => retryComment(comment.id),
           }),
-        { id: comment.id, duration: TOAST_MS }
+        {
+          id: comment.id,
+          duration: TOAST_MS,
+          // Timed out and swiped away are one thing here, and Sonner has a callback for each.
+          onAutoClose: () => settleFailedComment(comment.id),
+          onDismiss: () => settleFailedComment(comment.id),
+        }
       );
     }
     for (const id of toasted.current) {
@@ -90,7 +96,7 @@ export function FeedbackToasts() {
       toasted.current.delete(id);
       toast.dismiss(id);
     }
-  }, [mounted, allComments, labels, language, retryComment]);
+  }, [mounted, allComments, labels, language, retryComment, settleFailedComment]);
 
   if (!mounted || !commentsConfig) return null;
 

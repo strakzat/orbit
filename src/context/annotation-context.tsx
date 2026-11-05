@@ -370,7 +370,9 @@ export function AnnotationProvider({
       const deliver = deliveries.current.get(id);
       if (!deliver) return;
       const mark = (delivery: Comment["delivery"], newId = id, deliveryFailure?: SendFailure) =>
-        setOutbox((prev) => prev.map((c) => (c.id === id ? { ...c, id: newId, delivery, deliveryFailure } : c)));
+        setOutbox((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, id: newId, delivery, deliveryFailure, deliveryToastGone: false } : c))
+        );
       mark("sending");
       try {
         const created = await deliver();
@@ -408,6 +410,13 @@ export function AnnotationProvider({
     },
     [deliverComment]
   );
+
+  // Only a comment that is still failed: a retry dismisses the toast too, and keeps its pin.
+  const settleFailedComment = useCallback((id: string) => {
+    setOutbox((prev) =>
+      prev.map((c) => (c.id === id && c.delivery === "failed" ? { ...c, deliveryToastGone: true } : c))
+    );
+  }, []);
 
   const discardComment = useCallback((id: string) => {
     deliveries.current.delete(id);
@@ -525,6 +534,7 @@ export function AnnotationProvider({
       rememberOwnComment,
       sendFeedback,
       retryComment: deliverComment,
+      settleFailedComment,
       discardComment,
       deleteComment,
       deletedCommentIds,
@@ -574,6 +584,7 @@ export function AnnotationProvider({
       rememberOwnComment,
       sendFeedback,
       deliverComment,
+      settleFailedComment,
       discardComment,
       deleteComment,
       deletedCommentIds,

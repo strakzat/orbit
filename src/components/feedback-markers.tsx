@@ -6,6 +6,7 @@ import { useStableId } from "../utils/use-stable-id";
 import { pickArea } from "../utils/pick-element";
 import { getPinPopoverStyle } from "../utils/popover-position";
 import { isOnPage, matchRoute } from "../utils/route-matching";
+import { hasPin } from "../utils/send-failure";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { ANONYMOUS } from "../constants";
@@ -122,6 +123,8 @@ export function FeedbackMarkers() {
     const grouped = new Map<string, Comment[]>();
     for (const c of allComments) {
       if (!c.annotationId || pinned.has(c.annotationId)) continue;
+      // Failed: no pin, unless its thread is open. It doesn't vanish from under the viewer.
+      if (!hasPin(c) && c.annotationId !== activeAnnotationId) continue;
       // Feedback on a component goes wherever the component is; the rest stays on its page.
       if (!c.component && !c.pagina) continue;
       if (!isOnPage(c, currentRoute, componentsOnPage)) continue;

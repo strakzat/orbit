@@ -41,6 +41,9 @@ interface Hover {
 const BUBBLE_WIDTH = 320;
 // The bubble once it has opened up for a few lines: below the element only if that fits.
 const BUBBLE_HEIGHT = 140;
+// What the bubble needs around the field: its padding and the row with the send button.
+const BUBBLE_CHROME = 64;
+const BUBBLE_MARGIN = 12;
 
 function isInspectorUI(el: HTMLElement): boolean {
   let current: HTMLElement | null = el;
@@ -166,13 +169,20 @@ function CommentBubble({
     target: selected.el,
   });
 
-  const { style, above } = getBubblePlacement(anchor.box, pickArea(), BUBBLE_WIDTH, BUBBLE_HEIGHT, anchor.foot);
+  const area = pickArea();
+  const { style, above } = getBubblePlacement(anchor.box, area, BUBBLE_WIDTH, BUBBLE_HEIGHT, anchor.foot);
+  // It grows with the text, away from where it is anchored. It stops at the edge of the frame,
+  // and the field scrolls: moving it while someone types would be worse.
+  const room =
+    typeof style.top === "number"
+      ? area.bottom - BUBBLE_MARGIN - style.top
+      : window.innerHeight - (style.bottom as number) - area.top - BUBBLE_MARGIN;
 
   return React.createElement(
     "div",
     {
       className: cx("orbit-root orbit-bubble orbit-glass-pane orbit-animate-in", above && "orbit-bubble--above"),
-      style,
+      style: { ...style, "--orbit-composer-max": `${room - BUBBLE_CHROME}px` } as React.CSSProperties,
       lang: language,
       role: "group",
       "aria-label": fill(labels.formOn, { label: component ? component.name : selected.label }),

@@ -31,6 +31,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   rememberOwnComment: () => {},
   sendFeedback: (_comment, deliver) => void deliver().catch(() => {}),
   retryComment: () => {},
+  settleFailedComment: () => {},
   discardComment: () => {},
   deleteComment: async () => {},
   deletedCommentIds: new Set(),

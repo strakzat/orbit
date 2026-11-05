@@ -2265,7 +2265,8 @@ const FORM = `
   display: block;
   width: 100%;
   min-height: 32px;
-  max-height: 200px;
+  /* A full comment (MAX_COMMENT_LENGTH) without scrolling, or what the bubble has room for. */
+  max-height: min(270px, var(--orbit-composer-max, 270px));
   padding: 6px 0;
   border: 0;
   background: transparent;

@@ -1,6 +1,6 @@
 import { SUPPORT_EMAIL } from "../limits";
 import { fill } from "../labels";
-import type { AnnotationLabels, SendFailure } from "../types";
+import type { AnnotationLabels, Comment, SendFailure } from "../types";
 
 // The rights and the database are the project's: Notion refusing them is a setup problem, and a
 // validation error is a column that doesn't exist or doesn't fit. Retrying won't change either.
@@ -40,6 +40,15 @@ export function failureFrom(err: unknown, online: boolean): SendFailure {
 /** Whether sending it again can help: not the same text refused again, or a route that isn't set up. */
 export function canRetry(failure: SendFailure | undefined): boolean {
   return failure !== "tooLarge" && failure !== "setup";
+}
+
+/**
+ * Whether a comment has a pin on the page. A pin says the feedback is there, so one that failed
+ * loses it: at once when sending again can't help, else when its toast has gone. The panel keeps it.
+ */
+export function hasPin(comment: Pick<Comment, "delivery" | "deliveryFailure" | "deliveryToastGone">): boolean {
+  if (comment.delivery !== "failed") return true;
+  return canRetry(comment.deliveryFailure) && !comment.deliveryToastGone;
 }
 
 /** The sentence for it, in the viewer's language. */

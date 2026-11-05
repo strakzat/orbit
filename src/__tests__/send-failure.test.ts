@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { LABELS } from "../labels";
 import { SUPPORT_EMAIL } from "../limits";
-import { SendFailureError, canRetry, failureFrom, failureFromResponse, failureLabel } from "../utils/send-failure";
+import { SendFailureError, canRetry, failureFrom, failureFromResponse, failureLabel, hasPin } from "../utils/send-failure";
 
 describe("failureFromResponse", () => {
   it("reads the status", () => {
@@ -37,6 +37,24 @@ describe("canRetry", () => {
     expect(canRetry("tooLarge")).toBe(false);
     expect(canRetry("server")).toBe(true);
     expect(canRetry("offline")).toBe(true);
+  });
+});
+
+describe("hasPin", () => {
+  it("keeps the pin of a comment that is fine, or still on its way", () => {
+    expect(hasPin({})).toBe(true);
+    expect(hasPin({ delivery: "sending" })).toBe(true);
+    expect(hasPin({ delivery: "sent" })).toBe(true);
+  });
+
+  it("takes it away when the toast has gone, if sending again can help", () => {
+    expect(hasPin({ delivery: "failed", deliveryFailure: "server" })).toBe(true);
+    expect(hasPin({ delivery: "failed", deliveryFailure: "server", deliveryToastGone: true })).toBe(false);
+  });
+
+  it("takes it away at once if it can't", () => {
+    expect(hasPin({ delivery: "failed", deliveryFailure: "setup" })).toBe(false);
+    expect(hasPin({ delivery: "failed", deliveryFailure: "tooLarge" })).toBe(false);
   });
 });
 
