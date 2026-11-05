@@ -12,7 +12,7 @@ interface CommentThreadProps {
 
 export function CommentThread({ comments, isLoading, error }: CommentThreadProps) {
   useAnnotationStyles();
-  const { labels, isOwnComment, deleteComment } = useAnnotationsSafe();
+  const { labels, isOwnComment, deleteComment, discardComment } = useAnnotationsSafe();
   const ref = useRef<HTMLDivElement>(null);
   // Said once a comment of the viewer's is gone; the focus stays in the thread it was in.
   const [notice, setNotice] = useState("");
@@ -24,6 +24,13 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
   const status = React.createElement("span", { className: "orbit-sr-only", role: "status" }, notice);
   const remove = (id: string) => async () => {
     await deleteComment(id);
+    setNotice(labels.commentDeleted);
+    ref.current?.focus();
+  };
+
+  // Never sent, so nothing to ask the API: it only leaves this page.
+  const discard = (id: string) => async () => {
+    discardComment(id);
     setNotice(labels.commentDeleted);
     ref.current?.focus();
   };
@@ -44,7 +51,9 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
         className: isError ? "orbit-root orbit-empty orbit-empty--error" : "orbit-root orbit-empty",
         role: isError ? "alert" : "status",
       },
-      message
+      message,
+      // The last comment deleted: the notice still has to be said.
+      status
     );
   }
 
@@ -56,7 +65,12 @@ export function CommentThread({ comments, isLoading, error }: CommentThreadProps
       React.createElement(CommentCard, {
         key: comment.id,
         comment,
-        onDelete: isOwnComment(comment.id) ? remove(comment.id) : undefined,
+        onDelete:
+          comment.delivery === "failed"
+            ? discard(comment.id)
+            : isOwnComment(comment.id)
+              ? remove(comment.id)
+              : undefined,
       })
     )
   );

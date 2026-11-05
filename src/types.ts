@@ -112,6 +112,8 @@ export interface AnnotationLabels {
   formSubmit: string;
   formSubmitting: string;
   formError: string;
+  formCount: string;
+  formTooLong: string;
   /** Tooltip on the rail's feedback button while the inspector is on. */
   inspectorStop: string;
   /** Tooltip on the rail's feedback button: its name and the shortcut. */
@@ -125,6 +127,19 @@ export interface AnnotationLabels {
   commentDeleteSubmit: string;
   commentDeleteError: string;
   commentDeleted: string;
+  commentSending: string;
+  commentNotSent: string;
+  commentRetry: string;
+  feedbackFailed: string;
+  sendFailureOffline: string;
+  sendFailureNetwork: string;
+  sendFailureTimeout: string;
+  sendFailureSetup: string;
+  sendFailureMailSubject: string;
+  sendFailureTooLarge: string;
+  sendFailureBusy: string;
+  sendFailureServer: string;
+  toastsLabel: string;
   /** The inspector's comment bubble, for a screen reader: "Feedback op {label}". */
   formOn: string;
   /** The bubble's scope choice, for an element inside a component: what the feedback is on. */
@@ -200,9 +215,12 @@ export interface AnnotationLabels {
 /** The languages Orbit speaks: its own interface, not the project's content. */
 export type OrbitLanguage = "nl" | "en";
 
-/** Who is looking: their name for feedback, and the language they chose. Kept in localStorage. */
 export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "profile";
 
+/** Why a comment didn't go out, in words the viewer can act on. */
+export type SendFailure = "offline" | "network" | "timeout" | "setup" | "tooLarge" | "busy" | "server";
+
+/** Who is looking: their name for feedback, and the language they chose. Kept in localStorage. */
 export interface OrbitViewer {
   name: string;
   /** Null until they choose: the project's `language` then. */
@@ -352,6 +370,18 @@ export interface AnnotationContextValue {
   isOwnComment: (id: string) => boolean;
   /** Keeps the token the API returned with a new comment. */
   rememberOwnComment: (id: string, token: string) => void;
+  /**
+   * Puts a comment on the page at once and runs `deliver` behind it. A failure stays in
+   * `allComments` as `delivery: "failed"`, for `retryComment` or `discardComment`.
+   */
+  sendFeedback: (
+    comment: Pick<Comment, "annotationId" | "auteur" | "comment" | "label" | "component" | "varianten">,
+    deliver: () => Promise<{ id: string } | null>
+  ) => void;
+  retryComment: (id: string) => void;
+  /** The toast of a failed comment has gone. It leaves the page; the panel still has it. */
+  settleFailedComment: (id: string) => void;
+  discardComment: (id: string) => void;
   /** Deletes a comment of the viewer's own; throws when the API refuses. */
   deleteComment: (id: string) => Promise<void>;
   /** Comments deleted on this page, left out until the API's list no longer has them. */
@@ -382,6 +412,8 @@ export interface AnnotationContextValue {
   startTour: () => void;
   /** Finished or skipped: the real data is back, and the tour won't start by itself again. */
   endTour: () => void;
+  /** The shell went while the tour ran: the real data is back, and the tour still counts as unseen. */
+  abandonTour: () => void;
   /** How many practice comments the viewer sent. Only the count: they're kept nowhere. */
   tourPractised: number;
   addTourComment: (comment: Pick<Comment, "annotationId" | "auteur" | "comment" | "label" | "component">) => void;
@@ -419,6 +451,12 @@ export interface Comment {
    * comment shows on every page the component is on, and `annotationId` is the component's selector.
    */
   component?: string;
+  /** Only in the browser that wrote it, until the API's list has it. */
+  delivery?: "sending" | "sent" | "failed";
+  /** Why, with `delivery: "failed"`. */
+  deliveryFailure?: SendFailure;
+  /** Failed, and its toast has gone: `hasPin()` takes its pin away. */
+  deliveryToastGone?: boolean;
 }
 
 /**

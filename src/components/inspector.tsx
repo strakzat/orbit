@@ -41,6 +41,9 @@ interface Hover {
 const BUBBLE_WIDTH = 320;
 // The bubble once it has opened up for a few lines: below the element only if that fits.
 const BUBBLE_HEIGHT = 140;
+// What the bubble needs around the field: its padding and the row with the send button.
+const BUBBLE_CHROME = 64;
+const BUBBLE_MARGIN = 12;
 
 function isInspectorUI(el: HTMLElement): boolean {
   let current: HTMLElement | null = el;
@@ -148,14 +151,14 @@ function CommentBubble({
   /** After the comment is in: picking is done, so the bubble and the inspector close. */
   onSent: () => void;
 }) {
-  const { commentsConfig, allAnnotations, refreshComments, labels, language } = useAnnotationsSafe();
+  const { commentsConfig, allAnnotations, labels, language } = useAnnotationsSafe();
 
   // On the component, the feedback is kept under a selector every instance answers to.
   const component = scope === "component" ? selected.component : null;
   // An annotated element is named by its annotation, as the annotation's own feedback is.
   const annotation = component ? undefined : allAnnotations.find((a) => a.id === selected.path);
 
-  const { submitComment } = useComments({
+  const { sendComment } = useComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
     annotationId: component ? component.locator : selected.path,
@@ -166,13 +169,20 @@ function CommentBubble({
     target: selected.el,
   });
 
-  const { style, above } = getBubblePlacement(anchor.box, pickArea(), BUBBLE_WIDTH, BUBBLE_HEIGHT, anchor.foot);
+  const area = pickArea();
+  const { style, above } = getBubblePlacement(anchor.box, area, BUBBLE_WIDTH, BUBBLE_HEIGHT, anchor.foot);
+  // It grows with the text, away from where it is anchored. It stops at the edge of the frame,
+  // and the field scrolls: moving it while someone types would be worse.
+  const room =
+    typeof style.top === "number"
+      ? area.bottom - BUBBLE_MARGIN - style.top
+      : window.innerHeight - (style.bottom as number) - area.top - BUBBLE_MARGIN;
 
   return React.createElement(
     "div",
     {
       className: cx("orbit-root orbit-bubble orbit-glass-pane orbit-animate-in", above && "orbit-bubble--above"),
-      style,
+      style: { ...style, "--orbit-composer-max": `${room - BUBBLE_CHROME}px` } as React.CSSProperties,
       lang: language,
       role: "group",
       "aria-label": fill(labels.formOn, { label: component ? component.name : selected.label }),
@@ -183,10 +193,10 @@ function CommentBubble({
       tools:
         selected.component &&
         React.createElement(ScopeChoice, { scope, onScope, name: selected.component.name, labels }),
-      // A failed send throws before onSent, so the bubble keeps the text and shows its error.
+      // Placing is done here: the screenshot and the upload go on behind it, and the pin is there
+      // at once. A failure comes back as a toast (`FeedbackToasts`), with the text.
       onSubmit: async (data: { auteur: string; comment: string }) => {
-        await submitComment(data);
-        void refreshComments();
+        sendComment(data);
         onSent();
       },
     })

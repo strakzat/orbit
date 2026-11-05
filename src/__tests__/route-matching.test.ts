@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { isOnPage } from "../utils/route-matching";
 
 describe("isOnPage", () => {
+  it("shows feedback without a page everywhere", () => {
+    expect(isOnPage({}, "/instellingen", new Set())).toBe(true);
+    expect(isOnPage({ pagina: "" }, "/instellingen", new Set())).toBe(true);
+  });
+
   const none = new Set<string>();
 
   it("keeps feedback on an element to the page it was given on", () => {

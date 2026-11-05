@@ -22,6 +22,7 @@ const ALL_TYPES: AnnotationType[] = [
 const THREAD_EXIT_MS = 300;
 
 const ALL_STATUSES: Comment["status"][] = ["Open", "In behandeling", "Opgelost"];
+const UNRESOLVED: Comment["status"][] = ["Open", "In behandeling"];
 
 export function AnnotationPanel() {
   useAnnotationStyles();
@@ -49,11 +50,13 @@ export function AnnotationPanel() {
   } = useAnnotations();
 
   // A project that writes no annotations uses Orbit for its feedback: open there.
-  const [view, setView] = useState<"annotations" | "feedback">(allAnnotations.length > 0 ? "annotations" : "feedback");
+  // Until the viewer picks one, it follows the annotations: a project may load them after mount.
+  const [pickedView, setView] = useState<"annotations" | "feedback" | null>(null);
+  const view = pickedView ?? (allAnnotations.length > 0 ? "annotations" : "feedback");
   const [tab, setTab] = useState<"page" | "all">("page");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<Set<AnnotationType>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<Set<Comment["status"]>>(new Set(["Open", "In behandeling"]));
+  const [statusFilter, setStatusFilter] = useState<Set<Comment["status"]>>(new Set(UNRESOLVED));
   const panelRef = useRef<HTMLDivElement>(null);
   const activeCardRef = useRef<HTMLDivElement>(null);
   const searchId = useStableId("orbit-search");
@@ -104,9 +107,16 @@ export function AnnotationPanel() {
   }, [threadOpen, thread]);
 
   // In the tour the panel opens on the sample annotation, and after it on what it usually does.
+  // The panel stays mounted while it's closed, so what was filtered before a replay would hide it.
   useEffect(() => {
-    if (tourStep === "panel") setView("annotations");
-    else if (tourStep === null) setView(allAnnotations.length > 0 ? "annotations" : "feedback");
+    if (tourStep === "panel") {
+      setView("annotations");
+      setSearchQuery("");
+      setTypeFilter(new Set());
+      setStatusFilter(new Set(UNRESOLVED));
+    } else if (tourStep === null) {
+      setView(null);
+    }
   }, [tourStep]);
 
   // A closed panel opens on the list again.

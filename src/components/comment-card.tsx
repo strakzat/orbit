@@ -3,6 +3,8 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { fill } from "../labels";
+import { canRetry } from "../utils/send-failure";
+import { FailureText } from "./failure-text";
 import { StatusPill } from "./status-pill";
 import { ComponentChip } from "./component-chip";
 import { TrashIcon } from "../icons";
@@ -42,7 +44,7 @@ export function CommentCard({
   onMouseLeave,
   onDelete,
 }: CommentCardProps) {
-  const { labels } = useAnnotationsSafe();
+  const { labels, retryComment } = useAnnotationsSafe();
   // Deleting asks first, in the card: Annuleren, or Verwijderen.
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -121,7 +123,11 @@ export function CommentCard({
         React.createElement(
           "span",
           { className: "orbit-comment__time-rel" },
-          relativeTime(comment.aangemaakt, labels)
+          comment.delivery === "sending"
+            ? labels.commentSending
+            : comment.delivery === "failed"
+              ? labels.commentNotSent
+              : relativeTime(comment.aangemaakt, labels)
         ),
         React.createElement(StatusPill, { status: comment.status }),
         onDelete &&
@@ -141,6 +147,27 @@ export function CommentCard({
       ),
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
+
+      // The toast is gone after a while; the comment and its retry stay here.
+      comment.delivery === "failed" &&
+        React.createElement(
+          "p",
+          { className: "orbit-comment__failure" },
+          React.createElement(FailureText, { failure: comment.deliveryFailure })
+        ),
+      // Not in the panel's list: the card opens the thread, and the button is there.
+      comment.delivery === "failed" &&
+        !onSelect &&
+        canRetry(comment.deliveryFailure) &&
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "orbit-comment__confirm-button orbit-comment__retry",
+            onClick: () => retryComment(comment.id),
+          },
+          labels.commentRetry
+        ),
 
       // Given on a component: it shows wherever the component is, so the card says which.
       comment.component

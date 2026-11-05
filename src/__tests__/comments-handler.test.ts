@@ -1,7 +1,8 @@
 import { createServer, type Server } from "http";
 import type { AddressInfo } from "net";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { commentDeleteToken, createCommentsHandler, handleCommentsRequest } from "../server";
+import { MAX_COMMENT_LENGTH } from "../limits";
+import { buildNotionCommentProperties, commentDeleteToken, createCommentsHandler, handleCommentsRequest } from "../server";
 
 const options = { apiKey: "key", databaseId: "db", projectId: "proj" };
 
@@ -19,6 +20,70 @@ afterEach(() => {
 });
 
 describe("handleCommentsRequest", () => {
+  it("POST passes Notion's code on, for what the viewer gets told", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json({ message: "Slow down", code: "rate_limited" }, 429)));
+
+    const result = await handleCommentsRequest({ method: "POST", body: { annotationId: "a", comment: "b" } }, options);
+
+    expect(result).toEqual({ status: 502, body: { error: "Slow down", code: "rate_limited" } });
+  });
+
+  it("GET reads every page of Notion's results", async () => {
+    const page = (id: string) => ({ ...notionPage({}), id });
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(json({ results: [page("a")], has_more: true, next_cursor: "next" }))
+      .mockResolvedValueOnce(json({ results: [page("b")], has_more: false, next_cursor: null }));
+    vi.stubGlobal("fetch", fetch);
+
+    const result = await handleCommentsRequest({ method: "GET", query: {} }, options);
+
+    expect((result.body as { id: string }[]).map((c) => c.id)).toEqual(["a", "b"]);
+    expect(sent(fetch, 1).start_cursor).toBe("next");
+  });
+
+  it("POST refuses a comment over the limit, without calling Notion", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    const body = { annotationId: "a", comment: "x".repeat(MAX_COMMENT_LENGTH + 1) };
+    const result = await handleCommentsRequest({ method: "POST", body }, options);
+
+    expect(result.status).toBe(413);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("splits long text into Notion's 2000 characters, and keeps emoji whole", () => {
+    const comment = "x".repeat(1999) + "😀" + "y".repeat(2500);
+
+    const { Naam, Comment } = buildNotionCommentProperties({ annotationId: "a", comment }, "proj") as any;
+
+    const parts: string[] = Comment.rich_text.map((t: any) => t.text.content);
+    expect(parts.join("")).toBe(comment);
+    expect(Math.max(...parts.map((p) => p.length))).toBeLessThanOrEqual(2000);
+    expect(parts[1].startsWith("😀")).toBe(true);
+    expect(Naam.title).toHaveLength(1);
+  });
+
+  it("POST survives both optional columns missing, whichever Notion names first", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(json({ message: "Component is not a property" }, 400))
+      .mockResolvedValueOnce(json({ message: "Varianten is not a property" }, 400))
+      .mockResolvedValueOnce(json(notionPage({}), 200));
+    vi.stubGlobal("fetch", fetch);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const result = await handleCommentsRequest(
+      { method: "POST", body: { annotationId: "a", comment: "b", varianten: "Rol: x", component: "Metric" } },
+      options
+    );
+
+    expect(result.status).toBe(201);
+    expect(sent(fetch, 2).properties).not.toHaveProperty("Varianten");
+    expect(sent(fetch, 2).properties).not.toHaveProperty("Component");
+  });
+
   it("POST writes every field Orbit sends, component included", async () => {
     const fetch = vi.fn().mockResolvedValueOnce(json(notionPage({ Component: { rich_text: [{ plain_text: "Metric" }] } }), 200));
     vi.stubGlobal("fetch", fetch);

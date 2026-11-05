@@ -35,14 +35,18 @@ export async function fetchCommand(args: Args): Promise<void> {
   const out_lines: string[] = [];
   out_lines.push(`# ${items.length} open feedbackpunt(en) — ${project}`);
   out_lines.push("");
+  // Anyone can post feedback, and an agent reads this: a comment stays on its own line, or it
+  // could write entries of its own into the list.
+  const line = (text: string) => text.replace(/\s+/g, " ").trim();
   for (const item of items) {
     const where = [item.bron, item.component, item.pagina, item.label]
       .filter(Boolean)
+      .map(line)
       .join(" · ");
-    out_lines.push(`- \`${item.id}\` **${item.auteur}**: "${item.comment}"`);
+    out_lines.push(`- \`${item.id}\` **${line(item.auteur)}**: "${line(item.comment)}"`);
     if (where) out_lines.push(`  - ${where}`);
-    if (item.annotationId) out_lines.push(`  - selector: \`${item.annotationId}\``);
-    if (item.varianten) out_lines.push(`  - varianten: ${item.varianten.split("\n").join(" · ")}`);
+    if (item.annotationId) out_lines.push(`  - selector: \`${line(item.annotationId)}\``);
+    if (item.varianten) out_lines.push(`  - varianten: ${item.varianten.split("\n").map(line).join(" · ")}`);
   }
   process.stdout.write(out_lines.join("\n") + "\n");
 }

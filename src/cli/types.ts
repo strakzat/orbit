@@ -34,4 +34,6 @@ export interface FeedbackItem {
   varianten: string;
   /** Notion `created_time`. */
   aangemaakt: string;
+  /** Last edit of the Notion page: for a claimed item, about when it was claimed. */
+  bewerkt: string;
 }

@@ -56,6 +56,17 @@ const comments: MockComment[] = [
 ];
 
 let nextId = 4;
+// A Notion upload takes this long: placing feedback must not wait for it.
+const POST_DELAY_MS = 1200;
+// The Varianten choice "Versturen laten mislukken": how every POST fails until it is off again.
+// "traag" never answers, for Orbit's timeout (30 seconds).
+let failPosts = "uit";
+const FAILURES: Record<string, { status: number; code?: string; error: string }> = {
+  server: { status: 500, error: "Mislukt: Varianten" },
+  druk: { status: 502, code: "rate_limited", error: "Mislukt: Varianten" },
+  instelling: { status: 502, code: "unauthorized", error: "Mislukt: Varianten" },
+  lang: { status: 413, error: "Mislukt: Varianten" },
+};
 
 export function mockCommentsApi(): Plugin {
   return {
@@ -74,10 +85,28 @@ export function mockCommentsApi(): Plugin {
           return;
         }
 
-        if (req.method === "POST") {
+        if (req.method === "PUT") {
           let body = "";
           req.on("data", (chunk: Buffer) => (body += chunk.toString()));
           req.on("end", () => {
+            failPosts = JSON.parse(body || "{}").failPosts ?? "uit";
+            res.end(JSON.stringify({ failPosts }));
+          });
+          return;
+        }
+
+        if (req.method === "POST") {
+          let body = "";
+          req.on("data", (chunk: Buffer) => (body += chunk.toString()));
+          req.on("end", async () => {
+            await new Promise((resolve) => setTimeout(resolve, POST_DELAY_MS));
+            if (failPosts === "traag") return;
+            const failure = FAILURES[failPosts];
+            if (failure) {
+              res.statusCode = failure.status;
+              res.end(JSON.stringify({ error: failure.error, code: failure.code }));
+              return;
+            }
             const data = JSON.parse(body);
             const newComment: MockComment = {
               id: String(nextId++),

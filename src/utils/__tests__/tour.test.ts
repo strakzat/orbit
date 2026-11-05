@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LABELS } from "../../labels";
+import { resolveSettings } from "../../constants";
 import { hexToRgb, tourCardPosition, tourSample, tourSteps } from "../tour";
 
 const labels = LABELS.nl;
@@ -98,5 +99,18 @@ describe("tourCardPosition", () => {
   it("stands left of a panel, level with its foot", () => {
     const target = { left: 560, top: 100, width: 420, bottom: 620 };
     expect(tourCardPosition({ at: "left", target }, card, viewport)).toEqual({ left: 198, top: 420 });
+  });
+});
+
+describe("resolveSettings", () => {
+  it("takes a key set to undefined as left out", () => {
+    const settings = resolveSettings({ tour: undefined, projectName: undefined, panelWidth: 300 });
+    expect(settings.tour).toBe(true);
+    expect(settings.projectName).toBe("");
+    expect(settings.panelWidth).toBe(300);
+  });
+
+  it("keeps a project's false", () => {
+    expect(resolveSettings({ tour: false }).tour).toBe(false);
   });
 });

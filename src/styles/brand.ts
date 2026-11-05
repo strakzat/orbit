@@ -19,13 +19,13 @@ function channel(value: number): number {
   return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
 }
 
-/** Parses `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb(...)` and `rgba(...)`. */
+/** Parses `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb(...)` and `rgba(...)`. */
 function parseColor(input: string): [number, number, number] | null {
   const value = input.trim();
 
   if (value.startsWith("#")) {
     const hex = value.slice(1);
-    if (hex.length === 3) {
+    if (hex.length === 3 || hex.length === 4) {
       const [r, g, b] = hex.split("");
       return [parseInt(r + r, 16), parseInt(g + g, 16), parseInt(b + b, 16)];
     }
@@ -39,8 +39,11 @@ function parseColor(input: string): [number, number, number] | null {
     return null;
   }
 
-  const rgb = value.match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
-  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+  const rgb = value.match(/^rgba?\(\s*([\d.]+%?)[\s,]+([\d.]+%?)[\s,]+([\d.]+%?)/i);
+  if (rgb) {
+    const read = (c: string) => (c.endsWith("%") ? parseFloat(c) * 2.55 : Number(c));
+    return [read(rgb[1]), read(rgb[2]), read(rgb[3])];
+  }
 
   return null;
 }

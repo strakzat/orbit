@@ -1,5 +1,5 @@
 import React, { createContext, useState, useCallback, useEffect, useMemo, useRef, useReducer } from "react";
-import type {
+import type { SendFailure,
   AnnotationContextValue,
   AnnotationProviderProps,
   Comment,
@@ -7,15 +7,17 @@ import type {
   OrbitVariant,
   TourStepId,
 } from "../types";
-import { COMPONENT_ATTR, DEFAULT_SETTINGS } from "../constants";
+import { COMPONENT_ATTR, resolveSettings } from "../constants";
 import { resolveLabels } from "../labels";
 import { useViewer } from "../hooks/use-viewer";
 import { useSeen } from "../hooks/use-seen";
+import { failureFrom } from "../utils/send-failure";
 import { useOwnComments } from "../hooks/use-own-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
 import { matchRoute } from "../utils/route-matching";
 import { Inspector } from "../components/inspector";
+import { FeedbackToasts } from "../components/feedback-toasts";
 import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
@@ -53,6 +55,9 @@ function isTyping(target: EventTarget | null): boolean {
   return false;
 }
 
+// Long enough for the next polls to have it: a list read just before the write would drop the pin.
+const SENT_LINGER_MS = 60_000;
+
 export function AnnotationProvider({
   annotations,
   currentRoute = "/",
@@ -67,10 +72,7 @@ export function AnnotationProvider({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const settings = useMemo(
-    () => ({ ...DEFAULT_SETTINGS, ...settingsOverride }),
-    [settingsOverride]
-  );
+  const settings = useMemo(() => resolveSettings(settingsOverride), [settingsOverride]);
   // The viewer's language when they chose one, else the project's.
   const {
     viewer,
@@ -110,6 +112,8 @@ export function AnnotationProvider({
   annotationModeRef.current = annotationMode;
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null);
   const [inspectorActive, setInspectorActive] = useState(false);
+  const inspectorActiveRef = useRef(inspectorActive);
+  inspectorActiveRef.current = inspectorActive;
   const [contextStack, setContextStack] = useState<string[]>([]);
 
   // The tour. While it runs, the context holds its samples instead of the project's data.
@@ -134,16 +138,27 @@ export function AnnotationProvider({
     setTourStep("welcome");
   }, [leaveEverything]);
 
-  const endTour = useCallback(() => {
+  const strikeStage = useCallback(() => {
     leaveEverything();
     setTourStep(null);
     setAnchors(null);
+  }, [leaveEverything]);
+
+  const endTour = useCallback(() => {
+    strikeStage();
     setViewerTourSeen();
-  }, [leaveEverything, setViewerTourSeen]);
+  }, [strikeStage, setViewerTourSeen]);
+
+  // Cut off, not finished: only the shell can run a tour, so without it the stage is struck. Not
+  // seen, like a reload halfway. Nothing to do without a tour: the shell also goes on any other day.
+  const abandonTour = useCallback(() => {
+    if (touringRef.current) strikeStage();
+  }, [strikeStage]);
 
   const addTourComment = useCallback<AnnotationContextValue["addTourComment"]>((comment) => {
     // Practice: it's kept nowhere, not even for the rest of the tour. It only says it happened.
-    if (tourStepRef.current === "feedback") {
+    // From the picker: with the picker closed the pins are back, and a reply there is a reply.
+    if (tourStepRef.current === "feedback" && inspectorActiveRef.current) {
       setTourPractised((count) => count + 1);
       return;
     }
@@ -342,10 +357,89 @@ export function AnnotationProvider({
     commentsConfig?.project ?? ""
   );
   const [deletedCommentIds, setDeletedCommentIds] = useState<Set<string>>(() => new Set());
-  const realComments = useMemo(
-    () => (deletedCommentIds.size ? fetchedComments.filter((c) => !deletedCommentIds.has(c.id)) : fetchedComments),
-    [fetchedComments, deletedCommentIds]
+
+  // Comments on their way: on the page before the API has them, so placing one doesn't wait for
+  // the screenshot and the upload. Once sent, one stays until the API's list has it; a failed one
+  // stays until it is sent again or discarded, or its text would be gone.
+  const [outbox, setOutbox] = useState<Comment[]>([]);
+  const deliveries = useRef(new Map<string, () => Promise<{ id: string } | null>>());
+  const outboxCount = useRef(0);
+
+  const deliverComment = useCallback(
+    async (id: string) => {
+      const deliver = deliveries.current.get(id);
+      if (!deliver) return;
+      const mark = (delivery: Comment["delivery"], newId = id, deliveryFailure?: SendFailure) =>
+        setOutbox((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, id: newId, delivery, deliveryFailure, deliveryToastGone: false } : c))
+        );
+      mark("sending");
+      try {
+        const created = await deliver();
+        const sentId = created?.id ?? id;
+        deliveries.current.delete(id);
+        mark("sent", sentId);
+        await refreshComments();
+        window.setTimeout(() => setOutbox((prev) => prev.filter((c) => c.id !== sentId)), SENT_LINGER_MS);
+      } catch (err) {
+        console.warn("[@strakzat/orbit] Feedback niet verstuurd:", err);
+        mark("failed", id, failureFrom(err, navigator.onLine));
+      }
+    },
+    [refreshComments]
   );
+
+  const sendFeedback = useCallback<AnnotationContextValue["sendFeedback"]>(
+    (comment, deliver) => {
+      outboxCount.current += 1;
+      const id = `orbit-outbox-${outboxCount.current}`;
+      deliveries.current.set(id, deliver);
+      setOutbox((prev) => [
+        ...prev,
+        {
+          ...comment,
+          id,
+          status: "Open",
+          antwoord: null,
+          aangemaakt: new Date().toISOString(),
+          pagina: routeRef.current,
+          delivery: "sending",
+        },
+      ]);
+      void deliverComment(id);
+    },
+    [deliverComment]
+  );
+
+  // Only a comment that is still failed: a retry dismisses the toast too, and keeps its pin.
+  const settleFailedComment = useCallback((id: string) => {
+    setOutbox((prev) =>
+      prev.map((c) => (c.id === id && c.delivery === "failed" ? { ...c, deliveryToastGone: true } : c))
+    );
+  }, []);
+
+  const discardComment = useCallback((id: string) => {
+    deliveries.current.delete(id);
+    setOutbox((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  // What isn't with the API yet is only here: leaving the page asks first.
+  const unsent = outbox.some((c) => c.delivery !== "sent");
+  useEffect(() => {
+    if (!unsent) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [unsent]);
+
+  const realComments = useMemo(() => {
+    const fetched = new Set(fetchedComments.map((c) => c.id));
+    const comments = [...fetchedComments, ...outbox.filter((c) => !fetched.has(c.id))];
+    return deletedCommentIds.size ? comments.filter((c) => !deletedCommentIds.has(c.id)) : comments;
+  }, [fetchedComments, outbox, deletedCommentIds]);
   const isOwnComment = useCallback((id: string) => id in ownTokens, [ownTokens]);
   const apiBase = commentsConfig?.apiBase;
   const project = commentsConfig?.project ?? "";
@@ -438,6 +532,10 @@ export function AnnotationProvider({
       markSeen,
       isOwnComment,
       rememberOwnComment,
+      sendFeedback,
+      retryComment: deliverComment,
+      settleFailedComment,
+      discardComment,
       deleteComment,
       deletedCommentIds,
       currentRoute,
@@ -458,6 +556,7 @@ export function AnnotationProvider({
       setTourStep,
       startTour,
       endTour,
+      abandonTour,
       tourPractised,
       addTourComment,
     }),
@@ -483,6 +582,10 @@ export function AnnotationProvider({
       markSeen,
       isOwnComment,
       rememberOwnComment,
+      sendFeedback,
+      deliverComment,
+      settleFailedComment,
+      discardComment,
       deleteComment,
       deletedCommentIds,
       currentRoute,
@@ -503,6 +606,7 @@ export function AnnotationProvider({
       tourStep,
       startTour,
       endTour,
+      abandonTour,
       tourPractised,
       addTourComment,
     ]
@@ -513,6 +617,7 @@ export function AnnotationProvider({
     { value },
     children,
     mounted && commentsConfig?.enabled ? React.createElement(Inspector) : null,
+    mounted && commentsConfig?.enabled ? React.createElement(FeedbackToasts) : null,
     mounted && commentsConfig?.enabled ? React.createElement(FeedbackMarkers) : null,
     mounted ? React.createElement(AutoAnnotationMarkers) : null
   );

@@ -3,6 +3,7 @@
  * Import from "@strakzat/orbit/server"
  */
 
+import { MAX_COMMENT_LENGTH } from "./limits";
 import type { Comment } from "./types";
 
 interface CommentInput {
@@ -22,6 +23,26 @@ interface CommentInput {
 const NOTION_BASE = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
+const TEXT_OBJECT_LENGTH = 2000;
+const MAX_TEXT_OBJECTS = 100;
+
+/**
+ * Notion takes at most 2000 characters in one text object, and 100 objects in one property, so a
+ * long comment is several objects. parseNotionComment and the CLI join them again.
+ */
+function textObjects(value: string): { text: { content: string } }[] {
+  const objects: { text: { content: string } }[] = [];
+  for (let start = 0; objects.length < MAX_TEXT_OBJECTS && (start < value.length || !objects.length); ) {
+    let end = start + TEXT_OBJECT_LENGTH;
+    // Never between the two halves of an emoji.
+    const high = value.charCodeAt(end - 1);
+    if (end < value.length && high >= 0xd800 && high <= 0xdbff) end -= 1;
+    objects.push({ text: { content: value.slice(start, end) } });
+    start = end;
+  }
+  return objects;
+}
+
 /**
  * Builds Notion page properties for creating a comment.
  * Use this in your POST /api/comments handler to ensure all fields are included.
@@ -36,14 +57,15 @@ export function buildNotionCommentProperties(
   projectId: string
 ): Record<string, unknown> {
   const properties: Record<string, unknown> = {
+    // Only the row's name in Notion: the whole text is in Comment.
     Naam: {
-      title: [{ text: { content: input.comment } }],
+      title: textObjects(input.comment).slice(0, 1),
     },
     Auteur: {
-      rich_text: [{ text: { content: input.auteur || "Anoniem" } }],
+      rich_text: textObjects(input.auteur || "Anoniem"),
     },
     Comment: {
-      rich_text: [{ text: { content: input.comment } }],
+      rich_text: textObjects(input.comment),
     },
     Status: {
       select: { name: "Open" },
@@ -52,21 +74,20 @@ export function buildNotionCommentProperties(
       relation: [{ id: projectId }],
     },
     "Annotatie ID": {
-      rich_text: [{ text: { content: input.annotationId } }],
+      rich_text: textObjects(input.annotationId),
     },
     Label: {
-      rich_text: [{ text: { content: input.label || "" } }],
+      rich_text: textObjects(input.label || ""),
     },
     Pagina: {
-      rich_text: [{ text: { content: input.pagina || "" } }],
+      rich_text: textObjects(input.pagina || ""),
     },
   };
   if (input.varianten) {
-    // Notion takes at most 2000 characters in one text object.
-    properties.Varianten = { rich_text: [{ text: { content: input.varianten.slice(0, 2000) } }] };
+    properties.Varianten = { rich_text: textObjects(input.varianten) };
   }
   if (input.component) {
-    properties.Component = { rich_text: [{ text: { content: input.component.slice(0, 2000) } }] };
+    properties.Component = { rich_text: textObjects(input.component) };
   }
   return properties;
 }
@@ -211,7 +232,10 @@ export async function handleCommentsRequest(
   const projectId = options.projectId ?? process.env.NOTION_PROJECT_ID;
   const secret = options.secret ?? process.env.ORBIT_SECRET ?? apiKey;
   if (!apiKey || !databaseId || !projectId) {
-    return { status: 500, body: { error: "NOTION_API_KEY, NOTION_DATABASE_ID and NOTION_PROJECT_ID are required" } };
+    return {
+      status: 500,
+      body: { error: "NOTION_API_KEY, NOTION_DATABASE_ID and NOTION_PROJECT_ID are required", code: "not_configured" },
+    };
   }
   const headers = {
     Authorization: `Bearer ${apiKey}`,
@@ -228,14 +252,26 @@ export async function handleCommentsRequest(
         ...(annotationId ? [{ property: "Annotatie ID", rich_text: { equals: annotationId } }] : []),
       ],
     };
-    const response = await fetch(`${NOTION_BASE}/databases/${databaseId}/query`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ filter, sorts: [{ timestamp: "created_time", direction: "ascending" }] }),
-    });
-    const data: any = await response.json();
-    if (!response.ok) return { status: 502, body: { error: data.message } };
-    return { status: 200, body: data.results.map(parseNotionComment) };
+    // Notion gives 100 rows at a time, oldest first: without the rest the newest feedback is gone.
+    const pages: any[] = [];
+    let cursor: string | undefined;
+    do {
+      const response = await fetch(`${NOTION_BASE}/databases/${databaseId}/query`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          filter,
+          sorts: [{ timestamp: "created_time", direction: "ascending" }],
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        }),
+      });
+      const data: any = await response.json();
+      if (!response.ok) return { status: 502, body: { error: data.message } };
+      pages.push(...data.results);
+      cursor = data.has_more ? data.next_cursor : undefined;
+    } while (cursor);
+    return { status: 200, body: pages.map(parseNotionComment) };
   }
 
   if (request.method === "POST") {
@@ -246,6 +282,10 @@ export async function handleCommentsRequest(
     }
     if (!input.annotationId || !input.comment) {
       return { status: 400, body: { error: "annotationId and comment are required" } };
+    }
+    // The composer stops this too, but the route is open to anything that can POST.
+    if (input.comment.length > MAX_COMMENT_LENGTH) {
+      return { status: 413, body: { error: `comment is longer than ${MAX_COMMENT_LENGTH} characters` } };
     }
 
     const properties = buildNotionCommentProperties(input, projectId);
@@ -263,18 +303,22 @@ export async function handleCommentsRequest(
       });
 
     let response = await createPage();
-    for (const column of OPTIONAL_COLUMNS) {
-      if (response.ok || !(column in properties)) continue;
+    // Notion names one missing column at a time, in an order of its own.
+    while (!response.ok) {
       const text = await response.clone().text();
-      if (!text.includes(column)) continue;
-      console.warn(
-        `[@strakzat/orbit] De Notion-database heeft geen kolom "${column}" (tekst). De feedback is opgeslagen zonder.`
-      );
-      delete properties[column];
+      const missing = OPTIONAL_COLUMNS.filter((column) => column in properties && text.includes(column));
+      if (missing.length === 0) break;
+      for (const column of missing) {
+        console.warn(
+          `[@strakzat/orbit] De Notion-database heeft geen kolom "${column}" (tekst). De feedback is opgeslagen zonder.`
+        );
+        delete properties[column];
+      }
       response = await createPage();
     }
     const page: any = await response.json();
-    if (!response.ok) return { status: 502, body: { error: page.message } };
+    // Notion's code too: it says what the viewer can be told.
+    if (!response.ok) return { status: 502, body: { error: page.message, code: page.code } };
     // The writer's key to delete it later: the browser that sent it keeps it.
     const deleteToken = await commentDeleteToken(page.id, secret!);
     return { status: 201, body: { ...parseNotionComment(page), deleteToken } };

@@ -47,6 +47,7 @@ export function matchRoute(pattern: string, path: string): boolean {
 /**
  * Whether a comment belongs on the current page. Feedback on a component goes wherever that
  * component is (`componentsOnPage`, kept by the provider), not to the page it was given on.
+ * Without a page (older feedback) it shows everywhere.
  */
 export function isOnPage(
   comment: { pagina?: string; component?: string },
@@ -54,7 +55,7 @@ export function isOnPage(
   componentsOnPage: Set<string>
 ): boolean {
   if (comment.component) return componentsOnPage.has(comment.component);
-  return matchRoute(route, comment.pagina ?? "");
+  return !comment.pagina || matchRoute(route, comment.pagina);
 }
 
 /**

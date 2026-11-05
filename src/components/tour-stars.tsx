@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { ORBIT_UI_ATTR } from "../constants";
 import { pickArea } from "../utils/pick-element";
-import { buildProgram, createCorona, prismColours } from "./tour-corona";
+import { MAX_RATIO, STAR, STAR_GLSL, buildProgram, createCorona, prismColours } from "./tour-corona";
 
 /**
  * The boot: the tour opening on black, a galaxy gathering into a ball, one ripple, and the page and
@@ -12,7 +12,6 @@ export const TOUR_BOOT = false;
 
 // Radial's stars: one size on one grid, in CSS pixels, told apart by light alone.
 const GRID = 7;
-const STAR = 1.08;
 // How far they reach from the card at rest.
 const REACH = 240;
 // The card's corner (--orbit-radius-2xl).
@@ -21,7 +20,6 @@ const CORNER = 16;
 const BOOT = 3;
 // The moment it has gathered, as a share of the boot. The card and the page come up from there.
 const GATHER = 1.6 / BOOT;
-const MAX_RATIO = 2;
 // Seconds for the field to spread out from the card, and to draw back in.
 const FIELD_IN = 1.4;
 const FIELD_OUT = 0.5;
@@ -52,12 +50,7 @@ const float CORE = 70.0;  // CSS px: how far it gathers, into a ball
 const float CREST = 44.0; // and how wide a ripple is
 const float SECOND = 0.22; // when the field sets out after the ripple, as a share of the rippling
 
-float hash(vec2 c) {
-  vec3 p = fract(vec3(c.xyx) * 0.1031);
-  p += dot(p, p.yzx + 33.33);
-  return fract((p.x + p.y) * p.z);
-}
-
+${STAR_GLSL}
 float noise(vec2 p) {
   vec2 i = floor(p);
   vec2 f = fract(p);
@@ -69,21 +62,9 @@ float noise(vec2 p) {
   );
 }
 
-// pow() of a negative is undefined in GLSL, and engines differ: some give 0, Firefox gives NaN, and
-// NaN times 0 is still NaN, which lit every star past the ring. So: no pow() without a guard.
-float square(float x) {
-  return x * x;
-}
-
 float fromCard(vec2 p) {
   vec2 q = abs(p - uCard) - uHalf + uCorner;
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - uCorner;
-}
-
-vec3 prism(float t) {
-  float x = clamp(t, 0.0, 1.0) * 4.0;
-  int i = int(min(x, 3.0));
-  return mix(uPrism[i], uPrism[i + 1], x - float(i));
 }
 
 void main() {
@@ -228,29 +209,32 @@ function createStars(canvas: HTMLCanvasElement) {
         canvas.height = height;
         gl.viewport(0, 0, width, height);
       }
-      // One grid over the window, which no star leaves.
-      const pitch = Math.round(GRID * ratio) / ratio;
-      const columns = Math.ceil(window.innerWidth / pitch);
-      const rows = Math.ceil(window.innerHeight / pitch);
-      const area = pickArea();
-
-      gl.useProgram(program);
-      gl.uniform2f(uniforms.res, window.innerWidth, window.innerHeight);
-      gl.uniform2f(uniforms.card, card.left + card.width / 2, card.top + card.height / 2);
-      gl.uniform2f(uniforms.half, card.width / 2, card.height / 2);
-      gl.uniform4f(uniforms.area, area.left, area.top, area.right, area.bottom);
-      gl.uniform2i(uniforms.cells, columns, rows);
-      gl.uniform1f(uniforms.corner, CORNER);
-      gl.uniform1f(uniforms.reach, REACH);
-      gl.uniform1f(uniforms.pitch, pitch);
-      gl.uniform1f(uniforms.size, Math.max(1, Math.round(STAR * ratio)));
-      gl.uniform1f(uniforms.ratio, ratio);
-      gl.uniform1f(uniforms.time, time);
-      gl.uniform1f(uniforms.boot, boot);
-      gl.uniform1f(uniforms.field, field);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      if (field > 0 || boot < 1) gl.drawArrays(gl.POINTS, 0, columns * rows);
+      // Past the welcome card only the corona draws, for the rest of the tour.
+      if (field > 0 || boot < 1) {
+        // One grid over the window, which no star leaves.
+        const pitch = Math.round(GRID * ratio) / ratio;
+        const columns = Math.ceil(window.innerWidth / pitch);
+        const rows = Math.ceil(window.innerHeight / pitch);
+        const area = pickArea();
+
+        gl.useProgram(program);
+        gl.uniform2f(uniforms.res, window.innerWidth, window.innerHeight);
+        gl.uniform2f(uniforms.card, card.left + card.width / 2, card.top + card.height / 2);
+        gl.uniform2f(uniforms.half, card.width / 2, card.height / 2);
+        gl.uniform4f(uniforms.area, area.left, area.top, area.right, area.bottom);
+        gl.uniform2i(uniforms.cells, columns, rows);
+        gl.uniform1f(uniforms.corner, CORNER);
+        gl.uniform1f(uniforms.reach, REACH);
+        gl.uniform1f(uniforms.pitch, pitch);
+        gl.uniform1f(uniforms.size, Math.max(1, Math.round(STAR * ratio)));
+        gl.uniform1f(uniforms.ratio, ratio);
+        gl.uniform1f(uniforms.time, time);
+        gl.uniform1f(uniforms.boot, boot);
+        gl.uniform1f(uniforms.field, field);
+        gl.drawArrays(gl.POINTS, 0, columns * rows);
+      }
       corona?.draw(target, time);
     },
   };
@@ -262,8 +246,6 @@ interface TourStarsProps {
   on: boolean;
   /** What lets the corona go, read every frame: it can move, or come late. */
   target: () => Element | null;
-  /** Changes when the target does: with reduced motion, there is no next frame to pick it up. */
-  step: string;
   /** Time for the card and the page. At once when there is no boot to wait for. */
   onLanded: () => void;
 }
@@ -277,7 +259,7 @@ interface TourStarsProps {
  * and the field at rest spreads after it. Decoration, so it gives way easily: one still frame with
  * reduced motion, and nothing without WebGL2.
  */
-export function TourStars({ cardRef, on, target, step, onLanded }: TourStarsProps) {
+export function TourStars({ cardRef, on, target, onLanded }: TourStarsProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const redrawRef = useRef<() => void>(() => {});
   const landedRef = useRef(onLanded);
@@ -363,8 +345,8 @@ export function TourStars({ cardRef, on, target, step, onLanded }: TourStarsProp
     };
   }, [cardRef]);
 
-  // After the render, so the step's target is in the page.
-  useEffect(() => redrawRef.current(), [on, step]);
+  // With reduced motion, there is no next frame to draw the field going.
+  useEffect(() => redrawRef.current(), [on]);
 
   return React.createElement("canvas", {
     ref: canvasRef,
