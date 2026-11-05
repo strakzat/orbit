@@ -3,7 +3,7 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
-import { findElementByAnnotationId } from "../utils/find-element";
+import { pickArea } from "../utils/pick-element";
 import { getPinPopoverStyle } from "../utils/popover-position";
 import { matchRoute } from "../utils/route-matching";
 import { fill } from "../labels";
@@ -16,7 +16,7 @@ import {
   unplacedBadgeRect,
   type PinTail,
 } from "./marker-geometry";
-import { unplacedAnnotationIds } from "./marker-placement";
+import { markerElement, outOfArea, sameRect, unplacedAnnotationIds } from "./marker-placement";
 import type { Annotation } from "../types";
 
 /** A placed pin points at the element's top-right corner; an unplaced one sits where the
@@ -85,6 +85,7 @@ export function AutoAnnotationMarkers() {
     }
 
     const newBadges: AutoBadgeInfo[] = [];
+    const area = pickArea();
     const unplacedSlots = new Map(
       unplacedAnnotationIds(allAnnotations, registeredMarkerIds, currentRoute).map(
         (id, index) => [id, index] as const
@@ -102,11 +103,13 @@ export function AutoAnnotationMarkers() {
       // No element is not a reason to hide the annotation: a `global` one has
       // nothing to point at, and it still has to be readable from the page.
       const lookupId = annotation.elementId || annotation.id;
-      const el = findElementByAnnotationId(lookupId);
+      const el = markerElement(lookupId);
       const unplaced = !el;
       const rect = el
         ? el.getBoundingClientRect()
         : unplacedBadgeRect(unplacedSlots.get(annotation.id) ?? 0);
+      // An open thread stays: it follows its pin to the edge of the frame.
+      if (el && annotation.id !== activeAnnotationId && outOfArea(rect, area)) continue;
 
       newBadges.push({ annotation, rect, unplaced });
     }
@@ -116,17 +119,11 @@ export function AutoAnnotationMarkers() {
       if (prev.length !== newBadges.length) return newBadges;
       const unchanged = prev.every((b, i) => {
         const n = newBadges[i];
-        return (
-          b.annotation.id === n.annotation.id &&
-          Math.abs(b.rect.top - n.rect.top) < 1 &&
-          Math.abs(b.rect.left - n.rect.left) < 1 &&
-          Math.abs(b.rect.right - n.rect.right) < 1 &&
-          Math.abs(b.rect.bottom - n.rect.bottom) < 1
-        );
+        return b.annotation === n.annotation && b.unplaced === n.unplaced && sameRect(b.rect, n.rect);
       });
       return unchanged ? prev : newBadges;
     });
-  }, [allAnnotations, registeredMarkerIds, showMarkers, currentRoute]);
+  }, [allAnnotations, registeredMarkerIds, showMarkers, currentRoute, activeAnnotationId]);
 
   // Update positions on mount, scroll, resize, and when dependencies change
   useEffect(() => {

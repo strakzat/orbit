@@ -1,5 +1,46 @@
 # Changelog
 
+## 4.12.0
+
+- **Placing feedback no longer waits.** Enter closes the picker at once and the pin and count are
+  there immediately; the screenshot and the upload go on in the background. Until the API has it,
+  a comment is in `allComments` with a `delivery` state, and leaving the page asks first while
+  something is unsent.
+- **No more flash when sending.** Orbit hid itself on the live page while the screenshot rendered.
+  It now stays out of html-to-image's copy instead. Only a project's own `ScreenshotCapture` still
+  hides it for a moment.
+- **A failed send says why.** A toast tells the viewer what happened and what to do: offline, server
+  unreachable, no answer in 30 seconds, busy, not set up (with info@strakzat.com, as a link), too
+  long, or a server error. Retry is its only action, and only where it can help. After 10 seconds
+  the toast goes, but the comment stays in its thread, marked as not sent, with the same retry and
+  the bin. The alert is Untitled UI's floating alert rebuilt in Orbit's styles; Sonner does the
+  placing, stacking and timing, bundled into `dist`. Sonner adds about 13 KB gzipped and injects its
+  own `[data-sonner-*]` CSS when Orbit loads.
+- **A comment is at most 1000 characters.** The composer shows a counter from 800 and won't send past
+  the limit; the API refuses more with a 413. Pasted text isn't cut off.
+- **The API passes Notion's `code` on,** next to `error`, so a failure can be named.
+- **The tour stops when the shell goes,** and then doesn't count as seen.
+- **Fixes in the tour:** crash on `projectName: undefined`, the rail's enabled button out of keyboard
+  reach, the focus trap leaking out of the modal card, old filters hiding the samples on a replay, a
+  reply in a sample thread counting as practice, and a stale star field with reduced motion.
+- **`undefined` in `settings` no longer overrides a default.**
+- **Fixes in the comments API and hooks:** every Notion page is read, so comments past the first 100
+  are no longer lost; long text is split into Notion's 2000 characters; both optional columns missing
+  no longer fails; one failed fetch no longer ends a thread's updates; a slow poll can't overwrite
+  newer comments; a hung screenshot gives up after 10 seconds.
+- **Fixes in pins and popovers:** feedback without a page shows everywhere, as documented; an element
+  without a box gets a parked pin instead of one in the corner of the window; an element scrolled out
+  of the frame has no pin unless its thread is open; popovers stay inside the frame; feedback pins
+  find elements that render late; edited annotations update on their pin; a repeated `data-testid` is
+  no longer an anchor, and a lone tag like `header` is found again.
+- **Other fixes:** the action button no longer sticks in StrictMode and a rejected action no longer
+  goes unhandled; Enter confirming an IME candidate in Safari no longer sends; the panel's first view
+  follows annotations that load late; deleting the last comment is announced; `onBrandTextColor` reads
+  `#rgba` and percentages.
+- **CLI:** `--stale` goes by the last edit instead of creation; a re-checked reverted item isn't marked
+  solved; `fetch` keeps a comment on its own line, so it can't write entries into the list an agent
+  reads.
+
 ## 4.11.0
 
 - **The profile says which version is running,** for when a client reports something.

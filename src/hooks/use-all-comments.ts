@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Comment } from "../types";
 
-const RETRY_MS = 120_000;
+export const RETRY_MS = 120_000;
 
 interface UseAllCommentsProps {
   apiBase: string;
@@ -32,6 +32,7 @@ export function useAllComments({
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const failedAtRef = useRef(0);
+  const requestRef = useRef(0);
   const warnedRef = useRef(false);
 
   const fetchComments = useCallback(async () => {
@@ -43,15 +44,19 @@ export function useAllComments({
     if (failedAtRef.current && Date.now() - failedAtRef.current < RETRY_MS) return;
 
     const url = `${apiBase}/api/comments?project=${encodeURIComponent(project)}`;
+    // Only the latest request counts: a slow poll must not undo the refresh after a new comment.
+    const request = ++requestRef.current;
 
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Comment[] = await res.json();
+      if (request !== requestRef.current) return;
       setComments(data);
       setError(null);
       failedAtRef.current = 0;
     } catch (err) {
+      if (request !== requestRef.current) return;
       const message = err instanceof Error ? err.message : "Fout bij ophalen feedback";
       setError(message);
       failedAtRef.current = Date.now();
@@ -73,6 +78,7 @@ export function useAllComments({
 
     intervalRef.current = setInterval(fetchComments, 30_000);
     return () => {
+      requestRef.current += 1;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchComments, enabled]);

@@ -135,18 +135,27 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [needsName, inspectorActive, activeAnnotationId, endTour]);
 
-  // With nothing else to do on these steps, Tab stays in the card.
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "Tab" || !modal || !cardRef.current) return;
-    const stops = Array.from(
-      cardRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not([tabindex="-1"]), [tabindex="0"]')
-    );
-    const at = stops.indexOf(document.activeElement as HTMLElement);
-    const edge = e.shiftKey ? at <= 0 : at === stops.length - 1;
-    if (!edge) return;
-    e.preventDefault();
-    stops[e.shiftKey ? stops.length - 1 : 0]?.focus();
-  };
+  // With nothing else to do on these steps, Tab stays in the card. On the document: a click on the
+  // scrim takes the focus out of the card, which then no longer hears the key.
+  useEffect(() => {
+    if (!modal) return;
+    const onTab = (e: KeyboardEvent) => {
+      const card = cardRef.current;
+      if (e.key !== "Tab" || !card) return;
+      const stops = Array.from(
+        card.querySelectorAll<HTMLElement>(
+          'button:not(:disabled):not([tabindex="-1"]), input:not([tabindex="-1"]), [tabindex="0"]'
+        )
+      );
+      const at = stops.indexOf(document.activeElement as HTMLElement);
+      const edge = !card.contains(document.activeElement) || (e.shiftKey ? at <= 0 : at === stops.length - 1);
+      if (!edge) return;
+      e.preventDefault();
+      stops[e.shiftKey ? stops.length - 1 : 0]?.focus();
+    };
+    document.addEventListener("keydown", onTab);
+    return () => document.removeEventListener("keydown", onTab);
+  }, [modal]);
 
   const hasComments = !!commentsConfig;
   const projectName = settings.projectName.trim();
@@ -206,7 +215,6 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         "aria-hidden": true,
         className: cx("orbit-root orbit-tour__black", landed && "orbit-tour__black--up"),
       }),
-    React.createElement(TourStars, { cardRef, on: step === "welcome", target, step, onLanded: land }),
     React.createElement(
       "div",
       {
@@ -224,7 +232,6 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
         ),
         // Measured before the first paint. Not hidden until then: it has to take the focus.
         style: position ?? undefined,
-        onKeyDown,
       },
       React.createElement(
         "h2",
@@ -254,6 +261,8 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
           step === "welcome" ? labels.tourStart : last ? labels.tourDone : labels.tourNext
         )
       )
-    )
+    ),
+    // After the card, so its ref is set when the stars' layout effect runs. The stacking is z-index.
+    React.createElement(TourStars, { cardRef, on: step === "welcome", target, onLanded: land })
   );
 }

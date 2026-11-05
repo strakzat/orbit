@@ -77,6 +77,7 @@ function pageToItem(page: any, project: string): FeedbackItem {
     pr: p[PROPS.pr]?.url ?? "",
     varianten: richText(p[PROPS.varianten]),
     aangemaakt: page.created_time ?? "",
+    bewerkt: page.last_edited_time ?? "",
   };
 }
 

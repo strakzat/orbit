@@ -12,7 +12,7 @@
 import type { ScreenshotCapture, ScreenshotOptions } from "../types";
 import { findElementByAnnotationId } from "./find-element";
 
-/** On `<html>` while the screenshot is taken: the sheet hides every `.orbit-root` then. */
+/** On `<html>` while a project's renderer runs: the sheet hides every `.orbit-root` then. */
 export const CAPTURING_ATTR = "data-orbit-capturing";
 
 const MAX_WIDTH = 1600;
@@ -20,13 +20,27 @@ const QUALITY = 0.8;
 /** Room around the element's outline, in CSS px, as the highlight on the page has. */
 const RING_PADDING = 4;
 
+// Sonner's stack doesn't carry `orbit-root`: the reset would undo its layout.
+const ORBIT_LAYERS = ["orbit-root", "orbit-toaster"];
+
 type Source = HTMLCanvasElement | HTMLImageElement | ImageBitmap;
 
 /** Orbit's own renderer. A separate chunk, so a visitor who never sends feedback never loads it. */
 export const renderWithHtmlToImage: ScreenshotCapture = async ({ target, options }) => {
   const { toCanvas } = await import("html-to-image");
-  return toCanvas(target, options);
+  // Left out of the copy, so the page itself never changes: hiding Orbit there is a visible flash.
+  return toCanvas(target, { ...options, filter: (node) => !ORBIT_LAYERS.some((name) => node.classList?.contains(name)) });
 };
+
+/** Once what the viewer just did has painted; a hidden tab has no frames, so not for ever. */
+const afterPaint = () =>
+  new Promise<void>((resolve) => {
+    const fallback = setTimeout(resolve, 100);
+    requestAnimationFrame(() => {
+      clearTimeout(fallback);
+      setTimeout(resolve);
+    });
+  });
 
 /** What a project's capture hands back, as something a canvas can draw. */
 async function toSource(result: Awaited<ReturnType<ScreenshotCapture>>): Promise<Source | null> {
@@ -149,6 +163,10 @@ function compose(source: Source, { target, options, crop, view }: Plan, rect: DO
   return canvas.toDataURL("image/jpeg", QUALITY);
 }
 
+// html-to-image waits on every image and font, and a project's renderer can hang: the feedback
+// doesn't wait for ever, it goes without.
+const CAPTURE_TIMEOUT_MS = 10_000;
+
 /** The screenshot for feedback on `annotationId`, as a JPEG data URL, or `null`. */
 export async function screenshotFeedback(
   annotationId: string,
@@ -163,16 +181,28 @@ export async function screenshotFeedback(
   const rect = element ? element.getBoundingClientRect() : null;
   const layout = plan();
 
-  root.setAttribute(CAPTURING_ATTR, "");
-  try {
+  const render = async () => {
+    await afterPaint();
+    // A project's renderer has no way to skip Orbit: there the sheet hides it for the moment.
+    if (capture !== renderWithHtmlToImage) root.setAttribute(CAPTURING_ATTR, "");
     const source = await toSource(
       await capture({ target: layout.target, options: layout.options, element })
     );
     return source ? compose(source, layout, rect) : null;
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), CAPTURE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([render(), timeout]);
   } catch (err) {
     console.warn("[@strakzat/orbit] Screenshot mislukt:", err);
     return null;
   } finally {
+    clearTimeout(timer);
     root.removeAttribute(CAPTURING_ATTR);
   }
 }

@@ -62,7 +62,14 @@ export async function syncCommand(args: Args): Promise<void> {
   }
 
   if (merged) {
-    const resolved = [...checked];
+    // Checked again after a revert: the change isn't in the code, so it isn't solved.
+    const reverted = new Set(commits.map((c) => c.revertId));
+    const resolved = [...checked].filter((id) => !reverted.has(id));
+    for (const id of checked) {
+      if (reverted.has(id)) {
+        process.stdout.write(`Let op: ${id} is aangevinkt maar teruggedraaid; de status blijft staan.\n`);
+      }
+    }
     // Unchecked items without a live commit still need a final status.
     const alsoRejected = unchecked.filter((id) => !rejected.includes(id));
     if (resolved.length > 0) {

@@ -6,6 +6,11 @@ import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { AlertCircleIcon, ArrowUpIcon } from "../icons";
 import { ANONYMOUS } from "../constants";
+import { MAX_COMMENT_LENGTH } from "../limits";
+import { fill } from "../labels";
+
+// The counter stays out of the way until the limit is in sight.
+const COUNT_FROM = Math.round(MAX_COMMENT_LENGTH * 0.8);
 
 // Before mount there is no layout to measure; on the server useLayoutEffect only warns.
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -34,6 +39,7 @@ export function CommentForm({ onSubmit, autoFocus, tools, className }: CommentFo
 
   const commentId = useStableId("orbit-comment");
   const errorId = useStableId("orbit-error");
+  const countId = useStableId("orbit-count");
   const fieldRef = useRef<HTMLTextAreaElement>(null);
 
   const context = useContext(AnnotationContext);
@@ -54,7 +60,11 @@ export function CommentForm({ onSubmit, autoFocus, tools, className }: CommentFo
 
   if (!mounted) return null;
 
-  const canSend = !isSubmitting && !!comment.trim();
+  const length = comment.trim().length;
+  const over = length - MAX_COMMENT_LENGTH;
+  const tooLong = over > 0;
+  const canSend = !isSubmitting && length > 0 && !tooLong;
+  const describedBy = [error && errorId, tooLong && countId].filter(Boolean).join(" ") || undefined;
 
   const send = async () => {
     if (!canSend) return;
@@ -91,12 +101,13 @@ export function CommentForm({ onSubmit, autoFocus, tools, className }: CommentFo
       autoFocus,
       onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => setComment(e.target.value),
       onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+        // 229: Safari's Enter that confirms an IME's candidate, after the composition ended.
+        if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing || e.keyCode === 229) return;
         e.preventDefault();
         void send();
       },
-      "aria-invalid": error ? true : undefined,
-      "aria-describedby": error ? errorId : undefined,
+      "aria-invalid": error || tooLong ? true : undefined,
+      "aria-describedby": describedBy,
     }),
 
     // role="alert" so the failure is announced, not only shown in red.
@@ -109,6 +120,19 @@ export function CommentForm({ onSubmit, autoFocus, tools, className }: CommentFo
       ),
 
     tools && React.createElement("div", { className: "orbit-composer__tools" }, tools),
+
+    // Pasted text stays whole, so nothing is cut off unseen: it can't go until it is shorter.
+    length >= COUNT_FROM &&
+      React.createElement(
+        "span",
+        {
+          id: countId,
+          className: cx("orbit-composer__count", tooLong && "orbit-composer__count--over"),
+          title: tooLong ? fill(labels.formTooLong, { max: MAX_COMMENT_LENGTH, over }) : undefined,
+          "aria-label": tooLong ? fill(labels.formTooLong, { max: MAX_COMMENT_LENGTH, over }) : undefined,
+        },
+        fill(labels.formCount, { count: length, max: MAX_COMMENT_LENGTH })
+      ),
 
     React.createElement(
       "button",

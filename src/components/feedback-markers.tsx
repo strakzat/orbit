@@ -3,7 +3,7 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { useComments } from "../hooks/use-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
-import { findElementByAnnotationId } from "../utils/find-element";
+import { pickArea } from "../utils/pick-element";
 import { getPinPopoverStyle } from "../utils/popover-position";
 import { isOnPage, matchRoute } from "../utils/route-matching";
 import { fill } from "../labels";
@@ -20,7 +20,7 @@ import {
   unplacedBadgeRect,
   type PinTail,
 } from "./marker-geometry";
-import { unplacedAnnotationIds } from "./marker-placement";
+import { markerElement, outOfArea, sameRect, unplacedAnnotationIds } from "./marker-placement";
 import type { Comment } from "../types";
 
 interface FeedbackBadgeInfo {
@@ -39,6 +39,18 @@ interface FeedbackBadgeInfo {
   /** Who started the thread: the first comment's author. */
   author: string;
 }
+
+const sameBadge = (a: FeedbackBadgeInfo, b: FeedbackBadgeInfo) =>
+  a.annotationId === b.annotationId &&
+  a.label === b.label &&
+  a.openCount === b.openCount &&
+  a.totalCount === b.totalCount &&
+  a.allResolved === b.allResolved &&
+  a.sharesCorner === b.sharesCorner &&
+  a.unplaced === b.unplaced &&
+  a.component === b.component &&
+  a.author === b.author &&
+  sameRect(a.rect, b.rect);
 
 /** Its own pin on the element's corner, or a plain badge beside the annotation's pin there,
     or parked without a tail. */
@@ -122,9 +134,10 @@ export function FeedbackMarkers() {
     // can point at the same element through different ids — the comment through the
     // element's own id, the annotation through its marker id — and then neither
     // component knows about the other and both draw in the same corner.
+    const area = pickArea();
     const annotated = new Set<Element>();
     for (const annotation of allAnnotations) {
-      const el = findElementByAnnotationId(annotation.elementId || annotation.id);
+      const el = markerElement(annotation.elementId || annotation.id);
       if (el) annotated.add(el);
     }
 
@@ -134,7 +147,7 @@ export function FeedbackMarkers() {
 
     const newBadges: FeedbackBadgeInfo[] = [];
     for (const [annotationId, comments] of grouped) {
-      const el = findElementByAnnotationId(annotationId, comments[0]?.label);
+      const el = markerElement(annotationId, comments[0]?.label);
       const component = comments.find((c) => c.component)?.component;
       // A component's pin is on its first instance. With none here (yet), there is none: parked,
       // it would sit in the corner of every page.
@@ -142,6 +155,8 @@ export function FeedbackMarkers() {
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
       // Done is done, if the viewer says so: no pin, and no place in the column either.
       if (openCount === 0 && !showResolvedPins) continue;
+      // An open thread stays: it follows its pin to the edge of the frame.
+      if (el && annotationId !== activeAnnotationId && outOfArea(el.getBoundingClientRect(), area)) continue;
       // The thread's first comment, whatever order the API gave them in.
       const first = comments.reduce((a, b) => (b.aangemaakt < a.aangemaakt ? b : a));
 
@@ -161,7 +176,10 @@ export function FeedbackMarkers() {
       });
     }
 
-    setBadges(newBadges);
+    // Unchanged is no render: the observer below would otherwise run on every commit.
+    setBadges((prev) =>
+      prev.length === newBadges.length && prev.every((b, i) => sameBadge(b, newBadges[i])) ? prev : newBadges
+    );
   }, [
     allComments,
     allAnnotations,
@@ -171,6 +189,7 @@ export function FeedbackMarkers() {
     currentRoute,
     componentsOnPage,
     showResolvedPins,
+    activeAnnotationId,
   ]);
 
   // Update positions on mount, scroll, resize, and when comments change
@@ -180,9 +199,20 @@ export function FeedbackMarkers() {
 
     window.addEventListener("scroll", updateBadges, true);
     window.addEventListener("resize", updateBadges);
+
+    // The page renders after the route changes: without this its pins stay parked until a scroll.
+    let rafId = 0;
+    const observer = new MutationObserver(() => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateBadges);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     return () => {
       window.removeEventListener("scroll", updateBadges, true);
       window.removeEventListener("resize", updateBadges);
+      cancelAnimationFrame(rafId);
+      observer.disconnect();
     };
   }, [showMarkers, updateBadges]);
 

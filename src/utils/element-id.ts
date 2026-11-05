@@ -8,10 +8,14 @@ import { COMPONENT_ATTR } from "../constants";
 function anchorSelector(el: Element): string | null {
   const annotationId = el.getAttribute("data-annotation-id");
   if (annotationId) return `[data-annotation-id="${CSS.escape(annotationId)}"]`;
+  // Only a name that is one element: a test id repeated on every row would find the first row.
   const testId = el.getAttribute("data-testid");
-  if (testId) return `[data-testid="${CSS.escape(testId)}"]`;
-  if (el.id) return `#${CSS.escape(el.id)}`;
-  return null;
+  const named = testId
+    ? `[data-testid="${CSS.escape(testId)}"]`
+    : el.id
+      ? `#${CSS.escape(el.id)}`
+      : null;
+  return named && document.querySelectorAll(named).length === 1 ? named : null;
 }
 
 // Attributes that say what an element is, preferred over its position among its siblings.
@@ -59,7 +63,8 @@ export function getLocator(el: HTMLElement): string {
     parts.unshift(step(current));
   }
 
-  return parts.join(" > ");
+  // A lone tag would read as a bare id: `findElementByAnnotationId()` wouldn't take it for a selector.
+  return parts.length === 1 && /^[a-z0-9-]+$/.test(parts[0]) ? `body > ${parts[0]}` : parts.join(" > ");
 }
 
 /** A component of the project's, as marked with `data-orbit-component`. */

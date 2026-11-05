@@ -415,12 +415,20 @@ function Action({ variant }: { variant: OrbitActionVariant }) {
   const hintId = useStableId("orbit-variant-hint");
   const [running, setRunning] = useState(false);
   const mounted = useRef(true);
-  useEffect(() => () => void (mounted.current = false), []);
+  // Set here too: StrictMode's simulated unmount would leave it false, and the button held.
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const run = async () => {
     setRunning(true);
     try {
       await variant.onRun();
+    } catch (err) {
+      console.warn(`[@strakzat/orbit] Variant "${variant.title}" mislukt:`, err);
     } finally {
       if (mounted.current) setRunning(false);
     }

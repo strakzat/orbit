@@ -53,6 +53,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     settings,
     tourStep,
     startTour,
+    abandonTour,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -83,8 +84,11 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
 
   // The tour starts by itself once for each viewer. The viewer is loaded by now: the shell only
   // renders the rail after mounting. Before the paint, so its black comes before the page does.
+  // Only the rail can end a tour, so it goes with the rail. The same effect: StrictMode's simulated
+  // unmount is followed by the start again, and the tour survives it.
   useLayoutEffect(() => {
     if (!viewer.tourSeen && settings.tour) startTour();
+    return abandonTour;
   }, []);
 
   // The stage is the tour's, and it ends where it left off: on the profile.
@@ -121,16 +125,18 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   ) => {
     const index = buttons.length;
     const pointedAt = tourStep !== null && TOUR_TARGET[key] === tourStep;
+    const pressable = pointedAt && TOUR_PRESSABLE.includes(tourStep);
     buttons.push(
       React.createElement(
         "button",
         {
           key,
           type: "button",
-          tabIndex: index === tabStop ? 0 : -1,
+          // In the tour the one button that works is the tab stop: the others are disabled.
+          tabIndex: (touring ? pressable : index === tabStop) ? 0 : -1,
           onFocus: () => setFocusIndex(index),
           ...extra,
-          disabled: touring && !(pointedAt && TOUR_PRESSABLE.includes(tourStep)),
+          disabled: touring && !pressable,
           className: cx(
             "orbit-rail__item",
             // What the tour points at looks as it does when it's on, in the live rail.

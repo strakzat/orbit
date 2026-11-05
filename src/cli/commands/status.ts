@@ -28,7 +28,8 @@ export async function statusCommand(args: Args): Promise<void> {
     const cutoff = Date.now() - hours * 3600_000;
     const items = await queryOpen(project, ["In behandeling"]);
     const staleIds = items
-      .filter((i) => i.aangemaakt && new Date(i.aangemaakt).getTime() < cutoff)
+      // Since the last edit, which is the claim: not since the feedback was written.
+      .filter((i) => i.bewerkt && new Date(i.bewerkt).getTime() < cutoff)
       .map((i) => i.id);
     if (staleIds.length === 0) {
       process.stdout.write("Geen verlopen claims gevonden.\n");

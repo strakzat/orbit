@@ -138,17 +138,20 @@ export function getPinPopoverStyle(
   margin = 16
 ): React.CSSProperties {
   const area = pickArea();
+  // A pin scrolled out of the frame: the popover waits at the edge it went over.
+  const pinTop = Math.min(Math.max(pin.top, area.top), area.bottom);
+  const pinBottom = Math.min(Math.max(pin.bottom, area.top), area.bottom);
   const right = pin.left + popoverWidth <= area.right - margin;
-  const roomBelow = area.bottom - margin - pin.top;
-  const roomAbove = pin.bottom - area.top - margin;
+  const roomBelow = area.bottom - margin - pinTop;
+  const roomAbove = pinBottom - area.top - margin;
   const down = roomBelow >= Math.min(popoverMaxHeight, 240) || roomBelow >= roomAbove;
   const left = right ? pin.left : pin.right - popoverWidth;
 
   return {
     position: "fixed",
     left: Math.max(area.left + margin, left),
-    top: down ? pin.top : undefined,
-    bottom: down ? undefined : window.innerHeight - pin.bottom,
+    top: down ? pinTop : undefined,
+    bottom: down ? undefined : window.innerHeight - pinBottom,
     width: popoverWidth,
     maxHeight: Math.min(popoverMaxHeight, down ? roomBelow : roomAbove),
   };

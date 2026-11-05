@@ -309,6 +309,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [modules, setModules] = useVariant("modules", ["omzet", "orders"]);
   const [rows, setRows] = useVariant("rijen", 12);
   const [empty, setEmpty] = useState(false);
+  const [failSend, setFailSend] = useState("uit");
+  // Tells the mock API, also after a reload: there this choice is off again.
+  useEffect(() => {
+    void fetch("/api/comments", { method: "PUT", body: JSON.stringify({ failPosts: failSend }) });
+  }, [failSend]);
   const { annotationMode, setAnnotationMode } = useAnnotations();
   const en = useOrbitLanguage() === "en";
 
@@ -399,6 +404,23 @@ function Shell({ children }: { children: React.ReactNode }) {
     },
     { type: "switch", id: "leeg", title: "Lege staat", hint: "Alsof het account net is aangemaakt.", value: empty, defaultValue: false, onChange: setEmpty },
     { type: "switch", id: "pins", title: "Feedback-pins tonen", value: annotationMode, onChange: setAnnotationMode },
+    {
+      type: "choice",
+      id: "mislukken",
+      title: "Versturen laten mislukken",
+      hint: "Hoe een nieuwe comment mislukt. Offline test je met de DevTools.",
+      options: [
+        { id: "uit", label: "Niet" },
+        { id: "server", label: "Fout op de server" },
+        { id: "druk", label: "Te druk" },
+        { id: "instelling", label: "Niet ingesteld" },
+        { id: "lang", label: "Te lang" },
+        { id: "traag", label: "Geen antwoord (30 s)" },
+      ],
+      value: failSend,
+      defaultValue: "uit",
+      onChange: setFailSend,
+    },
     { type: "action", id: "toast", title: "Toon een melding", onRun: () => window.alert("Opgeslagen") },
   ];
 

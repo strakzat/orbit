@@ -33,6 +33,15 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   projectName: "",
 };
 
+/** A project's settings over the defaults. A key set to `undefined` is a key left out. */
+export function resolveSettings(override: AnnotationSettings = {}): Required<AnnotationSettings> {
+  const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+  for (const [key, value] of Object.entries(override)) {
+    if (value !== undefined) settings[key] = value;
+  }
+  return settings as Required<AnnotationSettings>;
+}
+
 /**
  * On an element of a project's own that belongs to Orbit's interface rather than the page: the
  * inspector lets a click there through instead of taking it as the element to comment on.

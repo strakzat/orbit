@@ -29,6 +29,9 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   markSeen: () => {},
   isOwnComment: () => false,
   rememberOwnComment: () => {},
+  sendFeedback: (_comment, deliver) => void deliver().catch(() => {}),
+  retryComment: () => {},
+  discardComment: () => {},
   deleteComment: async () => {},
   deletedCommentIds: new Set(),
   currentRoute: "/",
@@ -49,6 +52,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   setTourStep: () => {},
   startTour: () => {},
   endTour: () => {},
+  abandonTour: () => {},
   tourPractised: 0,
   addTourComment: () => {},
 };

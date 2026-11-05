@@ -2286,17 +2286,30 @@ const FORM = `
 
 /* Room for three lines once there is text: the field says there is more to write. */
 .orbit-composer--expanded {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "field field"
-    "error error"
-    "tools send";
+    "field field field"
+    "error error error"
+    "tools count send";
   padding: var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-2) var(--orbit-space-3);
 }
 
 .orbit-composer--expanded .orbit-composer__field {
   min-height: 72px;
   padding-right: var(--orbit-space-1);
+}
+
+.orbit-composer__count {
+  grid-area: count;
+  align-self: center;
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.orbit-composer__count--over {
+  color: var(--orbit-text-error-primary);
+  font-weight: 600;
 }
 
 .orbit-composer__error {
@@ -2354,6 +2367,100 @@ const FORM = `
 
 /* The inspector's comment: a message bubble under the element it is about, its corner on
    the element's. Above the element, the corner flips to the bottom. */
+/* A comment that didn't make it: Untitled UI's floating alert in Orbit's glass, inside Sonner's
+   stack. Sonner places, stacks and times it; everything visible is here. */
+.orbit-alert {
+  position: relative;
+  display: flex;
+  gap: var(--orbit-space-4);
+  width: var(--width);
+  padding: var(--orbit-space-4);
+  border-radius: var(--orbit-radius-xl);
+}
+
+/* Solid, not glass: in the collapsed stack the toasts behind would show through. */
+.orbit-root.orbit-alert {
+  background: var(--orbit-bg-primary);
+}
+
+.orbit-alert__icon {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: var(--orbit-text-error-primary);
+}
+
+.orbit-alert__icon::before,
+.orbit-alert__icon::after {
+  content: "";
+  position: absolute;
+  border: 1.5px solid currentColor;
+  border-radius: var(--orbit-radius-full);
+}
+
+.orbit-alert__icon::before {
+  inset: 4px;
+  opacity: 0.3;
+}
+
+.orbit-alert__icon::after {
+  inset: -2px;
+  opacity: 0.1;
+}
+
+.orbit-alert__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--orbit-space-3);
+  min-width: 0;
+}
+
+.orbit-alert__title {
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-sm);
+  font-weight: 600;
+}
+
+.orbit-alert__description {
+  margin-top: var(--orbit-space-1);
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-sm);
+}
+
+.orbit-failure-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.orbit-alert__action {
+  align-self: flex-start;
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-sm);
+  font-weight: 600;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.orbit-alert__action:hover {
+  text-decoration: underline;
+}
+
+.orbit-comment__failure {
+  margin-top: var(--orbit-space-1);
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-xs);
+}
+
+.orbit-comment__retry {
+  margin-top: var(--orbit-space-2);
+}
+
 .orbit-bubble {
   z-index: calc(var(--orbit-z-base) + var(--orbit-z-inspector-popover));
   border-radius: var(--orbit-radius-2xl);
@@ -2543,7 +2650,8 @@ const FORM = `
 
 const OVERLAYS = `
 /* While the screenshot for a comment is taken: the page without Orbit on it. */
-[data-orbit-capturing] .orbit-root {
+[data-orbit-capturing] .orbit-root,
+[data-orbit-capturing] .orbit-toaster {
   visibility: hidden;
 }
 

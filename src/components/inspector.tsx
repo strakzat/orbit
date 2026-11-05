@@ -148,14 +148,14 @@ function CommentBubble({
   /** After the comment is in: picking is done, so the bubble and the inspector close. */
   onSent: () => void;
 }) {
-  const { commentsConfig, allAnnotations, refreshComments, labels, language } = useAnnotationsSafe();
+  const { commentsConfig, allAnnotations, labels, language } = useAnnotationsSafe();
 
   // On the component, the feedback is kept under a selector every instance answers to.
   const component = scope === "component" ? selected.component : null;
   // An annotated element is named by its annotation, as the annotation's own feedback is.
   const annotation = component ? undefined : allAnnotations.find((a) => a.id === selected.path);
 
-  const { submitComment } = useComments({
+  const { sendComment } = useComments({
     apiBase: commentsConfig?.apiBase ?? "",
     project: commentsConfig?.project ?? "",
     annotationId: component ? component.locator : selected.path,
@@ -183,10 +183,10 @@ function CommentBubble({
       tools:
         selected.component &&
         React.createElement(ScopeChoice, { scope, onScope, name: selected.component.name, labels }),
-      // A failed send throws before onSent, so the bubble keeps the text and shows its error.
+      // Placing is done here: the screenshot and the upload go on behind it, and the pin is there
+      // at once. A failure comes back as a toast (`FeedbackToasts`), with the text.
       onSubmit: async (data: { auteur: string; comment: string }) => {
-        await submitComment(data);
-        void refreshComments();
+        sendComment(data);
         onSent();
       },
     })

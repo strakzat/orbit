@@ -1,3 +1,4 @@
+import { ringRadius } from "../utils/pick-element";
 import { hexToRgb } from "../utils/tour";
 
 export const PRISM = ["amber", "peach", "ice", "cyan", "blue"];
@@ -9,7 +10,30 @@ const SPACING = 5;
 const LEAST = 44;
 // Seconds to come up on a new element.
 const SHOW = 0.7;
-const MAX_RATIO = 2;
+/** The tour's canvas draws at no more than this, and its stars are this big, in CSS px. */
+export const MAX_RATIO = 2;
+export const STAR = 1.08;
+
+/** What both shaders of the tour share. `prism` reads their `uPrism`. */
+export const STAR_GLSL = /* glsl */ `
+float hash(vec2 c) {
+  vec3 p = fract(vec3(c.xyx) * 0.1031);
+  p += dot(p, p.yzx + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+// pow() of a negative is undefined in GLSL, and engines differ: some give 0, Firefox gives NaN, and
+// NaN times 0 is still NaN, which lit every star past the ring. So: no pow() without a guard.
+float square(float x) {
+  return x * x;
+}
+
+vec3 prism(float t) {
+  float x = clamp(t, 0.0, 1.0) * 4.0;
+  int i = int(min(x, 3.0));
+  return mix(uPrism[i], uPrism[i + 1], x - float(i));
+}
+`;
 
 /**
  * What the tour points at, after Radial's home core: a corona, stars the element lets go, leaving
@@ -33,21 +57,7 @@ const float NEAR = 26.0;  // CSS px: how far the closest fade out
 const float FAR = 96.0;   // and the furthest
 const float PI = 3.14159265;
 
-float hash(vec2 c) {
-  vec3 p = fract(vec3(c.xyx) * 0.1031);
-  p += dot(p, p.yzx + 33.33);
-  return fract((p.x + p.y) * p.z);
-}
-
-float square(float x) {
-  return x * x;
-}
-
-vec3 prism(float t) {
-  float x = clamp(t, 0.0, 1.0) * 4.0;
-  int i = int(min(x, 3.0));
-  return mix(uPrism[i], uPrism[i + 1], x - float(i));
-}
+${STAR_GLSL}
 
 // A place on the rim of the rounded box, \`u\` CSS px along it clockwise from the top left: xy, and
 // the way out from it: zw.
@@ -145,7 +155,8 @@ export function createCorona(gl: WebGL2RenderingContext, styles: CSSStyleDeclara
       if (element !== shown) {
         shown = element;
         since = time;
-        corner = element ? parseFloat(getComputedStyle(element).borderTopLeftRadius) || 0 : 0;
+        // The ring's own: `50%` or `9999px` come out as a radius of this element, past the gap.
+        corner = element ? parseFloat(ringRadius(element as HTMLElement, GAP)) : 0;
       }
       if (!element) return;
       const rect = element.getBoundingClientRect();
@@ -153,7 +164,7 @@ export function createCorona(gl: WebGL2RenderingContext, styles: CSSStyleDeclara
       const ratio = Math.min(window.devicePixelRatio || 1, MAX_RATIO);
       const width = rect.width + GAP * 2;
       const height = rect.height + GAP * 2;
-      const round = Math.min(corner + GAP, width / 2, height / 2);
+      const round = Math.min(corner, width / 2, height / 2);
       const rim = 2 * (width + height) - 8 * round + 2 * Math.PI * round;
 
       gl.useProgram(program);
@@ -161,7 +172,7 @@ export function createCorona(gl: WebGL2RenderingContext, styles: CSSStyleDeclara
       gl.uniform4f(uniforms.box, rect.left - GAP, rect.top - GAP, width, height);
       gl.uniform1f(uniforms.corner, round);
       gl.uniform1f(uniforms.length, rim);
-      gl.uniform1f(uniforms.size, Math.max(1, Math.round(1.08 * ratio)));
+      gl.uniform1f(uniforms.size, Math.max(1, Math.round(STAR * ratio)));
       gl.uniform1f(uniforms.ratio, ratio);
       gl.uniform1f(uniforms.time, time);
       gl.uniform1f(uniforms.show, Math.min((time - since) / SHOW, 1));
