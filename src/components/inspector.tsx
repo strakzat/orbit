@@ -165,7 +165,8 @@ function CommentBubble({
     label: component ? getElementLabel(component.el) : annotation?.title ?? selected.label,
     // Only sending: the bubble shows no thread, so there is nothing to fetch.
     enabled: false,
-    component: component?.name,
+    // Also on one instance, for the trail: `annotationId` says which of the two it is.
+    component: selected.component?.name,
     target: selected.el,
   });
 

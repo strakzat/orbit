@@ -5,14 +5,15 @@ import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
 import { pickArea } from "../utils/pick-element";
 import { getPinPopoverStyle } from "../utils/popover-position";
-import { isOnPage, matchRoute } from "../utils/route-matching";
+import { isComponentWide, isOnPage, matchRoute } from "../utils/route-matching";
 import { hasPin } from "../utils/send-failure";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { ANONYMOUS } from "../constants";
 import { MarkerBadge } from "./marker-badge";
 import { AnnotationPopover } from "./annotation-popover";
-import { ComponentHead } from "./component-chip";
+import { InstanceComments } from "./instance-comments";
+import { PlaceTrail } from "./place-trail";
 import {
   BADGE_SIZE,
   POPOVER_MAX_HEIGHT,
@@ -82,6 +83,7 @@ export function FeedbackMarkers() {
     componentsOnPage,
     showResolvedPins,
     labels,
+    openThreadOnPage,
   } = useAnnotationsSafe();
 
   const [badges, setBadges] = useState<FeedbackBadgeInfo[]>([]);
@@ -126,7 +128,7 @@ export function FeedbackMarkers() {
       // Failed: no pin, unless its thread is open. It doesn't vanish from under the viewer.
       if (!hasPin(c) && c.annotationId !== activeAnnotationId) continue;
       // Feedback on a component goes wherever the component is; the rest stays on its page.
-      if (!c.component && !c.pagina) continue;
+      if (!isComponentWide(c) && !c.pagina && c.annotationId !== activeAnnotationId) continue;
       if (!isOnPage(c, currentRoute, componentsOnPage)) continue;
       const list = grouped.get(c.annotationId) || [];
       list.push(c);
@@ -154,10 +156,11 @@ export function FeedbackMarkers() {
       const component = comments.find((c) => c.component)?.component;
       // A component's pin is on its first instance. With none here (yet), there is none: parked,
       // it would sit in the corner of every page.
-      if (component && !el) continue;
+      if (!el && comments.some(isComponentWide)) continue;
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
-      // Done is done, if the viewer says so: no pin, and no place in the column either.
-      if (openCount === 0 && !showResolvedPins) continue;
+      // Done is done, if the viewer says so: no pin, and no place in the column either. Unless it's
+      // open: a component's thread can open one of its instances, whatever its pin would be.
+      if (openCount === 0 && !showResolvedPins && annotationId !== activeAnnotationId) continue;
       // An open thread stays: it follows its pin to the edge of the frame.
       if (el && annotationId !== activeAnnotationId && outOfArea(el.getBoundingClientRect(), area)) continue;
       // The thread's first comment, whatever order the API gave them in.
@@ -269,10 +272,24 @@ export function FeedbackMarkers() {
         header: React.createElement(
           "div",
           { className: "orbit-popover__section" },
-          activeBadge.component &&
-            React.createElement(ComponentHead, { name: activeBadge.component, labels }),
-          React.createElement("div", { className: "orbit-mono" }, activeBadge.label)
+          React.createElement(
+            PlaceTrail,
+            isComponentWide(activeBadge)
+              ? { className: "orbit-mono", component: activeBadge.component }
+              : { className: "orbit-mono", component: activeBadge.component, element: activeBadge.label }
+          )
         ),
+        extra:
+          activeBadge.component && isComponentWide(activeBadge)
+            ? React.createElement(InstanceComments, {
+                component: activeBadge.component,
+                onOpen: (c: Comment) => {
+                  if (!c.annotationId) return;
+                  const elsewhere = c.pagina && !isOnPage(c, currentRoute, componentsOnPage);
+                  openThreadOnPage(c.annotationId, elsewhere ? c.pagina : undefined);
+                },
+              })
+            : undefined,
         showComments: true,
         comments,
         isLoading,

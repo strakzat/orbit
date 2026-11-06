@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { comparableValue, describeVariants, isChanged, parseValue, resetVariant, serializeValue } from "../variants";
+import {
+  applyVariant,
+  comparableValue,
+  describeVariants,
+  holdsValue,
+  isChanged,
+  parseValue,
+  parseVariantLines,
+  resetVariant,
+  serializeValue,
+  splitVariantText,
+  threadVariants,
+} from "../variants";
 import { buildNotionCommentProperties, parseNotionComment } from "../../server";
 import type { OrbitVariant } from "../../types";
 
@@ -64,9 +76,123 @@ describe("variants", () => {
       { type: "action", id: "a", title: "Toast", onRun: () => {} },
       { type: "switch", id: "o", title: "Elders", value: true, onChange: () => {}, pages: (r) => r === "/elders" },
     ];
-    expect(describeVariants(variants, "/taken", labels)).toBe(
+    expect(describeVariants(variants, "/taken", labels).replace(/ \(orbit\..*\)/g, "")).toBe(
       "Leeg: aan\nRol: Administratie\nBerichten: 3 stuks\nModules: geen"
     );
+  });
+
+  describe("on a comment", () => {
+    const choice = (over: object = {}) =>
+      ({
+        type: "choice",
+        id: "rol",
+        title: "Rol",
+        options: [
+          { id: "regie", label: "Regie" },
+          { id: "admin", label: "Admin (kantoor)" },
+          { id: "oud", label: "Oud", disabled: true },
+        ],
+        value: "regie",
+        defaultValue: "regie",
+        onChange: vi.fn(),
+        ...over,
+      }) as Extract<OrbitVariant, { type: "choice" }>;
+
+    it("writes the id behind the text, and only for what has a default", () => {
+      const variants: OrbitVariant[] = [
+        choice({ value: "admin" }),
+        { type: "switch", id: "demo", title: "Demo", value: false, defaultValue: false, onChange: () => {} },
+        { type: "switch", id: "pins", title: "Pins", value: true, onChange: () => {} },
+      ];
+      expect(describeVariants(variants, "/", labels)).toBe(
+        "Rol: Admin (kantoor) (orbit.rol=admin, changed)\nDemo: uit (orbit.demo=0)\nPins: aan"
+      );
+    });
+
+    it("reads its lines back", () => {
+      const written = describeVariants([choice({ value: "admin" })], "/", labels);
+      expect(parseVariantLines(`${written}\nThema: Systeem (donker)`)).toEqual([
+        { text: "Rol: Admin (kantoor)", id: "rol", raw: "admin", changed: true },
+        { text: "Thema: Systeem (donker)", changed: false },
+      ]);
+      expect(parseVariantLines(undefined)).toEqual([]);
+    });
+
+    it("splits a line's text at its first colon", () => {
+      expect(splitVariantText("Canvas en kaart: F: Glas")).toEqual({ title: "Canvas en kaart", value: "F: Glas" });
+      expect(splitVariantText("Los")).toEqual({ title: "Los", value: "" });
+    });
+
+    it("keeps a list of ids and an empty list", () => {
+      expect(parseVariantLines("M: A, B (orbit.m=a,b)")[0].raw).toBe("a,b");
+      expect(parseVariantLines("M: geen (orbit.m=)")[0].raw).toBe("");
+    });
+
+    it("takes a thread's variants from its oldest comment that has any", () => {
+      const comments = [
+        { annotationId: "x", aangemaakt: "2026-03-01", varianten: "R: B (orbit.rol=b)" },
+        { annotationId: "x", aangemaakt: "2026-02-01", varianten: "R: A (orbit.rol=a)\nT: Licht" },
+        { annotationId: "x", aangemaakt: "2026-01-01" },
+        { annotationId: "x", aangemaakt: "2026-01-02", varianten: "T: Licht" },
+        { annotationId: "y", aangemaakt: "2025-01-01", varianten: "R: C (orbit.rol=c)" },
+      ];
+      expect(threadVariants(comments, "x")).toEqual(new Map([["rol", "a"]]));
+      expect(threadVariants(comments, "z").size).toBe(0);
+    });
+
+    it("applies what the variant can still take", () => {
+      const variant = choice();
+      expect(applyVariant(variant, "admin")).toBe(true);
+      expect(variant.onChange).toHaveBeenCalledWith("admin");
+    });
+
+    it("leaves a choice on the same value, a gone option and a disabled one", () => {
+      const variant = choice();
+      expect(applyVariant(variant, "regie")).toBe(false);
+      expect(applyVariant(variant, "weg")).toBe(false);
+      expect(applyVariant(variant, "oud")).toBe(false);
+      expect(variant.onChange).not.toHaveBeenCalled();
+    });
+
+    it("drops ids a multi no longer has, in any order the same list", () => {
+      const onChange = vi.fn();
+      const base = { type: "multi", id: "m", title: "M", options: [{ id: "a", label: "A" }, { id: "b", label: "B" }], onChange } as const;
+      expect(applyVariant({ ...base, value: ["a"] }, "b,weg")).toBe(true);
+      expect(onChange).toHaveBeenCalledWith(["b"]);
+      onChange.mockClear();
+      expect(applyVariant({ ...base, value: ["a", "b"] }, "b,a")).toBe(false);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("reads a switch and keeps a range within its bounds", () => {
+      const onSwitch = vi.fn();
+      const on = { type: "switch", id: "s", title: "S", value: false, onChange: onSwitch } as const;
+      expect(applyVariant(on, "1")).toBe(true);
+      expect(onSwitch).toHaveBeenCalledWith(true);
+      expect(applyVariant(on, "onzin")).toBe(false);
+
+      const onRange = vi.fn();
+      const range = { type: "range", id: "r", title: "R", min: 0, max: 9, value: 3, onChange: onRange } as const;
+      expect(applyVariant(range, "12")).toBe(false);
+      expect(applyVariant(range, "7")).toBe(true);
+      expect(onRange).toHaveBeenCalledWith(7);
+    });
+
+    it("knows when a variant stands on a comment's value", () => {
+      expect(holdsValue(choice({ value: "admin" }), "admin")).toBe(true);
+      expect(holdsValue(choice(), "admin")).toBe(false);
+      const multi = { type: "multi", id: "m", title: "M", options: [], value: ["a", "b"], onChange: () => {} } as const;
+      expect(holdsValue(multi, "b,a")).toBe(true);
+      const on = { type: "switch", id: "s", title: "S", value: true, onChange: () => {} } as const;
+      expect(holdsValue(on, "1")).toBe(true);
+      expect(holdsValue(on, "0")).toBe(false);
+    });
+
+    it("never runs an action", () => {
+      const onRun = vi.fn();
+      expect(applyVariant({ type: "action", id: "a", title: "A", onRun }, "1")).toBe(false);
+      expect(onRun).not.toHaveBeenCalled();
+    });
   });
 
   it("writes Varianten to Notion only when there are any, and reads it back", () => {

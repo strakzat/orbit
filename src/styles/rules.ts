@@ -889,11 +889,6 @@ const CHROME = `
 }
 
 /* The component the popover is about: its pill, above the element. */
-.orbit-popover__component {
-  display: flex;
-  margin-bottom: var(--orbit-space-2);
-}
-
 .orbit-root .orbit-segment:focus-visible {
   outline-offset: -2px;
 }
@@ -2014,15 +2009,89 @@ const COMMENTS = `
   outline-offset: -3px;
 }
 
+/* One line: the pill keeps its size and the text gives way. */
+.orbit-place {
+  display: flex;
+  align-items: center;
+  gap: var(--orbit-space-1-5);
+  min-width: 0;
+}
+
+.orbit-place__chip {
+  display: inline-flex;
+  flex: none;
+}
+
+.orbit-place__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The element gives way first: the pages are shorter and say more. */
+.orbit-place__text--pages {
+  flex-shrink: 0;
+  max-width: 50%;
+}
+
 .orbit-comment__label {
   grid-column: 1 / -1;
   margin-bottom: var(--orbit-space-1);
-  overflow: hidden;
   font-family: var(--orbit-font-mono);
   font-size: var(--orbit-text-xs);
   color: var(--orbit-text-quaternary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.orbit-instance-comments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-1);
+  /* The rows' padding, so their text lines up with the rest of the thread. */
+  margin: 0 calc(-1 * var(--orbit-space-2));
+}
+
+.orbit-instance-comment {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--orbit-space-1-5) var(--orbit-space-2);
+  border-radius: var(--orbit-radius-md);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--orbit-duration-fast) var(--orbit-ease);
+}
+
+.orbit-instance-comment:hover {
+  background: var(--orbit-glass-film);
+}
+
+.orbit-instance-comment:focus-visible {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: -2px;
+}
+
+.orbit-instance-comment__text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--orbit-text-sm);
+  line-height: var(--orbit-leading-normal);
+  color: var(--orbit-text-secondary);
+}
+
+.orbit-instance-comment__author {
+  margin-right: var(--orbit-space-1-5);
+  font-weight: 600;
+  color: var(--orbit-text-primary);
+}
+
+.orbit-comment__place {
+  margin-top: var(--orbit-space-1);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-text-xs);
+  color: var(--orbit-text-quaternary);
 }
 
 .orbit-comment__body {
@@ -2062,21 +2131,82 @@ const COMMENTS = `
   text-wrap: pretty;
 }
 
+/* Over the card's stretched button, and only as wide as the chip: beside it, a click opens the card. */
 .orbit-comment__variants {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: fit-content;
   margin-top: var(--orbit-space-1);
+}
+
+.orbit-comment__variants-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orbit-space-1);
   font-size: var(--orbit-text-xs);
   color: var(--orbit-text-quaternary);
+  cursor: default;
 }
 
-.orbit-comment__component {
-  display: flex;
-  margin-top: var(--orbit-space-1-5);
+.orbit-comment--clickable .orbit-comment__variants-chip {
+  cursor: pointer;
 }
 
-.orbit-comment--clickable .orbit-comment__variants {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.orbit-comment__variants-chip:focus-visible {
+  outline: 2px solid var(--orbit-outline-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--orbit-radius-sm);
+}
+
+/* In document.body, placed by measuring: over the panel, the list's edge and the rail alike. */
+.orbit-variants-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: calc(var(--orbit-z-base) + var(--orbit-z-inspector-popover));
+  display: grid;
+  /* The value on the left edge, its label on the right. Past 13em a label takes a second line, as
+     a value does. */
+  grid-template-columns: minmax(0, 1fr) fit-content(13em);
+  gap: var(--orbit-space-1-5) var(--orbit-space-4);
+  width: max-content;
+  min-width: 280px;
+  max-width: min(420px, calc(100vw - var(--orbit-space-4)));
+  padding: var(--orbit-space-2-5) var(--orbit-space-3);
+  border-radius: var(--orbit-radius-lg);
+  background: var(--orbit-spotlight-tag);
+  box-shadow: var(--orbit-shadow-pane);
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-text-xs);
+  line-height: var(--orbit-leading-snug);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.orbit-variants-tip__title {
+  color: color-mix(in oklab, var(--orbit-spotlight-tag-text) 60%, transparent);
+  text-align: end;
+}
+
+.orbit-variants-tip__value {
+  color: var(--orbit-spotlight-tag-text);
+}
+
+.orbit-variants-tip--placed {
+  visibility: visible;
+  animation: orbit-variants-tip-in var(--orbit-duration-fast) var(--orbit-ease) 300ms both;
+}
+
+.orbit-variants-tip--now {
+  animation-delay: 0s;
+}
+
+@keyframes orbit-variants-tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
 }
 
 /* A comment in the panel list stays clamped: it is the entry, not the thread. */
@@ -2099,16 +2229,6 @@ const COMMENTS = `
   font-size: var(--orbit-text-2xs);
   color: var(--orbit-text-quaternary);
   font-variant-numeric: tabular-nums;
-}
-
-.orbit-comment__foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--orbit-space-2);
-  margin-top: var(--orbit-space-2);
-  font-size: var(--orbit-text-xs);
-  color: var(--orbit-text-quaternary);
 }
 
 /* The bin on the viewer's own comment: there when the comment is pointed at or holds the focus,
@@ -2691,7 +2811,8 @@ const OVERLAYS = `
     left var(--orbit-duration-fast) var(--orbit-ease),
     width var(--orbit-duration-fast) var(--orbit-ease),
     height var(--orbit-duration-fast) var(--orbit-ease),
-    border-radius var(--orbit-duration-fast) var(--orbit-ease);
+    border-radius var(--orbit-duration-fast) var(--orbit-ease),
+    clip-path var(--orbit-duration-fast) var(--orbit-ease);
 }
 
 /* A spread shadow rounds its outer corners by as much as it spreads, so the scrim is a circle
@@ -2713,6 +2834,15 @@ const OVERLAYS = `
   mix-blend-mode: plus-lighter;
   pointer-events: none;
   opacity: 1;
+}
+
+/* The frame's shape, so an element that fills the frame doesn't draw its ring over the rail. Moves
+   with the ring: same duration and curve, so the edge stays put while the ring glides. */
+.orbit-spotlight-ring--framed {
+  clip-path: inset(
+    var(--orbit-ring-clip-top, 0) var(--orbit-ring-clip-right, 0) var(--orbit-ring-clip-bottom, 0)
+      var(--orbit-ring-clip-left, 0) round 0 0 24px 24px
+  );
 }
 
 .orbit-spotlight-ring--idle {

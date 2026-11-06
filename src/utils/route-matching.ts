@@ -1,3 +1,5 @@
+import { COMPONENT_ATTR } from "../constants";
+
 /**
  * Match a route pattern against a path.
  * Supports :param wildcards (e.g. "/projects/:id/details").
@@ -45,16 +47,26 @@ export function matchRoute(pattern: string, path: string): boolean {
 }
 
 /**
+ * Whether feedback is on a component as a whole, rather than on one instance in it. Both name the
+ * component; only the whole has its selector for an `annotationId`, the one every instance answers to.
+ */
+export function isComponentWide(comment: { annotationId?: string; component?: string }): boolean {
+  const id = comment.annotationId ?? "";
+  // The selector alone: anything after it is a way into one instance.
+  return !!comment.component && id.startsWith(`[${COMPONENT_ATTR}=`) && id.indexOf("]") === id.length - 1;
+}
+
+/**
  * Whether a comment belongs on the current page. Feedback on a component goes wherever that
  * component is (`componentsOnPage`, kept by the provider), not to the page it was given on.
  * Without a page (older feedback) it shows everywhere.
  */
 export function isOnPage(
-  comment: { pagina?: string; component?: string },
+  comment: { annotationId?: string; pagina?: string; component?: string },
   route: string,
   componentsOnPage: Set<string>
 ): boolean {
-  if (comment.component) return componentsOnPage.has(comment.component);
+  if (isComponentWide(comment)) return componentsOnPage.has(comment.component!);
   return !comment.pagina || matchRoute(route, comment.pagina);
 }
 
@@ -75,6 +87,21 @@ export function routeBreadcrumb(target: string): string {
     ([key, value]) => `${key}=${value}`
   );
   return [...pathParts, ...queryParts].join(" / ");
+}
+
+/** The pages a place keeps before its element: the ones nearest to it. */
+const PLACE_PAGES = 2;
+
+/**
+ * Where a comment is, as a trail: `Home / Sidebar`, `… / 40.2 / doelen / <h2> Doelen`. The route's
+ * pages without its query, which says how the page stood rather than where it is. Past two, the
+ * first ones go. Without a page (older feedback), only the element.
+ */
+export function placeTrail(pagina: string | undefined, element: string, home: string): string {
+  const pages = (pagina ?? "").split("?")[0].split("/").filter(Boolean);
+  const trail = !pagina ? [] : pages.length ? pages : [home];
+  const shown = trail.length > PLACE_PAGES ? ["…", ...trail.slice(-PLACE_PAGES)] : trail;
+  return [...shown, element].filter(Boolean).join(" / ");
 }
 
 /** Pushes a route target onto history and lets a listening router pick it up. */

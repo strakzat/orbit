@@ -35,6 +35,9 @@ interface OrbitRailProps {
  * the project's variants, when it has any; on the right the inspector and the panel, under the
  * corner the panel opens in, and at the end the viewer's profile. A toolbar: one stop for Tab, the arrow keys move between its buttons.
  */
+// Long enough for a screen reader to see the live region empty.
+const SPOKEN_DELAY_MS = 150;
+
 export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const {
     labels,
@@ -54,6 +57,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     tourStep,
     startTour,
     abandonTour,
+    threadVariantsApplied,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -102,6 +106,17 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     }
     wasTouring.current = touring;
   }, [touring]);
+
+  // The page changed without the viewer touching a variant, and a screen reader doesn't see it.
+  // Emptied first: the same sentence twice is no change to a live region. One sentence for all of a
+  // thread's variants, and only for what happened since this rail is here.
+  const appliedAtMount = useRef(threadVariantsApplied);
+  useEffect(() => {
+    if (threadVariantsApplied === appliedAtMount.current) return;
+    setSpoken("");
+    const timer = window.setTimeout(() => setSpoken(labels.variantsAppliedSpoken), SPOKEN_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [threadVariantsApplied]);
 
   const closeVariants = useCallback((returnFocus: boolean) => {
     setVariantsOpen(false);

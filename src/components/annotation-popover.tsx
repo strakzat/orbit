@@ -10,6 +10,8 @@ import { MessageSquareTextIcon, XIcon } from "../icons";
 import type { Annotation, Comment } from "../types";
 
 interface AnnotationPopoverProps {
+  /** A section between the comments and the composer. */
+  extra?: React.ReactNode;
   /** Referenced by the trigger's aria-controls. */
   id: string;
   annotation?: Annotation;
@@ -35,6 +37,7 @@ interface AnnotationPopoverProps {
  * three different radii, paddings and shadows for the same thing.
  */
 export function AnnotationPopover({
+  extra,
   id,
   annotation,
   header,
@@ -102,13 +105,14 @@ export function AnnotationPopover({
       isLoading,
       error,
       onSubmit,
+      extra,
     })
   );
 }
 
 type ThreadSectionsProps = Pick<
   AnnotationPopoverProps,
-  "annotation" | "header" | "showComments" | "comments" | "isLoading" | "error" | "onSubmit"
+  "annotation" | "header" | "extra" | "showComments" | "comments" | "isLoading" | "error" | "onSubmit"
 >;
 
 /**
@@ -123,6 +127,7 @@ export function ThreadSections({
   isLoading,
   error,
   onSubmit,
+  extra,
 }: ThreadSectionsProps) {
   const { labels } = useAnnotationsSafe();
   const type = annotation?.type ?? "documentation";
@@ -160,6 +165,8 @@ export function ThreadSections({
         ),
         React.createElement(CommentThread, { comments, isLoading, error })
       ),
+
+    extra,
 
     // The composer is the thread's last section, under a divider like the others: part of the
     // thread, not a field floating in it.

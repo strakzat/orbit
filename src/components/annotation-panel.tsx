@@ -4,7 +4,7 @@ import { useAnnotationStyles } from "../styles/inject";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
-import { isOnPage, matchRoute, navigateTo, routeBreadcrumb } from "../utils/route-matching";
+import { isOnPage, matchRoute, navigateTo } from "../utils/route-matching";
 import { STATUS_SLUGS } from "../styles/tokens";
 import { XIcon, SearchIcon } from "../icons";
 import { TYPE_ICONS } from "../constants";
@@ -47,6 +47,7 @@ export function AnnotationPanel() {
     language,
     inspectorActive,
     tourStep,
+    threadVariantsApplied,
   } = useAnnotations();
 
   // A project that writes no annotations uses Orbit for its feedback: open there.
@@ -127,23 +128,37 @@ export function AnnotationPanel() {
     }
   }, [panelOpen]);
 
-  // The open thread's element, also after the panel took the viewer to its page: a frame later,
-  // once the route has rendered. Scrolled into view, then held in the spotlight.
+  // The open thread's element, also after the panel took the viewer to its page. Looked for until
+  // it's there: a route renders a frame later, and a variant when the project gets to it. Scrolled
+  // into view, then held in the spotlight.
   useEffect(() => {
     if (!threadOpen || !thread) {
       setThreadEl(null);
       return;
     }
-    const frame = requestAnimationFrame(() => {
-      const el =
-        thread.kind === "annotation"
-          ? findElementByAnnotationId(thread.annotation.elementId || thread.annotation.id)
-          : findElementByAnnotationId(thread.annotationId, thread.label || undefined);
-      setThreadEl(el);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    let frame = 0;
+    const observer = new MutationObserver(() => {
+      if (!frame) frame = requestAnimationFrame(look);
     });
-    return () => cancelAnimationFrame(frame);
-  }, [threadOpen, thread, currentRoute]);
+    function look() {
+      frame = 0;
+      const el =
+        thread!.kind === "annotation"
+          ? findElementByAnnotationId(thread!.annotation.elementId || thread!.annotation.id)
+          : findElementByAnnotationId(thread!.annotationId, thread!.label || undefined);
+      setThreadEl(el);
+      if (!el) return;
+      observer.disconnect();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    observer.observe(document.body, { childList: true, subtree: true });
+    frame = requestAnimationFrame(look);
+    return () => {
+      observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+    };
+    // Again after a variant: the element may only exist in the one the thread was written in.
+  }, [threadOpen, thread, currentRoute, threadVariantsApplied]);
 
   const { panelWidth, panelHeight } = settings;
 
@@ -426,6 +441,7 @@ export function AnnotationPanel() {
             key: c.id,
             comment: c,
             showLabel: true,
+            hidePages: tab === "page",
             isActive: !!c.annotationId && c.annotationId === activeAnnotationId,
             activateLabel: c.label
               ? fill(labels.feedbackFromOn, { name: c.auteur, label: c.label })
@@ -440,6 +456,7 @@ export function AnnotationPanel() {
                       // No label is no label: the selector is not one, and would be sent as one.
                       label: c.label ?? "",
                       component: c.component,
+                      pagina: c.pagina,
                     },
                     e.currentTarget
                   );
@@ -451,24 +468,6 @@ export function AnnotationPanel() {
               ? () => setHover({ key: `f:${c.id}`, el: findElementByAnnotationId(c.annotationId!, c.label) })
               : undefined,
             onMouseLeave: () => setHover(null),
-            footer: c.pagina
-              ? React.createElement(
-                  "div",
-                  { className: "orbit-comment__foot" },
-                  React.createElement(
-                    "button",
-                    {
-                      type: "button",
-                      className: "orbit-link",
-                      onClick: (e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        navigateTo(c.pagina!);
-                      },
-                    },
-                    routeBreadcrumb(c.pagina)
-                  )
-                )
-              : undefined,
           })
         )
   );
@@ -525,6 +524,16 @@ export function AnnotationPanel() {
             backRef,
             onBack: back,
             onClose: close,
+            onOpenInstance: (c: Comment) => {
+              setThread({
+                kind: "feedback",
+                annotationId: c.annotationId ?? "",
+                label: c.label ?? "",
+                component: c.component,
+                pagina: c.pagina,
+              });
+              if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) navigateTo(c.pagina);
+            },
           })
       )
     ),

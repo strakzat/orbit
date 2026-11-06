@@ -3,18 +3,22 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { fill } from "../labels";
+import { isComponentWide } from "../utils/route-matching";
 import { canRetry } from "../utils/send-failure";
 import { FailureText } from "./failure-text";
 import { StatusPill } from "./status-pill";
-import { ComponentChip } from "./component-chip";
 import { TrashIcon } from "../icons";
+import { parseVariantLines } from "../utils/variants";
+import { PlaceTrail } from "./place-trail";
+import { VariantsChip } from "./variants-chip";
 import type { Comment } from "../types";
 
 interface CommentCardProps {
   comment: Comment;
   /** Shows the element reference the comment was left on. */
   showLabel?: boolean;
-  footer?: React.ReactNode;
+  /** Leaves the pages out of where it is: the list is already of one page. */
+  hidePages?: boolean;
   /**
    * Opens this comment's thread on the page. Leave it out for a thread inside a
    * popover, where the comments are already shown in full.
@@ -36,7 +40,7 @@ interface CommentCardProps {
 export function CommentCard({
   comment,
   showLabel,
-  footer,
+  hidePages,
   onSelect,
   isActive,
   activateLabel,
@@ -52,6 +56,13 @@ export function CommentCard({
   const trashRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const askedRef = useRef(false);
+  // A whole component is on many pages: the one it was written on says little.
+  const pagina = hidePages || isComponentWide(comment) ? undefined : comment.pagina;
+  // What sets this comment apart: the variants on their default say nothing. Written without ids,
+  // Orbit can't tell which those are and applies nothing: then the chip only says what it read.
+  const variantLines = parseVariantLines(comment.varianten);
+  const changedVariants = variantLines.filter((line) => line.changed);
+  const onlyText = !variantLines.some((line) => line.id);
   useEffect(() => {
     // The question takes the focus, on the safe answer; dismissed, the focus goes back to the bin.
     if (confirming) cancelRef.current?.focus();
@@ -103,8 +114,12 @@ export function CommentCard({
       ),
 
     showLabel &&
-      comment.label &&
-      React.createElement("div", { className: "orbit-comment__label" }, comment.label),
+      React.createElement(PlaceTrail, {
+        className: "orbit-comment__label",
+        pagina,
+        element: comment.label,
+        component: comment.component,
+      }),
 
     React.createElement(
       "span",
@@ -148,6 +163,14 @@ export function CommentCard({
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
 
+      // In a component's thread the head says which component: each comment says which instance.
+      isComponentWide(comment) && !showLabel
+        ? React.createElement(PlaceTrail, {
+            className: "orbit-comment__place",
+            element: comment.label,
+          })
+        : null,
+
       // The toast is gone after a while; the comment and its retry stay here.
       comment.delivery === "failed" &&
         React.createElement(
@@ -169,32 +192,13 @@ export function CommentCard({
           labels.commentRetry
         ),
 
-      // Given on a component: it shows wherever the component is, so the card says which.
-      comment.component
-        ? React.createElement(
-            "div",
-            { className: "orbit-comment__component" },
-            React.createElement(
-              "span",
-              { className: "orbit-sr-only" },
-              fill(labels.componentNamed, { name: comment.component })
-            ),
-            React.createElement(
-              "span",
-              { "aria-hidden": true },
-              React.createElement(ComponentChip, { name: comment.component })
-            )
-          )
-        : null,
-
-      // The variants it was written in, on one line: a list entry is no place for more.
-      comment.varianten
-        ? React.createElement(
-            "div",
-            { className: "orbit-comment__variants" },
-            React.createElement("span", { className: "orbit-sr-only" }, `${labels.variants}: `),
-            comment.varianten.split("\n").join(" · ")
-          )
+      // The variants it was written in, when they differ from where the prototype starts.
+      changedVariants.length > 0 || (variantLines.length > 0 && onlyText)
+        ? React.createElement(VariantsChip, {
+            label: onlyText ? labels.variants : labels.variantsApplied,
+            lines: (onlyText ? variantLines : changedVariants).map((line) => line.text),
+            onSelect,
+          })
         : null,
 
       comment.antwoord
@@ -247,8 +251,6 @@ export function CommentCard({
           deleteFailed &&
             React.createElement("p", { className: "orbit-error orbit-comment__confirm-error", role: "alert" }, labels.commentDeleteError)
         ),
-
-      footer
     )
   );
 }
