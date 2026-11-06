@@ -5,7 +5,7 @@ import { useAnnotationStyles } from "../styles/inject";
 import { useStableId } from "../utils/use-stable-id";
 import { pickArea } from "../utils/pick-element";
 import { getPinPopoverStyle } from "../utils/popover-position";
-import { isComponentWide, isOnPage, matchRoute, navigateTo } from "../utils/route-matching";
+import { isComponentWide, isOnPage, matchRoute } from "../utils/route-matching";
 import { hasPin } from "../utils/send-failure";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
@@ -83,6 +83,7 @@ export function FeedbackMarkers() {
     componentsOnPage,
     showResolvedPins,
     labels,
+    openThreadOnPage,
   } = useAnnotationsSafe();
 
   const [badges, setBadges] = useState<FeedbackBadgeInfo[]>([]);
@@ -127,7 +128,7 @@ export function FeedbackMarkers() {
       // Failed: no pin, unless its thread is open. It doesn't vanish from under the viewer.
       if (!hasPin(c) && c.annotationId !== activeAnnotationId) continue;
       // Feedback on a component goes wherever the component is; the rest stays on its page.
-      if (!isComponentWide(c) && !c.pagina) continue;
+      if (!isComponentWide(c) && !c.pagina && c.annotationId !== activeAnnotationId) continue;
       if (!isOnPage(c, currentRoute, componentsOnPage)) continue;
       const list = grouped.get(c.annotationId) || [];
       list.push(c);
@@ -157,8 +158,9 @@ export function FeedbackMarkers() {
       // it would sit in the corner of every page.
       if (!el && comments.some(isComponentWide)) continue;
       const openCount = comments.filter((c) => c.status !== "Opgelost").length;
-      // Done is done, if the viewer says so: no pin, and no place in the column either.
-      if (openCount === 0 && !showResolvedPins) continue;
+      // Done is done, if the viewer says so: no pin, and no place in the column either. Unless it's
+      // open: a component's thread can open one of its instances, whatever its pin would be.
+      if (openCount === 0 && !showResolvedPins && annotationId !== activeAnnotationId) continue;
       // An open thread stays: it follows its pin to the edge of the frame.
       if (el && annotationId !== activeAnnotationId && outOfArea(el.getBoundingClientRect(), area)) continue;
       // The thread's first comment, whatever order the API gave them in.
@@ -282,8 +284,9 @@ export function FeedbackMarkers() {
             ? React.createElement(InstanceComments, {
                 component: activeBadge.component,
                 onOpen: (c: Comment) => {
-                  if (c.pagina && !isOnPage(c, currentRoute, componentsOnPage)) navigateTo(c.pagina);
-                  setActiveAnnotationId(c.annotationId ?? null);
+                  if (!c.annotationId) return;
+                  const elsewhere = c.pagina && !isOnPage(c, currentRoute, componentsOnPage);
+                  openThreadOnPage(c.annotationId, elsewhere ? c.pagina : undefined);
                 },
               })
             : undefined,

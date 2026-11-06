@@ -153,6 +153,12 @@ export function threadVariants(
 const pickable = (variant: { options: readonly OrbitVariantOption[] }, id: string) =>
   variant.options.some((o) => o.id === id && !o.disabled);
 
+/** Whether a variant stands on a value a comment carries. */
+export function holdsValue(variant: OrbitVariant, raw: string): boolean {
+  if (variant.type === "action") return true;
+  return comparableValue(variant.value) === comparableValue(parseValue<OrbitVariantValue>(raw, variant.value));
+}
+
 /**
  * Puts a variant on a value a comment carries, if it can still take it: the prototype moved on
  * since. Whether it changed anything.

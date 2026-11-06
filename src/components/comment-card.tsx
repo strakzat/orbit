@@ -17,9 +17,8 @@ interface CommentCardProps {
   comment: Comment;
   /** Shows the element reference the comment was left on. */
   showLabel?: boolean;
-  /** Leaves the pages out of where it is: the list or the thread is already on the page. */
+  /** Leaves the pages out of where it is: the list is already of one page. */
   hidePages?: boolean;
-  footer?: React.ReactNode;
   /**
    * Opens this comment's thread on the page. Leave it out for a thread inside a
    * popover, where the comments are already shown in full.
@@ -42,7 +41,6 @@ export function CommentCard({
   comment,
   showLabel,
   hidePages,
-  footer,
   onSelect,
   isActive,
   activateLabel,
@@ -58,10 +56,13 @@ export function CommentCard({
   const trashRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const askedRef = useRef(false);
-  // What sets this comment apart. The variants on their default say nothing.
   // A whole component is on many pages: the one it was written on says little.
   const pagina = hidePages || isComponentWide(comment) ? undefined : comment.pagina;
-  const changedVariants = parseVariantLines(comment.varianten).filter((line) => line.changed);
+  // What sets this comment apart: the variants on their default say nothing. Written without ids,
+  // Orbit can't tell which those are and applies nothing: then the chip only says what it read.
+  const variantLines = parseVariantLines(comment.varianten);
+  const changedVariants = variantLines.filter((line) => line.changed);
+  const onlyText = !variantLines.some((line) => line.id);
   useEffect(() => {
     // The question takes the focus, on the safe answer; dismissed, the focus goes back to the bin.
     if (confirming) cancelRef.current?.focus();
@@ -192,10 +193,10 @@ export function CommentCard({
         ),
 
       // The variants it was written in, when they differ from where the prototype starts.
-      changedVariants.length > 0
+      changedVariants.length > 0 || (variantLines.length > 0 && onlyText)
         ? React.createElement(VariantsChip, {
-            label: labels.variantsApplied,
-            lines: changedVariants.map((line) => line.text),
+            label: onlyText ? labels.variants : labels.variantsApplied,
+            lines: (onlyText ? variantLines : changedVariants).map((line) => line.text),
             onSelect,
           })
         : null,
@@ -250,8 +251,6 @@ export function CommentCard({
           deleteFailed &&
             React.createElement("p", { className: "orbit-error orbit-comment__confirm-error", role: "alert" }, labels.commentDeleteError)
         ),
-
-      footer
     )
   );
 }

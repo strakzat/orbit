@@ -8,11 +8,9 @@ interface CommentThreadProps {
   comments: Comment[];
   isLoading: boolean;
   error: string | null;
-  /** Leaves the pages out of where each comment was placed. */
-  hidePages?: boolean;
 }
 
-export function CommentThread({ comments, isLoading, error, hidePages }: CommentThreadProps) {
+export function CommentThread({ comments, isLoading, error }: CommentThreadProps) {
   useAnnotationStyles();
   const { labels, isOwnComment, deleteComment, discardComment } = useAnnotationsSafe();
   const ref = useRef<HTMLDivElement>(null);
@@ -67,7 +65,6 @@ export function CommentThread({ comments, isLoading, error, hidePages }: Comment
       React.createElement(CommentCard, {
         key: comment.id,
         comment,
-        hidePages,
         onDelete:
           comment.delivery === "failed"
             ? discard(comment.id)

@@ -2131,11 +2131,12 @@ const COMMENTS = `
   text-wrap: pretty;
 }
 
-/* Over the card's stretched button. */
+/* Over the card's stretched button, and only as wide as the chip: beside it, a click opens the card. */
 .orbit-comment__variants {
   position: relative;
   z-index: 1;
   display: flex;
+  width: fit-content;
   margin-top: var(--orbit-space-1);
 }
 

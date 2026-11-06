@@ -64,7 +64,11 @@ export function VariantsChip({ label, lines, onSelect }: VariantsChipProps) {
         type: "button",
         className: "orbit-comment__variants-chip",
         "aria-describedby": descriptionId,
-        onClick: onSelect,
+        // The click may take the card out of view, without the mouse ever leaving the chip.
+        onClick: (e: React.MouseEvent<HTMLElement>) => {
+          setOpen(null);
+          onSelect?.(e);
+        },
         onMouseEnter: () => setOpen((now) => now ?? "hover"),
         onMouseLeave: () => setOpen((now) => (now === "hover" ? null : now)),
         onFocus: (e: React.FocusEvent<HTMLElement>) => {

@@ -3,6 +3,7 @@ import {
   applyVariant,
   comparableValue,
   describeVariants,
+  holdsValue,
   isChanged,
   parseValue,
   parseVariantLines,
@@ -175,6 +176,16 @@ describe("variants", () => {
       expect(applyVariant(range, "12")).toBe(false);
       expect(applyVariant(range, "7")).toBe(true);
       expect(onRange).toHaveBeenCalledWith(7);
+    });
+
+    it("knows when a variant stands on a comment's value", () => {
+      expect(holdsValue(choice({ value: "admin" }), "admin")).toBe(true);
+      expect(holdsValue(choice(), "admin")).toBe(false);
+      const multi = { type: "multi", id: "m", title: "M", options: [], value: ["a", "b"], onChange: () => {} } as const;
+      expect(holdsValue(multi, "b,a")).toBe(true);
+      const on = { type: "switch", id: "s", title: "S", value: true, onChange: () => {} } as const;
+      expect(holdsValue(on, "1")).toBe(true);
+      expect(holdsValue(on, "0")).toBe(false);
     });
 
     it("never runs an action", () => {

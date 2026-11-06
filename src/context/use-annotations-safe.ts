@@ -44,6 +44,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   describeVariants: () => "",
   setPanelThreadId: () => {},
   threadVariantsApplied: 0,
+  openThreadOnPage: () => {},
   language: "nl",
   viewer: { name: "", language: null, showMarkers: null, showResolved: null, tourSeen: false },
   setViewerName: () => {},

@@ -105,8 +105,6 @@ export function AnnotationPopover({
       isLoading,
       error,
       onSubmit,
-      // On the canvas: the viewer is on the page already.
-      hidePages: true,
       extra,
     })
   );
@@ -129,9 +127,8 @@ export function ThreadSections({
   isLoading,
   error,
   onSubmit,
-  hidePages,
   extra,
-}: ThreadSectionsProps & { hidePages?: boolean }) {
+}: ThreadSectionsProps) {
   const { labels } = useAnnotationsSafe();
   const type = annotation?.type ?? "documentation";
 
@@ -166,7 +163,7 @@ export function ThreadSections({
           comments.length > 0 &&
             React.createElement("span", { className: "orbit-count" }, comments.length)
         ),
-        React.createElement(CommentThread, { comments, isLoading, error, hidePages })
+        React.createElement(CommentThread, { comments, isLoading, error })
       ),
 
     extra,

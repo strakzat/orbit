@@ -15,13 +15,13 @@ import { failureFrom } from "../utils/send-failure";
 import { useOwnComments } from "../hooks/use-own-comments";
 import { useAnnotationStyles } from "../styles/inject";
 import { applyRuntimeTokens } from "../styles/brand";
-import { matchRoute } from "../utils/route-matching";
+import { matchRoute, navigateTo } from "../utils/route-matching";
 import { Inspector } from "../components/inspector";
 import { FeedbackToasts } from "../components/feedback-toasts";
 import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
-import { applyVariant, describeVariants as describe, threadVariants } from "../utils/variants";
+import { applyVariant, describeVariants as describe, holdsValue, threadVariants } from "../utils/variants";
 import { tourAnchors, tourSample, type TourAnchor } from "../utils/tour";
 
 /** The names of the components on the page now. */
@@ -36,6 +36,8 @@ function readComponents(): Set<string> {
 
 // During the tour no wrapper shows a pin, so none of them stands in for feedback's own pin.
 const NO_MARKERS: Set<string> = new Set();
+// How long the next variant waits for the last one to show.
+const VARIANT_WAIT_MS = 1000;
 const NOTHING_TO_MARK = () => {};
 
 const sameSet = (a: Set<string>, b: Set<string>) =>
@@ -212,12 +214,28 @@ export function AnnotationProvider({
 
   // Clear context stack on route change
   const prevRouteRef = useRef(currentRoute);
+  // A pin belongs to its page: its thread closes with it, unless it is why the route changed.
+  const threadForRouteRef = useRef<string | null>(null);
+  // The route a pin's pending variants are for. The shell registers before this effect runs, so
+  // applying checks it too: a project's variants on the next page must not catch them.
+  const pendingPinRouteRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevRouteRef.current !== currentRoute) {
       setContextStack([]);
       prevRouteRef.current = currentRoute;
+      if (threadForRouteRef.current === null) setActiveAnnotationId(null);
+      else if (pendingPinRouteRef.current !== null) pendingPinRouteRef.current = currentRoute;
+      threadForRouteRef.current = null;
     }
   }, [currentRoute]);
+
+  const openThreadOnPage = useCallback((id: string, pagina?: string) => {
+    if (pagina) {
+      threadForRouteRef.current = id;
+      navigateTo(pagina);
+    }
+    setActiveAnnotationId(id);
+  }, []);
 
   // Keyboard shortcut: Cmd+. / Ctrl+. shows or hides the pins, as the profile's switch does.
   useEffect(() => {
@@ -332,23 +350,56 @@ export function AnnotationProvider({
   labelsRef.current = labels;
   // What opening a thread still has to apply. A project may register a variant only on its page or
   // tab, so it can come after a navigation or after another variant: applied when it's there, once,
-  // and the viewer can then change it with the thread still open. One per registration: an
-  // `onChange` closes over the render it came from, and two in a row could undo each other's URL.
+  // and the viewer can then change it with the thread still open. One at a time, each after the last
+  // one shows in the variants: an `onChange` closes over the render it came from, and a re-render
+  // alone isn't that render, so two in a row could undo each other's URL.
   const pendingVariantsRef = useRef(new Map<string, string>());
+  const waitingVariantRef = useRef<{ id: string; raw: string; timer: ReturnType<typeof setTimeout> } | null>(null);
   const [threadVariantsApplied, noteVariantApplied] = useReducer((x: number) => x + 1, 0);
-  const registerVariants = useCallback((variants: OrbitVariant[] | undefined) => {
-    variantsRef.current = variants ?? [];
+  const clearPendingVariants = useCallback(() => {
+    pendingVariantsRef.current.clear();
+    if (waitingVariantRef.current) clearTimeout(waitingVariantRef.current.timer);
+    waitingVariantRef.current = null;
+  }, []);
+  const applyPendingVariants = useCallback(function applyNext() {
+    const pinRoute = pendingPinRouteRef.current;
+    if (pinRoute !== null && pinRoute !== routeRef.current && threadForRouteRef.current === null) {
+      clearPendingVariants();
+      return;
+    }
+    const variants = variantsRef.current;
+    const waiting = waitingVariantRef.current;
+    if (waiting) {
+      const variant = variants.find((v) => v.id === waiting.id);
+      if (!variant || !holdsValue(variant, waiting.raw)) return;
+      clearTimeout(waiting.timer);
+      waitingVariantRef.current = null;
+    }
     const pending = pendingVariantsRef.current;
-    for (const variant of variantsRef.current) {
+    for (const variant of variants) {
       const raw = pending.get(variant.id);
       if (raw === undefined) continue;
       pending.delete(variant.id);
       if (applyVariant(variant, raw)) {
         noteVariantApplied();
+        // A project may refuse the value: the rest doesn't wait for it forever.
+        const timer = setTimeout(() => {
+          waitingVariantRef.current = null;
+          applyNext();
+        }, VARIANT_WAIT_MS);
+        waitingVariantRef.current = { id: variant.id, raw, timer };
         return;
       }
     }
-  }, []);
+  }, [clearPendingVariants]);
+  useEffect(() => clearPendingVariants, [clearPendingVariants]);
+  const registerVariants = useCallback(
+    (variants: OrbitVariant[] | undefined) => {
+      variantsRef.current = variants ?? [];
+      applyPendingVariants();
+    },
+    [applyPendingVariants]
+  );
   const describeVariants = useCallback(
     () => describe(variantsRef.current, routeRef.current, labelsRef.current),
     []
@@ -490,23 +541,33 @@ export function AnnotationProvider({
   }, [activeAnnotationId, markSeen]);
 
   // The thread that is open, on its pin or in the panel, puts the viewer in the variants it was
-  // written in. They stay on after it closes. What it could not apply yet goes with it.
+  // written in, once: they stay on after it closes, and going back to a thread that stayed open
+  // behind a pin doesn't take the viewer's changes away. What it could not apply yet goes with it.
   const [panelThreadId, setPanelThreadId] = useState<string | null>(null);
-  const openThreadId = touring ? null : (activeAnnotationId ?? panelThreadId);
-  const threadRef = useRef<{ id: string | null; read: boolean }>({ id: null, read: false });
+  const appliedThreadsRef = useRef(new Set<string>());
+  const pendingThreadRef = useRef<string | null>(null);
   useEffect(() => {
-    if (threadRef.current.id !== openThreadId) {
-      threadRef.current = { id: openThreadId, read: false };
-      pendingVariantsRef.current.clear();
+    const open = touring ? [] : [activeAnnotationId, panelThreadId].filter((id): id is string => id !== null);
+    for (const id of appliedThreadsRef.current) {
+      if (!open.includes(id)) appliedThreadsRef.current.delete(id);
     }
-    if (openThreadId === null || threadRef.current.read) return;
+    if (pendingThreadRef.current !== null && !open.includes(pendingThreadRef.current)) {
+      pendingThreadRef.current = null;
+      clearPendingVariants();
+    }
+    // The newest: a pin opens over the panel's thread.
+    const id = open[0];
+    if (id === undefined || appliedThreadsRef.current.has(id)) return;
     // Open before the first poll came back: read once the comments are there.
-    const values = threadVariants(realComments, openThreadId);
+    const values = threadVariants(realComments, id);
     if (!values.size) return;
-    threadRef.current.read = true;
+    appliedThreadsRef.current.add(id);
+    clearPendingVariants();
+    pendingThreadRef.current = id;
+    pendingPinRouteRef.current = id === activeAnnotationId ? routeRef.current : null;
     pendingVariantsRef.current = values;
-    registerVariants(variantsRef.current);
-  }, [openThreadId, realComments, registerVariants]);
+    applyPendingVariants();
+  }, [touring, activeAnnotationId, panelThreadId, realComments, applyPendingVariants, clearPendingVariants]);
 
   // The tour's stand-ins for the project's data. Nothing until the anchors are known, so the
   // pins don't first appear parked. Everything that reads the context gets them, so the tour
@@ -582,6 +643,7 @@ export function AnnotationProvider({
       describeVariants,
       setPanelThreadId,
       threadVariantsApplied,
+      openThreadOnPage,
       language,
       viewer,
       setViewerName,
@@ -633,6 +695,7 @@ export function AnnotationProvider({
       registerVariants,
       describeVariants,
       threadVariantsApplied,
+      openThreadOnPage,
       language,
       viewer,
       setViewerName,

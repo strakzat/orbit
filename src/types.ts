@@ -408,6 +408,8 @@ export interface AnnotationContextValue {
   setPanelThreadId: (id: string | null) => void;
   /** Goes up each time opening a thread changed a variant: the page may have changed under it. */
   threadVariantsApplied: number;
+  /** Opens a thread on its pin. With `pagina`, on that page: it stays open through the route change. */
+  openThreadOnPage: (id: string, pagina?: string) => void;
   /** The language Orbit is in: the viewer's choice, else the project's. */
   language: OrbitLanguage;
   viewer: OrbitViewer;
