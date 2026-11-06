@@ -21,7 +21,7 @@ import { FeedbackToasts } from "../components/feedback-toasts";
 import { FeedbackMarkers } from "../components/feedback-markers";
 import { AutoAnnotationMarkers } from "../components/auto-annotation-markers";
 import { useAllComments } from "../hooks/use-all-comments";
-import { describeVariants as describe } from "../utils/variants";
+import { applyVariant, describeVariants as describe, threadVariants } from "../utils/variants";
 import { tourAnchors, tourSample, type TourAnchor } from "../utils/tour";
 
 /** The names of the components on the page now. */
@@ -330,8 +330,24 @@ export function AnnotationProvider({
   routeRef.current = currentRoute;
   const labelsRef = useRef(labels);
   labelsRef.current = labels;
+  // What opening a thread still has to apply. A project may register a variant only on its page or
+  // tab, so it can come after a navigation or after another variant: applied when it's there, once,
+  // and the viewer can then change it with the thread still open. One per registration: an
+  // `onChange` closes over the render it came from, and two in a row could undo each other's URL.
+  const pendingVariantsRef = useRef(new Map<string, string>());
+  const [threadVariantsApplied, noteVariantApplied] = useReducer((x: number) => x + 1, 0);
   const registerVariants = useCallback((variants: OrbitVariant[] | undefined) => {
     variantsRef.current = variants ?? [];
+    const pending = pendingVariantsRef.current;
+    for (const variant of variantsRef.current) {
+      const raw = pending.get(variant.id);
+      if (raw === undefined) continue;
+      pending.delete(variant.id);
+      if (applyVariant(variant, raw)) {
+        noteVariantApplied();
+        return;
+      }
+    }
   }, []);
   const describeVariants = useCallback(
     () => describe(variantsRef.current, routeRef.current, labelsRef.current),
@@ -473,6 +489,25 @@ export function AnnotationProvider({
     if (activeAnnotationId) markSeen(activeAnnotationId);
   }, [activeAnnotationId, markSeen]);
 
+  // The thread that is open, on its pin or in the panel, puts the viewer in the variants it was
+  // written in. They stay on after it closes. What it could not apply yet goes with it.
+  const [panelThreadId, setPanelThreadId] = useState<string | null>(null);
+  const openThreadId = touring ? null : (activeAnnotationId ?? panelThreadId);
+  const threadRef = useRef<{ id: string | null; read: boolean }>({ id: null, read: false });
+  useEffect(() => {
+    if (threadRef.current.id !== openThreadId) {
+      threadRef.current = { id: openThreadId, read: false };
+      pendingVariantsRef.current.clear();
+    }
+    if (openThreadId === null || threadRef.current.read) return;
+    // Open before the first poll came back: read once the comments are there.
+    const values = threadVariants(realComments, openThreadId);
+    if (!values.size) return;
+    threadRef.current.read = true;
+    pendingVariantsRef.current = values;
+    registerVariants(variantsRef.current);
+  }, [openThreadId, realComments, registerVariants]);
+
   // The tour's stand-ins for the project's data. Nothing until the anchors are known, so the
   // pins don't first appear parked. Everything that reads the context gets them, so the tour
   // shows the real pins, panel and threads; the network stops at `useComments`.
@@ -545,6 +580,8 @@ export function AnnotationProvider({
       unregisterMarkerId,
       registerVariants,
       describeVariants,
+      setPanelThreadId,
+      threadVariantsApplied,
       language,
       viewer,
       setViewerName,
@@ -595,6 +632,7 @@ export function AnnotationProvider({
       unregisterMarkerId,
       registerVariants,
       describeVariants,
+      threadVariantsApplied,
       language,
       viewer,
       setViewerName,

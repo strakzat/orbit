@@ -54,6 +54,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     tourStep,
     startTour,
     abandonTour,
+    threadVariantsApplied,
   } = useAnnotations();
 
   const [variantsOpen, setVariantsOpen] = useState(false);
@@ -102,6 +103,11 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     }
     wasTouring.current = touring;
   }, [touring]);
+
+  // The page changed without the viewer touching a variant, and a screen reader doesn't see it.
+  useEffect(() => {
+    if (threadVariantsApplied > 0) setSpoken(labels.variantsAppliedSpoken);
+  }, [threadVariantsApplied, labels.variantsAppliedSpoken]);
 
   const closeVariants = useCallback((returnFocus: boolean) => {
     setVariantsOpen(false);

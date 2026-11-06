@@ -3,14 +3,16 @@ import { useAnnotations } from "../context/use-annotations";
 import { useComments } from "../hooks/use-comments";
 import { ChevronLeftIcon, XIcon } from "../icons";
 import { fill } from "../labels";
+import { isComponentWide } from "../utils/route-matching";
 import { ThreadSections } from "./annotation-popover";
-import { ComponentHead } from "./component-chip";
-import type { Annotation } from "../types";
+import { InstanceComments } from "./instance-comments";
+import { PlaceTrail } from "./place-trail";
+import type { Annotation, Comment } from "../types";
 
 /** A thread opened from the panel: an annotation with its feedback, or feedback on an element. */
 export type PanelThread =
   | { kind: "annotation"; annotation: Annotation }
-  | { kind: "feedback"; annotationId: string; label: string; component?: string };
+  | { kind: "feedback"; annotationId: string; label: string; component?: string; pagina?: string };
 
 interface ThreadPageProps {
   thread: PanelThread;
@@ -19,6 +21,8 @@ interface ThreadPageProps {
   backRef: React.Ref<HTMLButtonElement>;
   onBack: () => void;
   onClose: () => void;
+  /** Goes from a component's thread to the thread of one of its instances. */
+  onOpenInstance: (comment: Comment) => void;
 }
 
 /**
@@ -27,13 +31,19 @@ interface ThreadPageProps {
  * panel can sit on top of. The panel keeps the element in the spotlight while it is open, so the
  * page still says where it is.
  */
-export function ThreadPage({ thread, backLabel, backRef, onBack, onClose }: ThreadPageProps) {
-  const { labels, commentsConfig, refreshComments, markSeen } = useAnnotations();
+export function ThreadPage({ thread, backLabel, backRef, onBack, onClose, onOpenInstance }: ThreadPageProps) {
+  const { labels, commentsConfig, refreshComments, markSeen, setPanelThreadId } = useAnnotations();
 
   const annotationId = thread.kind === "annotation" ? thread.annotation.id : thread.annotationId;
 
   // Open, its thread is read: also what arrives while it is (markSeen follows the comments).
   React.useEffect(() => markSeen(annotationId), [annotationId, markSeen]);
+
+  // Open, the viewer sees the prototype as the thread was written in it.
+  React.useEffect(() => {
+    setPanelThreadId(annotationId);
+    return () => setPanelThreadId(null);
+  }, [annotationId, setPanelThreadId]);
   const label = thread.kind === "annotation" ? thread.annotation.title : thread.label;
 
   const { comments, isLoading, error, submitComment } = useComments({
@@ -52,9 +62,18 @@ export function ThreadPage({ thread, backLabel, backRef, onBack, onClose }: Thre
       ? React.createElement(
           "div",
           { className: "orbit-popover__section" },
-          thread.component && React.createElement(ComponentHead, { name: thread.component, labels }),
           // Old feedback without a label: the selector, to show something, never to send.
-          React.createElement("div", { className: "orbit-mono" }, thread.label || thread.annotationId)
+          React.createElement(
+            PlaceTrail,
+            isComponentWide(thread)
+              ? { className: "orbit-mono", component: thread.component }
+              : {
+                  className: "orbit-mono",
+                  component: thread.component,
+                  pagina: thread.pagina,
+                  element: thread.label || thread.annotationId,
+                }
+          )
         )
       : undefined;
 
@@ -93,6 +112,10 @@ export function ThreadPage({ thread, backLabel, backRef, onBack, onClose }: Thre
       React.createElement(ThreadSections, {
         annotation: thread.kind === "annotation" ? thread.annotation : undefined,
         header,
+        extra:
+          thread.kind === "feedback" && thread.component && isComponentWide(thread)
+            ? React.createElement(InstanceComments, { component: thread.component, onOpen: onOpenInstance })
+            : undefined,
         showComments: !!commentsConfig,
         comments,
         isLoading,

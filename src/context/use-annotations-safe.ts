@@ -42,6 +42,8 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   unregisterMarkerId: () => {},
   registerVariants: () => {},
   describeVariants: () => "",
+  setPanelThreadId: () => {},
+  threadVariantsApplied: 0,
   language: "nl",
   viewer: { name: "", language: null, showMarkers: null, showResolved: null, tourSeen: false },
   setViewerName: () => {},

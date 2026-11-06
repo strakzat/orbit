@@ -199,17 +199,23 @@ export function Spotlight({ el, keys, still }: SpotlightProps) {
     "aria-hidden": true,
     className: cx(
       "orbit-root orbit-spotlight-ring",
+      framed && "orbit-spotlight-ring--framed",
       !cutout && "orbit-spotlight-ring--idle",
       still && "orbit-spotlight-ring--selected"
     ),
     style: cutout
-      ? {
+      ? ({
           left: area.left + cutout.left,
           top: area.top + cutout.top,
           width: cutout.width,
           height: cutout.height,
           ...radius,
-        }
+          // The frame, as seen from the ring: it can't sit in the clipped scrim, so it clips itself.
+          "--orbit-ring-clip-top": `${-cutout.top}px`,
+          "--orbit-ring-clip-left": `${-cutout.left}px`,
+          "--orbit-ring-clip-right": `${cutout.left + cutout.width - area.width}px`,
+          "--orbit-ring-clip-bottom": `${cutout.top + cutout.height - area.height}px`,
+        } as React.CSSProperties)
       : undefined,
   });
 

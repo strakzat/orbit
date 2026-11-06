@@ -10,6 +10,8 @@ import { MessageSquareTextIcon, XIcon } from "../icons";
 import type { Annotation, Comment } from "../types";
 
 interface AnnotationPopoverProps {
+  /** A section between the comments and the composer. */
+  extra?: React.ReactNode;
   /** Referenced by the trigger's aria-controls. */
   id: string;
   annotation?: Annotation;
@@ -35,6 +37,7 @@ interface AnnotationPopoverProps {
  * three different radii, paddings and shadows for the same thing.
  */
 export function AnnotationPopover({
+  extra,
   id,
   annotation,
   header,
@@ -102,13 +105,16 @@ export function AnnotationPopover({
       isLoading,
       error,
       onSubmit,
+      // On the canvas: the viewer is on the page already.
+      hidePages: true,
+      extra,
     })
   );
 }
 
 type ThreadSectionsProps = Pick<
   AnnotationPopoverProps,
-  "annotation" | "header" | "showComments" | "comments" | "isLoading" | "error" | "onSubmit"
+  "annotation" | "header" | "extra" | "showComments" | "comments" | "isLoading" | "error" | "onSubmit"
 >;
 
 /**
@@ -123,7 +129,9 @@ export function ThreadSections({
   isLoading,
   error,
   onSubmit,
-}: ThreadSectionsProps) {
+  hidePages,
+  extra,
+}: ThreadSectionsProps & { hidePages?: boolean }) {
   const { labels } = useAnnotationsSafe();
   const type = annotation?.type ?? "documentation";
 
@@ -158,8 +166,10 @@ export function ThreadSections({
           comments.length > 0 &&
             React.createElement("span", { className: "orbit-count" }, comments.length)
         ),
-        React.createElement(CommentThread, { comments, isLoading, error })
+        React.createElement(CommentThread, { comments, isLoading, error, hidePages })
       ),
+
+    extra,
 
     // The composer is the thread's last section, under a divider like the others: part of the
     // thread, not a field floating in it.

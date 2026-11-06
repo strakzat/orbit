@@ -53,9 +53,100 @@ const comments: MockComment[] = [
     pagina: "/",
     label: "Recente activiteit",
   },
+  // On a whole component: it follows the sidebar to every page, and shares one pin and one thread.
+  {
+    id: "4",
+    annotationId: '[data-orbit-component="Sidebar"]',
+    auteur: "Klant A",
+    comment: "De navigatie mag breder.",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 200000000).toISOString(),
+    pagina: "/",
+    label: "<nav> Orbit demo Dashboard",
+    component: "Sidebar",
+  },
+  // On one instance of a component: it names the component, and stays on its page.
+  {
+    id: "5",
+    annotationId: "#activiteit > div:nth-of-type(2)",
+    auteur: "Klant B",
+    comment: "Dit bericht mag bovenaan.",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 100000000).toISOString(),
+    pagina: "/",
+    label: "<div> Nieuw bericht van klant",
+    component: "ActivityItem",
+  },
+  // On another page, deep: no pin on the dashboard, and the panel's Alles tab goes there.
+  {
+    id: "6",
+    annotationId: "#doelen > div:nth-of-type(1) > h2",
+    auteur: "Klant B",
+    comment: "Kan dit doel een einddatum krijgen?",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 90000000).toISOString(),
+    pagina: "/klanten/jan-de-vries/dossier/doelen",
+    label: "<h2> Beter slapen",
+    component: "DoelKaart",
+  },
+  // On an element only the variant has: parked until its thread opens and applies the variant.
+  {
+    id: "7",
+    annotationId: "doel-toelichting",
+    auteur: "Klant C",
+    comment: "Deze toelichting is te lang.",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 80000000).toISOString(),
+    pagina: "/klanten/jan-de-vries/dossier/doelen",
+    label: "<div> Toelichting, alleen in de variant Uitgebreid.",
+    varianten: "Dossier: Uitgebreid (orbit.dossier=uitgebreid, changed)",
+  },
+  // On the element itself, by its own id, while its annotation has another: a second thread, so a
+  // second pin beside the annotation's.
+  {
+    id: "8",
+    annotationId: "card-omzet",
+    auteur: "Klant D",
+    comment: "Klopt dit bedrag wel?",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 70000000).toISOString(),
+    pagina: "/",
+    label: "<div> Omzet € 24.500",
+  },
+  // On the whole component, with feedback on its instances (6): listed in this thread, on their own.
+  {
+    id: "9",
+    annotationId: '[data-orbit-component="DoelKaart"]',
+    auteur: "Klant A",
+    comment: "Elke doelkaart mag een voortgangsbalk krijgen.",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 60000000).toISOString(),
+    pagina: "/klanten/jan-de-vries/dossier/doelen",
+    label: "<div> Beter slapen",
+    component: "DoelKaart",
+  },
+  // On one link of the sidebar, on another page than the thread of the sidebar is read on.
+  {
+    id: "10",
+    annotationId: "#main-nav > button:nth-of-type(2)",
+    auteur: "Klant B",
+    comment: "Deze knop wil ik bovenaan.",
+    status: "Open",
+    antwoord: null,
+    aangemaakt: new Date(Date.now() - 50000000).toISOString(),
+    pagina: "/klanten",
+    label: "<button> Klanten",
+    component: "Sidebar",
+  },
 ];
 
-let nextId = 4;
+let nextId = 11;
 // A Notion upload takes this long: placing feedback must not wait for it.
 const POST_DELAY_MS = 1200;
 // The Varianten choice "Versturen laten mislukken": how every POST fails until it is off again.

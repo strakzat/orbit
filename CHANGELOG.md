@@ -1,5 +1,29 @@
 # Changelog
 
+## 4.13.0
+
+- **Opening a thread applies its variants.** On a pin or in the panel, the viewer gets the variants of
+  the thread's first comment, also ones that only exist after navigating or after another variant.
+  They stay on after closing; Standaard herstellen undoes them.
+- **`Varianten` now carries ids as well as text:** `Rol: Administratie (orbit.rol=admin, changed)`.
+  `changed` means off its default when written. Same column, no Notion change. A variant without a
+  `defaultValue` keeps plain text and is never applied: it counts as the viewer's preference, like a
+  theme.
+- **A comment card shows "Variants applied"** only when something was off its default, with those
+  variants in a tooltip, instead of a line listing every variant.
+- **A comment says where it is in one line:** `Home / Tabs`, or `… / 40.2 / doelen / <h2> Doelen` past
+  two pages. At the top of the card and in a thread's header, without the pages on the This page tab
+  and in threads on the canvas. In a component the line reads page, pill, instance. Feedback on a whole
+  component has no pages: its thread's header is only the pill, and each comment names its instance.
+  The page link at the foot of the card is gone.
+- **A component's thread also lists what was said on its instances,** from any page, under its own
+  comments. Instances keep their own pin, page and replies; clicking one opens its thread.
+- **The spotlight's ring stays inside the frame:** an element that fills it no longer draws over the
+  rail, and the ring follows the frame's rounded corners.
+- **Feedback on an instance now records its component** in the existing `Component` column. Whether
+  feedback is on the whole component now follows from its `annotationId` (`isComponentWide()`), so
+  a project's own code should no longer read `comment.component` alone for that.
+
 ## 4.12.0
 
 - **Placing feedback no longer waits.** Enter closes the picker at once and the pin and count are

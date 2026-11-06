@@ -66,42 +66,57 @@ function DashboardCard({
   );
 }
 
-function NavBar({ route, navigate }: { route: string; navigate: (p: string) => void }) {
+const CLIENT_PATH = "/klanten/jan-de-vries/dossier/doelen";
+
+// Full height, for what the inspector, the spotlight and a pin do with an element that fills the
+// frame's height. A component, so feedback on it follows it to every page.
+function Sidebar({ route, navigate }: { route: string; navigate: (p: string) => void }) {
   const links = [
     { path: "/", label: "Dashboard" },
+    { path: "/klanten", label: "Klanten" },
+    { path: CLIENT_PATH, label: "Dossier Jan" },
     { path: "/instellingen", label: "Instellingen" },
   ];
 
   return (
     <nav
       id="main-nav"
-      data-orbit-component="NavBar"
+      data-orbit-component="Sidebar"
       style={{
         display: "flex",
+        flexDirection: "column",
+        flex: "none",
         gap: 4,
-        marginBottom: 32,
-        borderBottom: "1px solid #e5e7eb",
-        paddingBottom: 12,
+        width: 220,
+        height: "100%",
+        padding: "24px 12px",
+        background: "#F9FAFB",
+        borderRight: "1px solid #e5e7eb",
       }}
     >
-      {links.map((l) => (
-        <button
-          key={l.path}
-          onClick={() => navigate(l.path)}
-          style={{
-            padding: "6px 16px",
-            borderRadius: 6,
-            border: "none",
-            background: route === l.path ? "#EFF8FF" : "transparent",
-            color: route === l.path ? "#175CD3" : "#667085",
-            fontWeight: route === l.path ? 600 : 400,
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          {l.label}
-        </button>
-      ))}
+      <p style={{ padding: "0 12px 16px", fontSize: 14, fontWeight: 700, color: "#101828" }}>Orbit demo</p>
+      {links.map((l) => {
+        const current = l.path === "/" ? route === "/" : route === l.path;
+        return (
+          <button
+            key={l.path}
+            onClick={() => navigate(l.path)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 6,
+              border: "none",
+              background: current ? "#EFF8FF" : "transparent",
+              color: current ? "#175CD3" : "#667085",
+              fontWeight: current ? 600 : 400,
+              fontSize: 14,
+              textAlign: "left",
+              cursor: "pointer",
+            }}
+          >
+            {l.label}
+          </button>
+        );
+      })}
     </nav>
   );
 }
@@ -187,6 +202,42 @@ function DashboardPage() {
           )
         )}
       </div>
+    </>
+  );
+}
+
+function KlantenPage({ navigate }: { navigate: (p: string) => void }) {
+  return (
+    <>
+      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Klanten</h1>
+      <p style={{ color: "#667085", marginBottom: 32 }}>Een pagina zonder feedback: hier parkeert niets.</p>
+      <button id="klant-jan" onClick={() => navigate(CLIENT_PATH)} style={{ padding: "12px 16px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 14, cursor: "pointer" }}>
+        Jan de Vries
+      </button>
+    </>
+  );
+}
+
+// Deep, for the trail past two pages. "Uitgebreid" is a variant with an element of its own, so the
+// comment on it has a parked pin until its thread opens.
+function DossierPage() {
+  const [dossier] = useVariant("dossier", "kort");
+  return (
+    <>
+      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Dossier Jan de Vries</h1>
+      <p style={{ color: "#667085", marginBottom: 32 }}>Doelen en voortgang</p>
+      <div id="doelen">
+        {["Beter slapen", "Weer aan het werk"].map((doel) => (
+          <div key={doel} data-orbit-component="DoelKaart" style={{ padding: 16, marginBottom: 12, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600 }}>{doel}</h2>
+          </div>
+        ))}
+      </div>
+      {dossier === "uitgebreid" && (
+        <div id="doel-toelichting" style={{ padding: 16, borderRadius: 12, background: "#EFF8FF", color: "#175CD3", fontSize: 14 }}>
+          Toelichting, alleen in de variant Uitgebreid.
+        </div>
+      )}
     </>
   );
 }
@@ -287,9 +338,21 @@ export function App() {
       }}
     >
       <Shell>
-        <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px", background: "#fff", minHeight: "100%" }}>
-          <NavBar route={route} navigate={navigate} />
-          {route === "/instellingen" ? <InstellingenPage /> : <DashboardPage />}
+        <div style={{ display: "flex", height: "100%", background: "#fff" }}>
+          <Sidebar route={route} navigate={navigate} />
+          <main style={{ flex: 1, minWidth: 0, height: "100%", overflow: "auto" }}>
+            <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px" }}>
+              {route === "/instellingen" ? (
+                <InstellingenPage />
+              ) : route === "/klanten" ? (
+                <KlantenPage navigate={navigate} />
+              ) : route === CLIENT_PATH ? (
+                <DossierPage />
+              ) : (
+                <DashboardPage />
+              )}
+            </div>
+          </main>
         </div>
       </Shell>
     </AnnotationProvider>
@@ -308,6 +371,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [period, setPeriod] = useVariant("periode", "maand");
   const [modules, setModules] = useVariant("modules", ["omzet", "orders"]);
   const [rows, setRows] = useVariant("rijen", 12);
+  const [dossier, setDossier] = useVariant("dossier", "kort");
   const [empty, setEmpty] = useState(false);
   const [failSend, setFailSend] = useState("uit");
   // Tells the mock API, also after a reload: there this choice is off again.
@@ -423,6 +487,20 @@ function Shell({ children }: { children: React.ReactNode }) {
     },
     { type: "action", id: "toast", title: "Toon een melding", onRun: () => window.alert("Opgeslagen") },
   ];
+
+  variants.push({
+    type: "choice",
+    id: "dossier",
+    title: "Dossier",
+    options: [
+      { id: "kort", label: "Kort" },
+      { id: "uitgebreid", label: "Uitgebreid" },
+    ],
+    value: dossier,
+    defaultValue: "kort",
+    onChange: setDossier,
+    pages: (r) => r === CLIENT_PATH,
+  });
 
   return <OrbitShell variants={variants}>{children}</OrbitShell>;
 }

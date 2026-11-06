@@ -3,17 +3,22 @@ import { useAnnotationsSafe } from "../context/use-annotations-safe";
 import { cx } from "../utils/cx";
 import { initials, relativeTime } from "../utils/format";
 import { fill } from "../labels";
+import { isComponentWide } from "../utils/route-matching";
 import { canRetry } from "../utils/send-failure";
 import { FailureText } from "./failure-text";
 import { StatusPill } from "./status-pill";
-import { ComponentChip } from "./component-chip";
 import { TrashIcon } from "../icons";
+import { parseVariantLines } from "../utils/variants";
+import { PlaceTrail } from "./place-trail";
+import { VariantsChip } from "./variants-chip";
 import type { Comment } from "../types";
 
 interface CommentCardProps {
   comment: Comment;
   /** Shows the element reference the comment was left on. */
   showLabel?: boolean;
+  /** Leaves the pages out of where it is: the list or the thread is already on the page. */
+  hidePages?: boolean;
   footer?: React.ReactNode;
   /**
    * Opens this comment's thread on the page. Leave it out for a thread inside a
@@ -36,6 +41,7 @@ interface CommentCardProps {
 export function CommentCard({
   comment,
   showLabel,
+  hidePages,
   footer,
   onSelect,
   isActive,
@@ -52,6 +58,10 @@ export function CommentCard({
   const trashRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const askedRef = useRef(false);
+  // What sets this comment apart. The variants on their default say nothing.
+  // A whole component is on many pages: the one it was written on says little.
+  const pagina = hidePages || isComponentWide(comment) ? undefined : comment.pagina;
+  const changedVariants = parseVariantLines(comment.varianten).filter((line) => line.changed);
   useEffect(() => {
     // The question takes the focus, on the safe answer; dismissed, the focus goes back to the bin.
     if (confirming) cancelRef.current?.focus();
@@ -103,8 +113,12 @@ export function CommentCard({
       ),
 
     showLabel &&
-      comment.label &&
-      React.createElement("div", { className: "orbit-comment__label" }, comment.label),
+      React.createElement(PlaceTrail, {
+        className: "orbit-comment__label",
+        pagina,
+        element: comment.label,
+        component: comment.component,
+      }),
 
     React.createElement(
       "span",
@@ -148,6 +162,14 @@ export function CommentCard({
 
       React.createElement("div", { className: "orbit-comment__text" }, comment.comment),
 
+      // In a component's thread the head says which component: each comment says which instance.
+      isComponentWide(comment) && !showLabel
+        ? React.createElement(PlaceTrail, {
+            className: "orbit-comment__place",
+            element: comment.label,
+          })
+        : null,
+
       // The toast is gone after a while; the comment and its retry stay here.
       comment.delivery === "failed" &&
         React.createElement(
@@ -169,32 +191,13 @@ export function CommentCard({
           labels.commentRetry
         ),
 
-      // Given on a component: it shows wherever the component is, so the card says which.
-      comment.component
-        ? React.createElement(
-            "div",
-            { className: "orbit-comment__component" },
-            React.createElement(
-              "span",
-              { className: "orbit-sr-only" },
-              fill(labels.componentNamed, { name: comment.component })
-            ),
-            React.createElement(
-              "span",
-              { "aria-hidden": true },
-              React.createElement(ComponentChip, { name: comment.component })
-            )
-          )
-        : null,
-
-      // The variants it was written in, on one line: a list entry is no place for more.
-      comment.varianten
-        ? React.createElement(
-            "div",
-            { className: "orbit-comment__variants" },
-            React.createElement("span", { className: "orbit-sr-only" }, `${labels.variants}: `),
-            comment.varianten.split("\n").join(" · ")
-          )
+      // The variants it was written in, when they differ from where the prototype starts.
+      changedVariants.length > 0
+        ? React.createElement(VariantsChip, {
+            label: labels.variantsApplied,
+            lines: changedVariants.map((line) => line.text),
+            onSelect,
+          })
         : null,
 
       comment.antwoord

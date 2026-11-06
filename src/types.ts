@@ -58,6 +58,14 @@ export interface AnnotationLabels {
   variantsLinkCopied: string;
   /** After the Varianten button's name, for a screen reader: "2 aangepast". */
   variantsChanged: string;
+  /** In a whole component's thread: above the comments on its instances. */
+  instanceFeedback: string;
+  /** The route `/`, in a comment's trail. */
+  placeHome: string;
+  /** On a comment written with variants off their default. Its tooltip lists them. */
+  variantsApplied: string;
+  /** Said to a screen reader when opening a thread changed the variants. */
+  variantsAppliedSpoken: string;
   /** A `multi` with nothing chosen, as it is said and sent with feedback. */
   variantsNone: string;
   /** A switch on, or a checkbox ticked, as it is said and sent with feedback. */
@@ -396,6 +404,10 @@ export interface AnnotationContextValue {
   registerVariants: (variants: OrbitVariant[] | undefined) => void;
   /** The variants on the current page and their values, a line each, as sent with feedback. */
   describeVariants: () => string;
+  /** The thread open in the panel, whose variants apply as a pin's do. Null when it closes. */
+  setPanelThreadId: (id: string | null) => void;
+  /** Goes up each time opening a thread changed a variant: the page may have changed under it. */
+  threadVariantsApplied: number;
   /** The language Orbit is in: the viewer's choice, else the project's. */
   language: OrbitLanguage;
   viewer: OrbitViewer;
@@ -444,7 +456,10 @@ export interface Comment {
   pagina?: string;
   label?: string;
   annotationId?: string;
-  /** The variants the feedback was given in, a line each: "Rol: Administratie". */
+  /**
+   * The variants the feedback was given in, a line each: "Rol: Administratie (orbit.rol=admin)".
+   * `parseVariantLines()` reads them; opening the thread applies them.
+   */
   varianten?: string;
   /**
    * Given on a component rather than one element: its name, from `data-orbit-component`. Such a
