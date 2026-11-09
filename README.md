@@ -564,7 +564,9 @@ const comments = data.results.map(parseNotionComment);
     panelHeight: 640,                // panel height in px, and the variants pane's
     zIndex: 9000,                    // base z-index
     keyboardShortcut: true,          // Cmd+. / Ctrl+. show/hide pins, C to give feedback
-    tour: true,                      // the tour starts once for a new viewer; replay stays in the profile
+    // tour: false,                   // the tour starts once for a new viewer, but not on localhost, where a
+                                     // fresh browser (a test, a screenshot) would meet it every time; false:
+                                     // never by itself, true: on localhost too. Replay stays in the profile
     projectName: "Praktijkdata",     // optional: the tour's welcome names the project, else "this prototype"
   }}
 >

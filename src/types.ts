@@ -20,7 +20,11 @@ export interface AnnotationSettings {
   panelHeight?: number;
   zIndex?: number;
   keyboardShortcut?: boolean;
-  /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
+  /**
+   * Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile.
+   * Left out, it starts everywhere but on a local host, where a fresh browser (a test, a screenshot
+   * script) would meet it every time; `true` starts it there too.
+   */
   tour?: boolean;
   /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype". */
   projectName?: string;

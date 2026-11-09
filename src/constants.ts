@@ -1,5 +1,6 @@
 import type { AnnotationLabels, AnnotationSettings, AnnotationType } from "./types";
 import { LABELS } from "./labels";
+import { isLocalHost } from "./utils/local-host";
 import {
   FileTextIcon, ThumbsUpIcon,
   HelpCircleIcon, ThumbsDownIcon, SparklesIcon, AlertTriangleIcon, EyeIcon,
@@ -28,17 +29,26 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   panelHeight: 640,
   zIndex: 9000,
   keyboardShortcut: true,
-  // Once for each viewer; a project can leave it to the profile's button.
+  // Once for each viewer; a project can leave it to the profile's button. Left out, not on a local
+  // host (see `resolveSettings`).
   tour: true,
   projectName: "",
 };
 
-/** A project's settings over the defaults. A key set to `undefined` is a key left out. */
-export function resolveSettings(override: AnnotationSettings = {}): Required<AnnotationSettings> {
+/**
+ * A project's settings over the defaults. A key set to `undefined` is a key left out. `tour` left
+ * out is off on a local host, where a fresh browser (a Playwright run, a screenshot script, an agent)
+ * would meet the tour every time and its overlay takes the clicks; set, it is as the project says.
+ */
+export function resolveSettings(
+  override: AnnotationSettings = {},
+  hostname = typeof window === "undefined" ? "" : window.location.hostname
+): Required<AnnotationSettings> {
   const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   for (const [key, value] of Object.entries(override)) {
     if (value !== undefined) settings[key] = value;
   }
+  if (override.tour === undefined && isLocalHost(hostname)) settings.tour = false;
   return settings as Required<AnnotationSettings>;
 }
 
