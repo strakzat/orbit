@@ -30,9 +30,6 @@ export interface AnnotationSettings {
   projectName?: string;
 }
 
-/** A project's settings over the defaults: every key set, but `tour` stays left out when it was. */
-export type ResolvedSettings = Omit<Required<AnnotationSettings>, "tour"> & Pick<AnnotationSettings, "tour">;
-
 export interface AnnotationLabels {
   toggleShow: string;
   toggleHide: string;
@@ -370,7 +367,7 @@ export interface AnnotationContextValue {
   pushContext: (context: string) => void;
   popContext: () => void;
   labels: AnnotationLabels;
-  settings: ResolvedSettings;
+  settings: Required<AnnotationSettings>;
   commentsConfig: CommentsConfig | null;
   allComments: Comment[];
   commentsLoading: boolean;

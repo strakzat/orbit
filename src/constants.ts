@@ -1,5 +1,6 @@
-import type { AnnotationLabels, AnnotationSettings, AnnotationType, ResolvedSettings } from "./types";
+import type { AnnotationLabels, AnnotationSettings, AnnotationType } from "./types";
 import { LABELS } from "./labels";
+import { isLocalHost } from "./utils/local-host";
 import {
   FileTextIcon, ThumbsUpIcon,
   HelpCircleIcon, ThumbsDownIcon, SparklesIcon, AlertTriangleIcon, EyeIcon,
@@ -18,7 +19,7 @@ export const TYPE_ICONS: Record<AnnotationType, typeof FileTextIcon> = {
 /** Orbit's texts in Dutch, the language it starts in. Every language's are in `LABELS`. */
 export const DEFAULT_LABELS: AnnotationLabels = LABELS.nl;
 
-export const DEFAULT_SETTINGS: ResolvedSettings = {
+export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   // The pins show: what is there, is seen. The viewer can hide them in their profile.
   defaultVisible: true,
   // Tints the quiet brand tokens (subtle fill, border, links). The primary button is
@@ -28,18 +29,27 @@ export const DEFAULT_SETTINGS: ResolvedSettings = {
   panelHeight: 640,
   zIndex: 9000,
   keyboardShortcut: true,
-  // `tour` is left out: once for each viewer, but not on a local host (see `startsTour`). A project
-  // can leave it to the profile's button with `false`, or start it locally too with `true`.
+  // Once for each viewer; a project can leave it to the profile's button. Left out, not on a local
+  // host (see `resolveSettings`).
+  tour: true,
   projectName: "",
 };
 
-/** A project's settings over the defaults. A key set to `undefined` is a key left out. */
-export function resolveSettings(override: AnnotationSettings = {}): ResolvedSettings {
+/**
+ * A project's settings over the defaults. A key set to `undefined` is a key left out. `tour` left
+ * out is off on a local host, where a fresh browser (a Playwright run, a screenshot script, an agent)
+ * would meet the tour every time and its overlay takes the clicks; set, it is as the project says.
+ */
+export function resolveSettings(
+  override: AnnotationSettings = {},
+  hostname = typeof window === "undefined" ? "" : window.location.hostname
+): Required<AnnotationSettings> {
   const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   for (const [key, value] of Object.entries(override)) {
     if (value !== undefined) settings[key] = value;
   }
-  return settings as ResolvedSettings;
+  if (override.tour === undefined && isLocalHost(hostname)) settings.tour = false;
+  return settings as Required<AnnotationSettings>;
 }
 
 /**

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { LABELS } from "../../labels";
 import { resolveSettings } from "../../constants";
-import { hexToRgb, isLocalHost, startsTour, tourCardPosition, tourSample, tourSteps } from "../tour";
+import { hexToRgb, tourCardPosition, tourSample, tourSteps } from "../tour";
+import { isLocalHost } from "../local-host";
 
 const labels = LABELS.nl;
 const viewport = { width: 1000, height: 700 };
@@ -104,8 +105,8 @@ describe("tourCardPosition", () => {
 
 describe("resolveSettings", () => {
   it("takes a key set to undefined as left out", () => {
-    const settings = resolveSettings({ tour: undefined, projectName: undefined, panelWidth: 300 });
-    expect(settings.tour).toBeUndefined();
+    const settings = resolveSettings({ tour: undefined, projectName: undefined, panelWidth: 300 }, "praktijkdata.vercel.app");
+    expect(settings.tour).toBe(true);
     expect(settings.projectName).toBe("");
     expect(settings.panelWidth).toBe(300);
   });
@@ -115,20 +116,20 @@ describe("resolveSettings", () => {
   });
 });
 
-describe("startsTour", () => {
-  it("starts by itself, but not on a local host, when the project leaves it out", () => {
-    expect(startsTour(undefined, "praktijkdata.vercel.app")).toBe(true);
-    expect(startsTour(undefined, "localhost")).toBe(false);
-    expect(startsTour(undefined, "127.0.0.1")).toBe(false);
+describe("the tour on a local host", () => {
+  it("does not start by itself there when the project leaves it out", () => {
+    expect(resolveSettings({}, "praktijkdata.vercel.app").tour).toBe(true);
+    expect(resolveSettings({}, "localhost").tour).toBe(false);
+    expect(resolveSettings({ tour: undefined }, "127.0.0.1").tour).toBe(false);
   });
 
   it("does as the project says, also locally", () => {
-    expect(startsTour(true, "localhost")).toBe(true);
-    expect(startsTour(false, "praktijkdata.vercel.app")).toBe(false);
+    expect(resolveSettings({ tour: true }, "localhost").tour).toBe(true);
+    expect(resolveSettings({ tour: false }, "praktijkdata.vercel.app").tour).toBe(false);
   });
 
   it("knows a local host by its name", () => {
-    expect(["localhost", "127.0.0.1", "[::1]", "app.localhost"].every(isLocalHost)).toBe(true);
-    expect(["localhost.example.com", "192.168.1.10", "example.com"].some(isLocalHost)).toBe(false);
+    expect(["localhost", "127.0.0.1", "127.0.1.1", "[::1]", "0.0.0.0", "app.localhost"].every(isLocalHost)).toBe(true);
+    expect(["localhost.example.com", "192.168.1.10", "example.com", ""].some(isLocalHost)).toBe(false);
   });
 });

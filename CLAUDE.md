@@ -97,7 +97,7 @@ interface CommentsConfig {
   panelHeight: 640,         // ook de hoogte van het variantenpaneel
   zIndex: 9000,
   keyboardShortcut: true,   // Cmd+. / Ctrl+. (pins tonen/verbergen), C (feedback plaatsen), Shift+R (opgeloste pins)
-  tour: true,               // de rondleiding start één keer vanzelf; terugkijken kan altijd in het profiel
+  tour: true,               // de rondleiding start één keer vanzelf, weggelaten niet op een lokale host; terugkijken kan altijd in het profiel
   projectName: "",          // de naam zoals de klant hem kent, voor de welkomstkaart; leeg is "dit prototype"
 }
 ```
@@ -171,6 +171,7 @@ src/
     ├── cx.ts                          — Class names samenvoegen
     ├── format.ts                      — initials() + relativeTime() voor de comment-UI
     ├── tour.ts                        — Stappen, voorbeelddata, ankers en de plek van de kaart
+    ├── local-host.ts                  — isLocalHost(): localhost, 127.x, [::1], 0.0.0.0, *.localhost
     ├── element-id.ts                  — getLocator() selector vanaf een anker + getElementLabel() preview
     ├── pick-element.ts                — levelsFrom(): de elementen onder de cursor die de inspector aanbiedt
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
@@ -208,7 +209,7 @@ Hover en klik geven hetzelfde antwoord (`utils/pick-element.ts`): wat oplicht, k
 
 ## De rondleiding
 
-Een kijker die hem nog niet zag, krijgt één keer een rondleiding door Orbit (niet door het project), ook op bestaande projecten na een update: `tourSeen` ontbreekt daar in `@strakzat/orbit:viewer`, dus niet gezien. Hij telt als gezien na Klaar of Overslaan, niet bij de start: een reload halverwege begint opnieuw. Verdwijnt de shell halverwege (`abandonTour()`, een project dat hem op sommige routes rendert), dan stopt de tour ook, want alleen de rail kan hem beëindigen, en hij telt niet als gezien: de volgende shell begint opnieuw. Zonder storage start hij niet, anders kwam hij bij elke load terug. `settings.tour: false` zet alleen de automatische start uit; "Rondleiding opnieuw bekijken" staat in het profiel. Alleen met `OrbitShell`: `OrbitRail` start en rendert hem, want die kent de varianten.
+Een kijker die hem nog niet zag, krijgt één keer een rondleiding door Orbit (niet door het project), ook op bestaande projecten na een update: `tourSeen` ontbreekt daar in `@strakzat/orbit:viewer`, dus niet gezien. Hij telt als gezien na Klaar of Overslaan, niet bij de start: een reload halverwege begint opnieuw. Verdwijnt de shell halverwege (`abandonTour()`, een project dat hem op sommige routes rendert), dan stopt de tour ook, want alleen de rail kan hem beëindigen, en hij telt niet als gezien: de volgende shell begint opnieuw. Zonder storage start hij niet, anders kwam hij bij elke load terug. Op een lokale host start hij niet vanzelf als het project `tour` weglaat (`resolveSettings`, `isLocalHost()`): een verse browser, zoals een Playwright-run of een agent, kreeg hem daar elke keer en de overlay nam de klikken. Op hostnaam, niet op dev-modus, zodat een lokaal gedraaide productiebuild meetelt; `tour: true` start hem daar toch. `settings.tour: false` zet alleen de automatische start uit; "Rondleiding opnieuw bekijken" staat in het profiel. Alleen met `OrbitShell`: `OrbitRail` start en rendert hem, want die kent de varianten.
 
 - **De welkomstkaart gaat over het prototype, niet over Orbit.** De klant komt voor z'n prototype en kent de naam van de tool niet. De kaart zegt dat hij mag zeggen wat hij ervan vindt: zo leest het als onaf, en daar komt feedback op. Met `settings.projectName` noemt de titel het project.
 - **De stappen** (`tourSteps()`): welkom (naam en taal, `ViewerIdentity` en `LanguageChoice` uit het profiel; de naam alleen met comments), pins, feedback plaatsen (met comments), het paneel, Varianten (met `variants`), het profiel. De welkomstkaart telt niet mee in "1 van 5". Elke stap zet zelf het toneel: de inspector aan voor de oefening, het paneel open voor het paneel.

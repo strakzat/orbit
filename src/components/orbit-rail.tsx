@@ -12,7 +12,7 @@ import { VariantsPane } from "./variants-pane";
 import { ProfilePane } from "./profile-pane";
 import { OrbitTour } from "./orbit-tour";
 import { isChanged, variantsHere } from "../utils/variants";
-import { startsTour, tourSteps } from "../utils/tour";
+import { tourSteps } from "../utils/tour";
 import type { OrbitVariant, TourStepId } from "../types";
 
 // The step that points at each button of the rail, and the buttons the viewer may press then.
@@ -91,7 +91,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   // Only the rail can end a tour, so it goes with the rail. The same effect: StrictMode's simulated
   // unmount is followed by the start again, and the tour survives it.
   useLayoutEffect(() => {
-    if (!viewer.tourSeen && startsTour(settings.tour, window.location.hostname)) startTour();
+    if (!viewer.tourSeen && settings.tour) startTour();
     return abandonTour;
   }, []);
 

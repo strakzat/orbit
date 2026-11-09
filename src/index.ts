@@ -31,7 +31,6 @@ export type {
   AnnotationProviderProps,
   AnnotationLabels,
   AnnotationSettings,
-  ResolvedSettings,
   AnnotationContextValue,
   AnnotationType,
   MarkerPosition,

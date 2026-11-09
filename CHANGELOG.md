@@ -2,12 +2,12 @@
 
 ## 4.14.0
 
-- **The tour no longer starts by itself on a local host** (`localhost`, `127.0.0.1`, `[::1]`,
-  `*.localhost`). A fresh browser there, as a Playwright run, a screenshot script or an agent has, met
-  it every time and its overlay took the clicks. By hostname, not dev mode, so a production build
-  served locally is covered too. The profile's button still plays it. `tour: true` starts it locally
-  as well, `tour: false` stays off everywhere; left out is the new default. `settings.tour` from the
-  context can now be `undefined` (`ResolvedSettings`).
+- **The tour no longer starts by itself on a local host** (`localhost`, `127.x`, `[::1]`, `0.0.0.0`,
+  `*.localhost`) when a project leaves `tour` out. A fresh browser there, as a Playwright run, a
+  screenshot script or an agent has, met it every time and its overlay took the clicks. By hostname,
+  not dev mode, so a production build served locally counts too. `tour: true` starts it locally as
+  well, `tour: false` stays off everywhere, and the profile's button still plays it. `settings.tour`
+  stays a boolean.
 
 ## 4.13.0
 
