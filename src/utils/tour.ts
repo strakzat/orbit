@@ -13,6 +13,20 @@ const ANNOTATION_ID = "orbit-tour-annotation";
 /** The feedback's id when the page offers no second element: it parks, as lost feedback does. */
 const FEEDBACK_ID = "orbit-tour-feedback";
 
+/** Where the page is served from this machine: a dev server, a preview build, a test. */
+export function isLocalHost(hostname: string): boolean {
+  return ["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname) || hostname.endsWith(".localhost");
+}
+
+/**
+ * Whether the tour starts by itself for a viewer who has not seen it. Set by the project, as it says;
+ * left out, everywhere but on a local host, where a fresh browser (a Playwright run, a screenshot
+ * script, an agent) would meet it every time and its overlay takes the clicks.
+ */
+export function startsTour(tour: boolean | undefined, hostname: string): boolean {
+  return tour ?? !isLocalHost(hostname);
+}
+
 /** The steps for what this project has. Step 1 is always the welcome card, the last the profile. */
 export function tourSteps({ hasVariants, hasComments }: { hasVariants: boolean; hasComments: boolean }): TourStepId[] {
   return [

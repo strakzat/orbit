@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.14.0
+
+- **The tour no longer starts by itself on a local host** (`localhost`, `127.0.0.1`, `[::1]`,
+  `*.localhost`). A fresh browser there, as a Playwright run, a screenshot script or an agent has, met
+  it every time and its overlay took the clicks. By hostname, not dev mode, so a production build
+  served locally is covered too. The profile's button still plays it. `tour: true` starts it locally
+  as well, `tour: false` stays off everywhere; left out is the new default. `settings.tour` from the
+  context can now be `undefined` (`ResolvedSettings`).
+
 ## 4.13.0
 
 - **Opening a thread applies its variants.** On a pin or in the panel, the viewer gets the variants of

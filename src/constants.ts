@@ -1,4 +1,4 @@
-import type { AnnotationLabels, AnnotationSettings, AnnotationType } from "./types";
+import type { AnnotationLabels, AnnotationSettings, AnnotationType, ResolvedSettings } from "./types";
 import { LABELS } from "./labels";
 import {
   FileTextIcon, ThumbsUpIcon,
@@ -18,7 +18,7 @@ export const TYPE_ICONS: Record<AnnotationType, typeof FileTextIcon> = {
 /** Orbit's texts in Dutch, the language it starts in. Every language's are in `LABELS`. */
 export const DEFAULT_LABELS: AnnotationLabels = LABELS.nl;
 
-export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
+export const DEFAULT_SETTINGS: ResolvedSettings = {
   // The pins show: what is there, is seen. The viewer can hide them in their profile.
   defaultVisible: true,
   // Tints the quiet brand tokens (subtle fill, border, links). The primary button is
@@ -28,18 +28,18 @@ export const DEFAULT_SETTINGS: Required<AnnotationSettings> = {
   panelHeight: 640,
   zIndex: 9000,
   keyboardShortcut: true,
-  // Once for each viewer; a project can leave it to the profile's button.
-  tour: true,
+  // `tour` is left out: once for each viewer, but not on a local host (see `startsTour`). A project
+  // can leave it to the profile's button with `false`, or start it locally too with `true`.
   projectName: "",
 };
 
 /** A project's settings over the defaults. A key set to `undefined` is a key left out. */
-export function resolveSettings(override: AnnotationSettings = {}): Required<AnnotationSettings> {
+export function resolveSettings(override: AnnotationSettings = {}): ResolvedSettings {
   const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   for (const [key, value] of Object.entries(override)) {
     if (value !== undefined) settings[key] = value;
   }
-  return settings as Required<AnnotationSettings>;
+  return settings as ResolvedSettings;
 }
 
 /**

@@ -20,11 +20,18 @@ export interface AnnotationSettings {
   panelHeight?: number;
   zIndex?: number;
   keyboardShortcut?: boolean;
-  /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
+  /**
+   * Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile.
+   * Left out, it starts everywhere but on a local host, where a fresh browser (a test, a screenshot
+   * script) would meet it every time; `true` starts it there too.
+   */
   tour?: boolean;
   /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype". */
   projectName?: string;
 }
+
+/** A project's settings over the defaults: every key set, but `tour` stays left out when it was. */
+export type ResolvedSettings = Omit<Required<AnnotationSettings>, "tour"> & Pick<AnnotationSettings, "tour">;
 
 export interface AnnotationLabels {
   toggleShow: string;
@@ -363,7 +370,7 @@ export interface AnnotationContextValue {
   pushContext: (context: string) => void;
   popContext: () => void;
   labels: AnnotationLabels;
-  settings: Required<AnnotationSettings>;
+  settings: ResolvedSettings;
   commentsConfig: CommentsConfig | null;
   allComments: Comment[];
   commentsLoading: boolean;
