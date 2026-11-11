@@ -50,7 +50,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   setViewerName: () => {},
   setViewerLanguage: () => {},
   setViewerShowMarkers: () => {},
-  showResolvedPins: true,
+  showResolvedPins: false,
   setViewerShowResolved: () => {},
   tourStep: null,
   setTourStep: () => {},

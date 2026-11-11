@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.13.1
+
+- **Resolved feedback is hidden by default.** Feedback whose comments are all resolved gets no pin until
+  the viewer turns on "Opgeloste feedback tonen" in the profile (or presses Shift + R). A viewer who
+  already chose keeps their choice. Panel and counter are unchanged.
+
 ## 4.13.0
 
 - **Opening a thread applies its variants.** On a pin or in the panel, the viewer gets the variants of
