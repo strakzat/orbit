@@ -84,7 +84,7 @@ export function AnnotationProvider({
     setViewerShowResolved,
     setViewerTourSeen,
   } = useViewer();
-  const showResolvedPins = viewer.showResolved ?? true;
+  const showResolvedPins = viewer.showResolved ?? false;
   const language: OrbitLanguage = viewer.language ?? projectLanguage;
   const labels = useMemo(() => resolveLabels(language, labelsOverride), [language, labelsOverride]);
 
