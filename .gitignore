@@ -8,3 +8,8 @@ demo/dist/
 
 # Orbit feedback run artifacts
 .orbit/
+
+# env files
+.env
+.env.*
+!.env.example

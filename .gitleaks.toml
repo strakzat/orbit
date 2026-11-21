@@ -1,0 +1,29 @@
+# Secret scanning for this project. Copied by /meridian:start beside verify.sh.
+#
+# verify.sh runs `gitleaks dir .`, which scans the working tree rather than
+# committed history — that is the point, since a key sitting uncommitted in a
+# file passes a history scan. The cost is that build output is in scope, and a
+# build directory is full of per-build signing keys that look exactly like
+# secrets. Without this file a fresh Next.js project reports ten findings on day
+# one, all of them in .next/, and the secrets stage becomes the one people learn
+# to ignore.
+#
+# Replace the path below with this project's build directory:
+#
+#   Next.js    ^dist/
+#   Vite       ^dist/
+#   CRA        ^build/
+#
+# node_modules needs no entry. gitleaks skips it already; measured, an entry for
+# it changes nothing.
+
+[extend]
+useDefault = true
+
+# Build output only. Never add a source path here.
+#
+# Every path added is a place a real key can sit unreported, and an allowlist
+# grows one plausible exception at a time. If a source file trips a rule, fix
+# the file or allowlist that one finding by its fingerprint — not its directory.
+[allowlist]
+paths = ['''^dist/''']
