@@ -1,0 +1,36 @@
+{
+  "extraKnownMarketplaces": {
+    "meridian": {
+      "source": {
+        "source": "github",
+        "repo": "strakzat/meridian"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "meridian-web@meridian": false,
+    "meridian-ios@meridian": false,
+    "meridian-android@meridian": false,
+    "meridian-backend@meridian": false,
+    "interfaces@meridian": false,
+    "vercel@meridian": false,
+    "emil-skills@meridian": false,
+    "supabase@meridian": false,
+    "playwright@meridian": false,
+    "stageshow@meridian": false,
+    "modern-web-guidance@meridian": false,
+    "xcode@meridian": false,
+    "product-management@meridian": false,
+    "operations@meridian": false,
+    "marketing@meridian": false,
+    "legal@meridian": false,
+    "human-resources@meridian": false,
+    "finance@meridian": false,
+    "enterprise-search@meridian": false,
+    "design@meridian": false,
+    "data@meridian": false,
+    "small-business@meridian": false,
+    "small-business-growth@meridian": false
+  }
+}

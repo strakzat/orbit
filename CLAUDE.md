@@ -2,6 +2,10 @@
 
 Client-facing annotation & feedback engine voor alle projecten. React-based, zero runtime dependencies buiten React (html-to-image en Sonner zitten gebundeld in `dist`, zie De screenshot en De melding).
 
+## Stack
+
+- Project type: library
+
 ## Quick start (consuming project)
 
 ```tsx
