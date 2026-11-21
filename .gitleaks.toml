@@ -10,7 +10,7 @@
 #
 # Replace the path below with this project's build directory:
 #
-#   Next.js    ^dist/
+#   Next.js    ^\.next/
 #   Vite       ^dist/
 #   CRA        ^build/
 #
