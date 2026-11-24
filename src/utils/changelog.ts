@@ -3,6 +3,8 @@ import type { OrbitRelease } from "../types";
 // "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)".
 const VERSION = /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)(?=[\s\]]|$)(.*)$/;
 const SECTION = /^ {0,3}###\s+(.+?)\s*#*$/;
+// The status in a version's place for a date: "## [2.0.0] - Unreleased". Not a title that has the word.
+const UNRELEASED = /^\]?(?:\([^)]*\))?\s*[-–—:]?\s*[[(]?unreleased[\])]?\s*#*\s*$/i;
 // A line between versions: ---, ***, _ _ _.
 const RULE = /^ {0,3}([-*_])(\s*\1){2,}\s*$/;
 /** For what means nothing to who reads it on the page: docs, tooling. */
@@ -27,6 +29,7 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
   let fence: string | null = null;
   let blank = false;
   let inItem = false;
+  let itemIndent = 0;
 
   const add = (text: string) => {
     if (!release) return;
@@ -41,8 +44,9 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
     if (entries?.length) entries[entries.length - 1] = change(entries[entries.length - 1]);
   };
 
-  for (const line of markdown.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) {
-    const marker = /^\s*(```|~~~)/.exec(line)?.[1];
+  for (const raw of markdown.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) {
+    const line = raw.replace(/\t/g, "    ");
+    const marker = /^\s*(?:(```)[^`]*$|(~~~))/.exec(line)?.[0].trim().slice(0, 3);
     if (fence || marker) {
       if (!fence) fence = marker!;
       else if (marker === fence) fence = null;
@@ -54,7 +58,7 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
     }
     if (RULE.test(line)) {
       blank = true;
-      inItem = false;
+      if (/^\S/.test(line)) inItem = false;
       continue;
     }
     const afterBlank = blank;
@@ -62,7 +66,8 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
 
     if (/^ {0,3}#{1,2}\s/.test(line)) {
       // "## [2.0.0] - Unreleased" has its number already, and is not released for it.
-      const match = /unreleased/i.test(line) ? null : VERSION.exec(line);
+      const found = VERSION.exec(line);
+      const match = found && !UNRELEASED.test(found[2]) ? found : null;
       const date = match && /\d{4}-\d{2}-\d{2}/.exec(match[2])?.[0];
       release = match ? { version: match[1], ...(date ? { date } : {}), sections: [] } : null;
       if (release) releases.push(release);
@@ -83,10 +88,12 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
     if (!release || title.toLowerCase() === INTERNAL || /^\[[^\]]+\]:\s/.test(line)) continue;
 
     const item = /^(\s*)[-*+]\s+(.+)$/.exec(line);
-    if (item && item[1].length < 2) {
+    // Nested is indented past its item's marker; a list may itself start indented.
+    if (item && !(inItem && item[1].length >= itemIndent + 2)) {
       add(item[2]);
+      itemIndent = item[1].length;
       inItem = true;
-    } else if (item && inItem) {
+    } else if (item) {
       amend((text) => fold(text, item[2].trim()));
     } else if (inItem && /^\s/.test(line) && afterBlank) {
       amend((text) => fold(text, line.trim()));

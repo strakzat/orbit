@@ -80,8 +80,29 @@ describe("what is not released", () => {
     ]);
   });
 
+  it("but a title or link with the word is", () => {
+    const versions = parseChangelog(
+      "## 1.2.0 - Show unreleased drafts\n\n## [1.1.0](https://x/compare/a...unreleased) - 2026-01-01\n\n## [1.0.0] (Unreleased)"
+    ).map((r) => r.version);
+    expect(versions).toEqual(["1.2.0", "1.1.0"]);
+  });
+
   it("nor is a line between versions a change", () => {
     expect(parseChangelog("## 1.1.0\n\n- a\n\n---\n\n## 1.0.0\n\n- b\n* * *").map(changeCount)).toEqual([1, 1]);
+  });
+});
+
+describe("lists", () => {
+  const entries = (body: string) => parseChangelog(`## 1.0.0\n\n${body}`)[0].sections[0].entries;
+
+  it("may be indented, with nested items in their item", () => {
+    expect(entries("  - a\n  - b\n    - c")).toEqual(["a", "b; c"]);
+    expect(entries("- a\n\n  ---\n\n  - n")).toEqual(["a; n"]);
+    expect(entries("- a\n\t- n")).toEqual(["a; n"]);
+  });
+
+  it("don't end at inline code in three backticks", () => {
+    expect(entries("- a\n```x``` text\n- b")).toEqual(["a ```x``` text", "b"]);
   });
 });
 
