@@ -3,8 +3,9 @@ import type { OrbitRelease } from "../types";
 // "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)".
 const VERSION = /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)(?=[\s\]]|$)(.*)$/;
 const SECTION = /^ {0,3}###\s+(.+?)\s*#*$/;
-// The status in a version's place for a date: "## [2.0.0] - Unreleased". Not a title that has the word.
-const UNRELEASED = /^\]?(?:\([^)]*\))?\s*[-–—:]?\s*[[(]?unreleased[\])]?\s*#*\s*$/i;
+// Anywhere in a version's heading but a link's address, where a compare link may have it. Broad on
+// purpose: a released title with the word is left out sooner than unreleased work is shown.
+const isUnreleased = (heading: string) => /unreleased/i.test(heading.replace(/\(https?:[^)]*\)/gi, ""));
 // A line between versions: ---, ***, _ _ _.
 const RULE = /^ {0,3}([-*_])(\s*\1){2,}\s*$/;
 /** For what means nothing to who reads it on the page: docs, tooling. */
@@ -46,10 +47,10 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
 
   for (const raw of markdown.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) {
     const line = raw.replace(/\t/g, "    ");
-    const marker = /^\s*(?:(```)[^`]*$|(~~~))/.exec(line)?.[0].trim().slice(0, 3);
+    const marker = /^\s*(?:(`{3,})[^`]*$|(~{3,}))/.exec(line)?.slice(1).find(Boolean);
     if (fence || marker) {
       if (!fence) fence = marker!;
-      else if (marker === fence) fence = null;
+      else if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
       continue;
     }
     if (!line.trim()) {
@@ -66,8 +67,7 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
 
     if (/^ {0,3}#{1,2}\s/.test(line)) {
       // "## [2.0.0] - Unreleased" has its number already, and is not released for it.
-      const found = VERSION.exec(line);
-      const match = found && !UNRELEASED.test(found[2]) ? found : null;
+      const match = isUnreleased(line) ? null : VERSION.exec(line);
       const date = match && /\d{4}-\d{2}-\d{2}/.exec(match[2])?.[0];
       release = match ? { version: match[1], ...(date ? { date } : {}), sections: [] } : null;
       if (release) releases.push(release);

@@ -123,8 +123,12 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       const active = document.activeElement as HTMLElement | null;
-      if (paneRef.current?.contains(active) && isOpen) back();
-      else if (paneRef.current?.contains(active) || active?.closest("[data-orbit-changes-toggle]")) onClose(true);
+      const inside = paneRef.current?.contains(active);
+      if (!inside && !active?.closest("[data-orbit-changes-toggle]")) return;
+      // Handled: closing moves the focus, and the tour must not take the same key to end.
+      e.preventDefault();
+      if (inside && isOpen) back();
+      else onClose(true);
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;

@@ -80,11 +80,21 @@ describe("what is not released", () => {
     ]);
   });
 
-  it("but a title or link with the word is", () => {
-    const versions = parseChangelog(
-      "## 1.2.0 - Show unreleased drafts\n\n## [1.1.0](https://x/compare/a...unreleased) - 2026-01-01\n\n## [1.0.0] (Unreleased)"
-    ).map((r) => r.version);
-    expect(versions).toEqual(["1.2.0", "1.1.0"]);
+  it.each([
+    "## [2.0.0] - 2026-12-01 (Unreleased)",
+    "## [2.0.0] - Unreleased (planned 2026-12-01)",
+    "## [2.0.0][cmp] - Unreleased",
+    "## 2.0.0 - **Unreleased**",
+    "## 2.0.0 - _Unreleased_",
+    "## [2.0.0] - Unreleased: beta",
+    "## [2.0.0-unreleased]",
+  ])("whatever the heading: %s", (heading) => {
+    expect(parseChangelog(`${heading}\n\n- a`)).toEqual([]);
+  });
+
+  it("but a release whose link has the word is", () => {
+    const [release] = parseChangelog("## [1.1.0](https://x/compare/a...unreleased) - 2026-01-01\n\n- a");
+    expect(release).toMatchObject({ version: "1.1.0", date: "2026-01-01" });
   });
 
   it("nor is a line between versions a change", () => {
@@ -99,6 +109,10 @@ describe("lists", () => {
     expect(entries("  - a\n  - b\n    - c")).toEqual(["a", "b; c"]);
     expect(entries("- a\n\n  ---\n\n  - n")).toEqual(["a; n"]);
     expect(entries("- a\n\t- n")).toEqual(["a; n"]);
+  });
+
+  it("skip a longer fence, with a shorter one in it", () => {
+    expect(entries("- a\n\n````md\n## 9.9.9\n```\n- leak\n````\n- b")).toEqual(["a", "b"]);
   });
 
   it("don't end at inline code in three backticks", () => {

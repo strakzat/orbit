@@ -135,11 +135,13 @@ export function OrbitTour({ steps, changesOpen, onAnnounce }: OrbitTourProps) {
       if (e.key !== "Escape" || e.defaultPrevented || needsName) return;
       if (inspectorActive || activeAnnotationId) return;
       if (document.activeElement?.closest(".orbit-panel, [data-orbit-changes-pane]")) return;
+      // The pane's button counts as the pane while it is open.
+      if (changesOpen && document.activeElement?.closest("[data-orbit-changes-toggle]")) return;
       endTour();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [needsName, inspectorActive, activeAnnotationId, endTour]);
+  }, [needsName, inspectorActive, activeAnnotationId, changesOpen, endTour]);
 
   // With nothing else to do on these steps, Tab stays in the card. On the document: a click on the
   // scrim takes the focus out of the card, which then no longer hears the key.
