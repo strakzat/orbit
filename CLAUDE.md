@@ -386,12 +386,12 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 
 ### Wijzigingen en de versie
 
-`changelog` op `OrbitShell` is opt-in, zoals `variants`: links op de rail Wijzigingen, in het midden de versie. Orbit kent geen productie of staging: een project kiest door `comments`, `variants` en `changelog` wel of niet mee te geven.
+`changelog` op `OrbitShell` is opt-in, zoals `variants`: links op de rail Wijzigingen, met de versie (`v1.1.0`) in de knop. Orbit kent geen productie of staging: een project kiest door `comments`, `variants` en `changelog` wel of niet mee te geven.
 
 - **Bij de build gelezen.** `readChangelog()` (`@strakzat/orbit/vite`) maakt van een `CHANGELOG.md` (Keep a Changelog) `OrbitRelease[]`, voor Vite's `define`; buiten Vite `parseChangelog()` (`/server`). Niet `?raw`: dan staat `[Unreleased]` in de bundel van productie. `[Unreleased]` en `### Internal` vallen weg (`utils/changelog.ts`). Nested items worden in hun item gevouwen.
 - **Een versie is een kaart en een pagina** (`changes-pane.tsx`), over de lijst geschoven zoals een thread; `usePaged()` is voor beide. Kopjes van Keep a Changelog volgen de taal (`labels.changesSections`), de rest blijft zoals geschreven. Code, vet en http(s)-links worden React-elementen, nooit HTML.
 - **Nieuw** is per browser (`useChanges()`, `@strakzat/orbit:changes`, per `projectName`): `since` is de versie van het eerste bezoek, dus dan is er niets nieuw; `read` zijn de versies die daarna geopend zijn. Het getal telt de wijzigingen in ongelezen versies. Alleen een versie openen leest hem, de lijst openen niet.
-- **De versie** staat in het midden (`.orbit-rail--centred`) en valt onder 480px weg.
+- **De versie** staat in de knop, na de naam, en valt onder 480px weg.
 
 ### Zonder feedback
 

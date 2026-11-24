@@ -38,7 +38,7 @@ interface OrbitRailProps {
 
 /**
  * The rail: Orbit's controls in a bar under the project, in Radial's tertiary buttons. On the left
- * the project's variants and what changed, when it has any, and in the centre the version; on the right the inspector and the panel, under the
+ * the project's variants and what changed, with the version, when it has any; on the right the inspector and the panel, under the
  * corner the panel opens in, and at the end the viewer's profile. A toolbar: one stop for Tab, the arrow keys move between its buttons.
  */
 // Long enough for a screen reader to see the live region empty.
@@ -77,10 +77,10 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
   const profileId = useStableId("orbit-profile");
   const changesId = useStableId("orbit-changes");
 
-  // Passing a changelog is the opt-in. A version without a change to show still has its number.
+  // Passing a changelog is the opt-in. Nothing to show in any version: no button.
   const { unreadVersions, unreadCount, markRead } = useChanges(settings.projectName, changelog);
   const hasChanges = changelog.some((r) => changeCount(r) > 0);
-  const version = changelog[0]?.version;
+  const version = hasChanges ? `v${changelog[0].version}` : "";
 
   // Passing `variants` is the opt-in: the button stays in its place on every page, also where
   // there is nothing to switch.
@@ -220,7 +220,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
           "aria-expanded": changesOpen,
           "aria-controls": changesOpen ? changesId : undefined,
           "aria-label":
-            unreadCount > 0 ? fill(labels.changesUnread, { name: labels.changes, count: unreadCount }) : undefined,
+            unreadCount > 0 ? fill(labels.changesUnread, { name: `${labels.changes} ${version}`, count: unreadCount }) : undefined,
           onClick: () => {
             setVariantsOpen(false);
             setProfileOpen(false);
@@ -228,7 +228,14 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
           },
         },
         React.createElement(ClockRewindIcon, { size: 16 }),
-        labels.changes,
+        React.createElement(
+          React.Fragment,
+          null,
+          labels.changes,
+          // The space is for the button's name; the gap between them is the button's.
+          " ",
+          React.createElement("span", { className: "orbit-rail__version" }, version)
+        ),
         unreadCount
       )
     : null;
@@ -338,18 +345,10 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
         lang: language,
         "aria-orientation": "horizontal",
         [ORBIT_UI_ATTR]: "",
-        className: cx("orbit-root", "orbit-rail", version && "orbit-rail--centred", overlay && "orbit-rail--overlay"),
+        className: cx("orbit-root", "orbit-rail", hasChanges && "orbit-rail--changes", overlay && "orbit-rail--overlay"),
         onKeyDown,
       },
       React.createElement("div", { className: "orbit-rail__group" }, variantsButton, changesButton),
-      version
-        ? React.createElement(
-            "span",
-            { className: "orbit-rail__version" },
-            React.createElement("span", { "aria-hidden": true }, version),
-            React.createElement("span", { className: "orbit-sr-only" }, fill(labels.changesVersion, { version }))
-          )
-        : null,
       React.createElement("div", { className: "orbit-rail__group" }, inspectorButton, panelButton, profileButton),
       React.createElement("p", { className: "orbit-sr-only", role: "status" }, spoken)
     ),

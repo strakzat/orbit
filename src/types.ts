@@ -369,8 +369,8 @@ export interface OrbitShellProps {
    */
   variants?: OrbitVariant[];
   /**
-   * The project's released versions, newest first. The rail then has Changes, with the number of
-   * changes new to the viewer, and the version in its centre. Left out or empty, it has neither.
+   * The project's released versions, newest first. The rail then has Changes, with the version
+   * and the number of changes new to the viewer. Left out or empty, it has not.
    */
   changelog?: OrbitRelease[];
   /**

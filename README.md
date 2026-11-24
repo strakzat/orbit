@@ -364,7 +364,7 @@ click on them through.
 
 #### Changes and the version
 
-Pass a `changelog` and the rail shows Changes, with the number of changes new to the viewer, and the version in its centre. Read it at build time, so `[Unreleased]` never reaches the browser:
+Pass a `changelog` and the rail shows Changes, with the version and the number of changes new to the viewer. Read it at build time, so `[Unreleased]` never reaches the browser:
 
 ```ts
 // vite.config.ts

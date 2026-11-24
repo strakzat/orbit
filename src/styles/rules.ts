@@ -218,43 +218,25 @@ const CHROME = `
   color: var(--orbit-text-primary);
 }
 
-/* With the version: in the centre of the rail, whatever is on either side. The sides keep their
-   width, so on a narrow rail the version gives way. */
-.orbit-rail--centred {
-  display: grid;
-  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
-}
-
-.orbit-rail--centred .orbit-rail__group:last-of-type {
-  justify-self: end;
-}
-
+/* The version on the Changes button: what the changes are up to, quieter than the name. */
 .orbit-rail__version {
-  position: relative;
-  overflow: hidden;
   color: var(--orbit-text-tertiary);
-  font-size: var(--orbit-text-sm);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* No room on a phone; the version is on the newest card of Changes too. */
 @media (max-width: 480px) {
-  .orbit-rail--centred {
-    display: flex;
-  }
-
   .orbit-root .orbit-rail__version {
     display: none;
   }
 
-  .orbit-rail--centred .orbit-rail__item:not(.orbit-rail__item--avatar) {
+  .orbit-rail--changes .orbit-rail__item:not(.orbit-rail__item--avatar) {
     padding: 0 var(--orbit-space-2);
   }
 
   /* Variants and Changes side by side: the words stay, the icons give way. */
-  .orbit-rail--centred:has([data-orbit-variants-toggle]) .orbit-rail__item:not(.orbit-rail__item--avatar) > svg {
+  .orbit-rail--changes:has([data-orbit-variants-toggle]) .orbit-rail__item:not(.orbit-rail__item--avatar) > svg {
     display: none;
   }
 }
