@@ -141,6 +141,8 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     tourPanelBody:
       "Hier staat alles op een rij. Wissel bovenin tussen annotaties en feedback, en open een kaart om de thread te lezen.",
     tourPanelBodyAnnotations: "Hier staan alle annotaties op een rij. Open een kaart om hem te lezen.",
+    tourChangesBody:
+      "Per versie staat hier wat er veranderde. Het getal op de knop telt wat nieuw is voor jou. Open een versie om hem te lezen.",
     tourVariantsBody: "Bekijk andere versies van het prototype. Wat je kiest, gaat mee met je feedback.",
     tourVariantsBodyAnnotations: "Bekijk andere versies van het prototype.",
     tourProfileBodyAnnotations: "Hier wijzig je je taal en zet je pins aan of uit. Ook deze rondleiding vind je hier terug.",
@@ -293,6 +295,8 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     tourPanelBody:
       "Everything is listed here. Switch between annotations and feedback at the top, and open a card to read its thread.",
     tourPanelBodyAnnotations: "All annotations are listed here. Open a card to read it.",
+    tourChangesBody:
+      "What changed, version by version. The number on the button counts what is new to you. Open a version to read it.",
     tourVariantsBody: "See other versions of the prototype. What you choose goes along with your feedback.",
     tourVariantsBodyAnnotations: "See other versions of the prototype.",
     tourProfileBodyAnnotations: "Change your language here, and turn the pins on or off. This tour is here too.",

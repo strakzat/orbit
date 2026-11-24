@@ -17,6 +17,7 @@ import type { TourStepId } from "../types";
 const TARGETS: Partial<Record<TourStepId, string>> = {
   feedback: `[${INSPECTOR_TOGGLE_ATTR}]`,
   variants: "[data-orbit-variants-toggle]",
+  changes: "[data-orbit-changes-toggle]",
   profile: "[data-orbit-profile-toggle]",
 };
 // These steps are looked at, not used: the viewer can do nothing but read on.
@@ -24,6 +25,8 @@ const MODAL: TourStepId[] = ["welcome", "variants", "profile"];
 
 interface OrbitTourProps {
   steps: TourStepId[];
+  /** Changes is open: the rail's, as the panel is the context's. */
+  changesOpen: boolean;
   onAnnounce: (text: string) => void;
 }
 
@@ -33,7 +36,7 @@ interface OrbitTourProps {
  * `useComments` keeps them from the network), so this is only the card and what's around it.
  * Rendered by the rail, which knows which steps this project has.
  */
-export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
+export function OrbitTour({ steps, changesOpen, onAnnounce }: OrbitTourProps) {
   const {
     labels,
     language,
@@ -104,15 +107,18 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
       if (!card) return;
       const size = { width: card.offsetWidth, height: card.offsetHeight };
       const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const pane = step === "changes" ? document.querySelector("[data-orbit-changes-pane]") : null;
       const button = TARGETS[step] ? document.querySelector(TARGETS[step]!) : null;
       const panel = step === "panel" ? document.querySelector(".orbit-panel") : null;
       setPosition(
         tourCardPosition(
-          button
-            ? { at: "above", target: button.getBoundingClientRect() }
-            : panel
-              ? { at: "left", target: panel.getBoundingClientRect() }
-              : { at: step === "pins" ? "corner" : "center", area: pickArea() },
+          pane
+            ? { at: "right", target: pane.getBoundingClientRect() }
+            : button
+              ? { at: "above", target: button.getBoundingClientRect() }
+              : panel
+                ? { at: "left", target: panel.getBoundingClientRect() }
+                : { at: step === "pins" ? "corner" : "center", area: pickArea() },
           size,
           viewport
         )
@@ -121,14 +127,14 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
     place();
     window.addEventListener("resize", place);
     return () => window.removeEventListener("resize", place);
-  }, [step, language, panelOpen]);
+  }, [step, language, panelOpen, changesOpen]);
 
   // Escape closes the innermost thing: a thread, the picker and the panel see to their own.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || needsName) return;
       if (inspectorActive || activeAnnotationId) return;
-      if (document.activeElement?.closest(".orbit-panel")) return;
+      if (document.activeElement?.closest(".orbit-panel, [data-orbit-changes-pane]")) return;
       endTour();
     };
     document.addEventListener("keydown", onKeyDown);
@@ -173,6 +179,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
       title: hasComments ? labels.panelTitle : labels.panelTitleAnnotations,
       body: hasComments ? labels.tourPanelBody : labels.tourPanelBodyAnnotations,
     },
+    changes: { title: labels.changes, body: labels.tourChangesBody },
     variants: { title: labels.variants, body: hasComments ? labels.tourVariantsBody : labels.tourVariantsBodyAnnotations },
     profile: { title: labels.profile, body: hasComments ? labels.tourProfileBody : labels.tourProfileBodyAnnotations },
   };
@@ -190,6 +197,8 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
   const target = () => {
     if (step === "pins") return lit;
     if (step === "panel") return document.querySelector(".orbit-panel");
+    const pane = step === "changes" ? document.querySelector("[data-orbit-changes-pane]") : null;
+    if (pane) return pane;
     return TARGETS[step] ? document.querySelector(TARGETS[step]!) : null;
   };
 

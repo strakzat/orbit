@@ -21,11 +21,12 @@ import type { OrbitRelease, OrbitVariant, TourStepId } from "../types";
 // The step that points at each button of the rail, and the buttons the viewer may press then.
 const TOUR_TARGET: Record<string, TourStepId> = {
   variants: "variants",
+  changes: "changes",
   inspector: "feedback",
   panel: "panel",
   profile: "profile",
 };
-const TOUR_PRESSABLE: TourStepId[] = ["feedback", "panel"];
+const TOUR_PRESSABLE: TourStepId[] = ["feedback", "panel", "changes"];
 const NO_RELEASES: OrbitRelease[] = [];
 
 interface OrbitRailProps {
@@ -113,12 +114,14 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
     if (touring) {
       setVariantsOpen(false);
       setProfileOpen(false);
-      setChangesOpen(false);
+      // Its step opens it, as the panel's does the panel.
+      setChangesOpen(tourStep === "changes");
     } else if (wasTouring.current) {
+      setChangesOpen(false);
       railRef.current?.querySelector<HTMLElement>("[data-orbit-profile-toggle]")?.focus();
     }
     wasTouring.current = touring;
-  }, [touring]);
+  }, [touring, tourStep]);
 
   // The page changed without the viewer touching a variant, and a screen reader doesn't see it.
   // Emptied first: the same sentence twice is no change to a live region. One sentence for all of a
@@ -372,7 +375,8 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
       : null,
     touring
       ? React.createElement(OrbitTour, {
-          steps: tourSteps({ hasVariants, hasComments: !!commentsConfig }),
+          steps: tourSteps({ hasVariants, hasChanges, hasComments: !!commentsConfig }),
+          changesOpen,
           onAnnounce: setSpoken,
         })
       : null

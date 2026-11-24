@@ -4,7 +4,7 @@
 
 - **Changes and the version on the rail.** Pass `changelog` to `OrbitShell` and the rail has Changes on
   the left, with the number of changes new to the viewer, and the version in its centre. Each version is
-  a card and opens as a page; opening it reads it. A first visit has nothing new.
+  a card and opens as a page; opening it reads it. A first visit has nothing new. The tour has a step for it.
 - **`readChangelog()`** (`@strakzat/orbit/vite`) reads a Keep a Changelog file at build time, and
   `parseChangelog()` (`@strakzat/orbit/server`) does it outside Vite. `[Unreleased]` and `### Internal`
   are left out, so they never reach the browser.

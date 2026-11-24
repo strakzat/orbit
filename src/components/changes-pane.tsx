@@ -105,14 +105,17 @@ interface ChangesPaneProps {
  * closes it, a press outside closes it.
  */
 export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: ChangesPaneProps) {
-  const { labels, settings, language } = useAnnotations();
+  const { labels, settings, language, tourStep } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const titleId = useStableId("orbit-changes-title");
   const pageTitleId = useStableId("orbit-changes-page");
   const { page: release, isOpen, backRef, open, back } = usePaged<OrbitRelease>(paneRef);
   const listed = releases.filter((r) => changeCount(r) > 0);
 
+  // In the tour the focus is on its card, and the card and the scrim around the pane aren't outside it.
+  const touring = tourStep !== null;
   useEffect(() => {
+    if (touring) return;
     paneRef.current?.querySelector<HTMLElement>(".orbit-icon-button")?.focus();
   }, []);
 
@@ -125,6 +128,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement;
+      if (touring) return;
       // The rail's own button toggles the pane itself.
       if (paneRef.current?.contains(target) || target.closest("[data-orbit-changes-toggle]")) return;
       onClose(false);
@@ -135,7 +139,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
-  }, [onClose, isOpen, back]);
+  }, [onClose, isOpen, back, touring]);
 
   const close = React.createElement(
     "button",
@@ -156,6 +160,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
       role: "dialog",
       "aria-labelledby": titleId,
       [ORBIT_UI_ATTR]: "",
+      "data-orbit-changes-pane": "",
       lang: language,
       className: "orbit-root orbit-variants orbit-glass-pane orbit-animate-in",
       style: { width: settings.panelWidth, height: settings.panelHeight },

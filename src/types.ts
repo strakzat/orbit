@@ -227,6 +227,7 @@ export interface AnnotationLabels {
   tourFeedbackNote: string;
   tourPanelBody: string;
   tourPanelBodyAnnotations: string;
+  tourChangesBody: string;
   tourVariantsBody: string;
   /** The same without feedback. */
   tourVariantsBodyAnnotations: string;
@@ -245,7 +246,7 @@ export interface AnnotationLabels {
 /** The languages Orbit speaks: its own interface, not the project's content. */
 export type OrbitLanguage = "nl" | "en";
 
-export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "profile";
+export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "changes" | "profile";
 
 /** Why a comment didn't go out, in words the viewer can act on. */
 export type SendFailure = "offline" | "network" | "timeout" | "setup" | "tooLarge" | "busy" | "server";

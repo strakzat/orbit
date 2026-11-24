@@ -18,16 +18,16 @@ describe("hexToRgb", () => {
 });
 
 describe("tourSteps", () => {
-  it("has everything for a project with variants and comments", () => {
-    expect(tourSteps({ hasVariants: true, hasComments: true })).toEqual([
-      "welcome", "pins", "feedback", "panel", "variants", "profile",
+  it("has everything for a project with variants, changes and comments", () => {
+    expect(tourSteps({ hasVariants: true, hasChanges: true, hasComments: true })).toEqual([
+      "welcome", "pins", "feedback", "panel", "variants", "changes", "profile",
     ]);
   });
 
   it("skips what the project doesn't have", () => {
-    expect(tourSteps({ hasVariants: false, hasComments: true })).not.toContain("variants");
-    expect(tourSteps({ hasVariants: true, hasComments: false })).not.toContain("feedback");
-    expect(tourSteps({ hasVariants: false, hasComments: false })).toEqual([
+    expect(tourSteps({ hasVariants: false, hasChanges: true, hasComments: true })).not.toContain("variants");
+    expect(tourSteps({ hasVariants: true, hasChanges: false, hasComments: false })).not.toContain("feedback");
+    expect(tourSteps({ hasVariants: false, hasChanges: false, hasComments: false })).toEqual([
       "welcome", "pins", "panel", "profile",
     ]);
   });
@@ -99,6 +99,13 @@ describe("tourCardPosition", () => {
   it("stands left of a panel, level with its foot", () => {
     const target = { left: 560, top: 100, width: 420, bottom: 620 };
     expect(tourCardPosition({ at: "left", target }, card, viewport)).toEqual({ left: 198, top: 420 });
+  });
+});
+
+describe("tourCardPosition beside a pane on the left", () => {
+  it("stands right of it, level with its foot", () => {
+    const target = { left: 16, top: 100, width: 420, bottom: 620 };
+    expect(tourCardPosition({ at: "right", target }, card, viewport)).toEqual({ left: 458, top: 420 });
   });
 });
 
