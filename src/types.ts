@@ -178,6 +178,9 @@ export interface AnnotationLabels {
   componentNamed: string;
   /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */
   profile: string;
+  /** The profile without feedback: no name, only settings. */
+  settings: string;
+  settingsClose: string;
   profileNamed: string;
   /** The profile pane's title. */
   profileTitle: string;

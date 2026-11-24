@@ -153,7 +153,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       ref: paneRef,
       id,
       role: "dialog",
-      "aria-label": labels.profileTitle,
+      "aria-label": commentsConfig ? labels.profileTitle : labels.settings,
       lang: language,
       [ORBIT_UI_ATTR]: "",
       className: "orbit-root orbit-profile orbit-glass-pane orbit-animate-in",
@@ -163,7 +163,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       {
         type: "button",
         className: "orbit-icon-button orbit-profile__close",
-        "aria-label": labels.profileClose,
+        "aria-label": commentsConfig ? labels.profileClose : labels.settingsClose,
         onClick: () => onClose(true),
       },
       React.createElement(XIcon, { size: 16 })

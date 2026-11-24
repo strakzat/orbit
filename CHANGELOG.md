@@ -9,7 +9,7 @@
   `parseChangelog()` (`@strakzat/orbit/server`) does it outside Vite. `[Unreleased]` and `### Internal`
   are left out, so they never reach the browser.
 - **Without feedback, Orbit no longer mentions it.** With `comments` off the panel and its button are
-  "Annotations", without the Feedback tab, and the profile has no name.
+  "Annotations", without the Feedback tab, and the profile has no name: it is Settings, with a gear.
 
 ## 4.13.1
 

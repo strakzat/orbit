@@ -395,7 +395,7 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 
 ### Zonder feedback
 
-Met `comments` uit heet het paneel Annotaties (`panelTitleAnnotations`), zonder de tabs, en toont het profiel geen naam: die is alleen voor feedback.
+Met `comments` uit heet het paneel Annotaties (`panelTitleAnnotations`), zonder de tabs, en toont het profiel geen naam: die is alleen voor feedback. Het heet dan Instellingen (`labels.settings`), met een tandwiel op de rail, ook in de rondleiding.
 
 ### Taal en naam
 

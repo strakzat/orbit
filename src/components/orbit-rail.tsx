@@ -4,7 +4,7 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
 import { isOnPage } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
-import { ClockRewindIcon, MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
+import { ClockRewindIcon, MessageChatSquareIcon, MessagePlusSquareIcon, SettingsIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
@@ -280,7 +280,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
   );
 
   // The viewer as a monogram once they have a name, the profile icon until then. The name is for
-  // feedback: without it, the icon.
+  // feedback: without it there is no one to show, only settings.
   const name = commentsConfig ? viewer.name.trim() : "";
   const profileButton = item(
     "profile",
@@ -290,7 +290,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
       "data-orbit-profile-toggle": "",
       "aria-expanded": profileOpen,
       "aria-controls": profileOpen ? profileId : undefined,
-      "aria-label": name ? fill(labels.profileNamed, { name }) : labels.profile,
+      "aria-label": name ? fill(labels.profileNamed, { name }) : commentsConfig ? labels.profile : labels.settings,
       onClick: () => {
         if (profileOpen) return setProfileOpen(false);
         // The profile has the stage to itself: the panel, a popover, the inspector and the
@@ -305,7 +305,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
     },
     name
       ? React.createElement("span", { className: "orbit-rail__monogram", "aria-hidden": true }, initials(name))
-      : React.createElement(UserIcon, { size: 16 }),
+      : React.createElement(commentsConfig ? UserIcon : SettingsIcon, { size: 16 }),
     null
   );
 
