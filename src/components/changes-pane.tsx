@@ -18,7 +18,11 @@ function sectionTitle(title: string, labels: AnnotationLabels): string {
 /** "2 added, 1 fixed". Changes without a section are just changes. */
 function summary(release: OrbitRelease, labels: AnnotationLabels): string {
   return release.sections
-    .map(({ title, entries }) => `${entries.length} ${sectionTitle(title || labels.changes, labels).toLowerCase()}`)
+    .filter(({ entries }) => entries.length > 0)
+    .map(({ title, entries }) => {
+      const plain = entries.length === 1 ? labels.changesOne : labels.changes;
+      return `${entries.length} ${(title ? sectionTitle(title, labels) : plain).toLowerCase()}`;
+    })
     .join(", ");
 }
 
@@ -74,7 +78,7 @@ function ReleaseCard({ release, isNew, onOpen }: ReleaseCardProps) {
     React.createElement(
       "p",
       { className: "orbit-card__body orbit-changes__preview" },
-      plainText(release.sections[0].entries[0])
+      plainText(release.sections.find((s) => s.entries.length > 0)?.entries[0] ?? "")
     ),
     React.createElement(
       "div",
@@ -225,7 +229,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
               ),
               release.date && React.createElement("p", { className: "orbit-changes__date" }, formatDate(release.date))
             ),
-            ...release.sections.map((section) =>
+            ...release.sections.filter((s) => s.entries.length > 0).map((section) =>
               React.createElement(
                 "section",
                 { key: section.title, className: "orbit-changes__section" },

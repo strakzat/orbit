@@ -173,7 +173,7 @@ export function OrbitTour({ steps, onAnnounce }: OrbitTourProps) {
       title: hasComments ? labels.panelTitle : labels.panelTitleAnnotations,
       body: hasComments ? labels.tourPanelBody : labels.tourPanelBodyAnnotations,
     },
-    variants: { title: labels.variants, body: labels.tourVariantsBody },
+    variants: { title: labels.variants, body: hasComments ? labels.tourVariantsBody : labels.tourVariantsBodyAnnotations },
     profile: { title: labels.profile, body: hasComments ? labels.tourProfileBody : labels.tourProfileBodyAnnotations },
   };
   const { title, body, note } = copy[step];

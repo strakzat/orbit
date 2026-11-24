@@ -14,6 +14,7 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     panelTitle: "Annotaties en feedback",
     panelTitleAnnotations: "Annotaties",
     changes: "Wijzigingen",
+    changesOne: "wijziging",
     changesUnread: "{name}, {count} nieuw",
     changesClose: "Sluit wijzigingen",
     changesNew: "Nieuw",
@@ -141,6 +142,7 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
       "Hier staat alles op een rij. Wissel bovenin tussen annotaties en feedback, en open een kaart om de thread te lezen.",
     tourPanelBodyAnnotations: "Hier staan alle annotaties op een rij. Open een kaart om hem te lezen.",
     tourVariantsBody: "Bekijk andere versies van het prototype. Wat je kiest, gaat mee met je feedback.",
+    tourVariantsBodyAnnotations: "Bekijk andere versies van het prototype.",
     tourProfileBodyAnnotations: "Hier wijzig je je taal en zet je pins aan of uit. Ook deze rondleiding vind je hier terug.",
     tourProfileBody:
       "Hier wijzig je je naam en taal en zet je pins aan of uit. Ook deze rondleiding vind je hier terug.",
@@ -164,6 +166,7 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
     panelTitle: "Annotations and feedback",
     panelTitleAnnotations: "Annotations",
     changes: "Changes",
+    changesOne: "change",
     changesUnread: "{name}, {count} new",
     changesClose: "Close changes",
     changesNew: "New",
@@ -291,6 +294,7 @@ export const LABELS: Record<OrbitLanguage, AnnotationLabels> = {
       "Everything is listed here. Switch between annotations and feedback at the top, and open a card to read its thread.",
     tourPanelBodyAnnotations: "All annotations are listed here. Open a card to read it.",
     tourVariantsBody: "See other versions of the prototype. What you choose goes along with your feedback.",
+    tourVariantsBodyAnnotations: "See other versions of the prototype.",
     tourProfileBodyAnnotations: "Change your language here, and turn the pins on or off. This tour is here too.",
     tourProfileBody:
       "Change your name and language here, and show or hide the pins. You can also find this tour here.",

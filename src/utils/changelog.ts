@@ -1,8 +1,10 @@
 import type { OrbitRelease } from "../types";
 
 // "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)".
-const VERSION = /^##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)(?=[\s\]]|$)(.*)$/;
-const SECTION = /^###\s+(.+?)\s*#*$/;
+const VERSION = /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)(?=[\s\]]|$)(.*)$/;
+const SECTION = /^ {0,3}###\s+(.+?)\s*#*$/;
+// A line between versions: ---, ***, _ _ _.
+const RULE = /^ {0,3}([-*_])(\s*\1){2,}\s*$/;
 /** For what means nothing to who reads it on the page: docs, tooling. */
 const INTERNAL = "internal";
 
@@ -50,11 +52,17 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
       blank = true;
       continue;
     }
+    if (RULE.test(line)) {
+      blank = true;
+      inItem = false;
+      continue;
+    }
     const afterBlank = blank;
     blank = false;
 
-    if (/^#{1,2}\s/.test(line)) {
-      const match = VERSION.exec(line);
+    if (/^ {0,3}#{1,2}\s/.test(line)) {
+      // "## [2.0.0] - Unreleased" has its number already, and is not released for it.
+      const match = /unreleased/i.test(line) ? null : VERSION.exec(line);
       const date = match && /\d{4}-\d{2}-\d{2}/.exec(match[2])?.[0];
       release = match ? { version: match[1], ...(date ? { date } : {}), sections: [] } : null;
       if (release) releases.push(release);
@@ -63,7 +71,7 @@ export function parseChangelog(markdown: string): OrbitRelease[] {
       inItem = false;
       continue;
     }
-    if (/^#{3,}\s/.test(line)) {
+    if (/^ {0,3}#{3,}\s/.test(line)) {
       const section = SECTION.exec(line);
       if (section) {
         title = section[1];

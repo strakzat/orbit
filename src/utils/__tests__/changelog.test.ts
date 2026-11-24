@@ -70,6 +70,21 @@ describe("parseChangelog", () => {
   });
 });
 
+describe("what is not released", () => {
+  it("is left out with a number, and behind an indented heading", () => {
+    expect(parseChangelog("## [2.0.0] - Unreleased\n\n- a\n\n## 1.0.0\n\n- b")).toEqual([
+      { version: "1.0.0", sections: [{ title: "", entries: ["b"] }] },
+    ]);
+    expect(parseChangelog("## 1.0.0\n\n- b\n\n ## [Unreleased]\n\n ### Added\n\n- a")).toEqual([
+      { version: "1.0.0", sections: [{ title: "", entries: ["b"] }] },
+    ]);
+  });
+
+  it("nor is a line between versions a change", () => {
+    expect(parseChangelog("## 1.1.0\n\n- a\n\n---\n\n## 1.0.0\n\n- b\n* * *").map(changeCount)).toEqual([1, 1]);
+  });
+});
+
 describe("compareVersions", () => {
   it("compares numbers, not text, and puts a pre-release first", () => {
     expect(compareVersions("1.10.0", "1.9.0")).toBeGreaterThan(0);

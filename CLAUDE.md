@@ -138,7 +138,7 @@ src/
 │   ├── orbit-shell.tsx                — Het frame met de app en de rail eronder; rendert het paneel
 │   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
 │   ├── variants-pane.tsx              — Het variantenpaneel: titel, tabs Deze pagina / Alle pagina's
-│   ├── changes-pane.tsx              — Wijzigingen: een kaart per versie, de versie als pagina
+│   ├── changes-pane.tsx               — Wijzigingen: een kaart per versie, de versie als pagina
 │   ├── profile-pane.tsx               — Het profiel: naam voor feedback, taal
 │   ├── orbit-tour.tsx                 — De rondleiding: kaart, scrim, focus; de stappen zetten het toneel
 │   ├── tour-stars.tsx                 — De sterren van de tour: het canvas, het veld rond de kaart, de boot (uit)
@@ -170,8 +170,8 @@ src/
 │   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
 │   ├── use-viewer.ts                  — Naam, taal en pins van de kijker, in localStorage
 │   ├── use-seen.ts                    — Wat de kijker per thread gelezen heeft, in localStorage
-│   ├── use-changes.ts                — Welke versies nieuw zijn voor de kijker, in localStorage
-│   ├── use-paged.ts                  — Een lijst met een pagina eroverheen: paneel en Wijzigingen
+│   ├── use-changes.ts                 — Welke versies nieuw zijn voor de kijker, in localStorage
+│   ├── use-paged.ts                   — Een lijst met een pagina eroverheen: paneel en Wijzigingen
 │   ├── use-own-comments.ts            — De comments die deze browser schreef, met hun delete-token
 │   ├── use-pin-morph.ts               — De popover van een pin groeit uit die pin, en terug
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
@@ -184,7 +184,7 @@ src/
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
     ├── route-matching.ts              — Route matching, breadcrumb en navigatie
-    ├── changelog.ts                  — CHANGELOG.md naar data, versies vergelijken, inline markdown
+    ├── changelog.ts                   — CHANGELOG.md naar data, versies vergelijken, inline markdown
     ├── variants.ts                    — Groepen, standaardwaarden, beschrijving en link-serialisatie van varianten
     ├── send-failure.ts                — Waarom een comment niet verstuurd is, en de zin voor de kijker
     ├── screenshot.ts                  — De screenshot bij feedback: vastleggen, bijsnijden, element omlijnen
@@ -466,7 +466,7 @@ De naamgeving volgt de semantische laag van Untitled UI (`bg-primary`, `text-ter
 - Geen externe dependencies buiten de React peer dep. Wat Orbit van buiten gebruikt (html-to-image, Sonner, en de lettertypes Inter en Geist Mono) zit gebundeld in `dist`, met de licenties in `THIRD-PARTY-NOTICES.md`.
 - `useAnnotationsSafe()` geeft safe defaults wanneer buiten AnnotationProvider — voorkomt crashes bij optioneel gebruik.
 - `useAnnotationStyles()` staat in élk geëxporteerd component, niet alleen in de provider, omdat `useAnnotationsSafe()` gebruik buiten de provider toestaat. Een refcount zorgt dat de sheet één keer bestaat.
-- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam, taal, pins en of hij de rondleiding zag, en wat hij per thread gelezen heeft.
+- Het paneel staat vast rechtsonder boven de rail. In localStorage staat alleen de kijker: naam, taal, pins en of hij de rondleiding zag, wat hij per thread gelezen heeft, welke versies hij las, en de comments die hij schreef.
 - Comments worden door de provider gepolled, één keer voor alles, elke 30 seconden zolang comments aanstaan — ook als het paneel dicht is, voor de teller op de rail. Een verborgen tab slaat over; na een fout wordt het twee minuten later opnieuw geprobeerd.
 
 ## Checks

@@ -51,14 +51,20 @@ export function useChanges(project: string, releases: OrbitRelease[]) {
       if (!current) return;
       // From storage: another tab may have read one since.
       const stored = load(project, current);
-      if (!stored || stored.read.includes(version)) return setState(stored);
-      const next = { ...stored, read: [...stored.read, version] };
+      // And from here: without room in storage, what was read is only here.
+      const before = stored?.read ?? [];
+      setState((prev) => {
+        const since = stored?.since ?? prev?.since;
+        if (since === undefined) return prev;
+        return { since, read: Array.from(new Set([...before, ...(prev?.read ?? []), version])) };
+      });
+      if (!stored || before.includes(version)) return;
+      const next = { ...stored, read: [...before, version] };
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...loadAll(), [project]: next }));
       } catch {
         // Storage refused: read for as long as the page.
       }
-      setState(next);
     },
     [project, current]
   );

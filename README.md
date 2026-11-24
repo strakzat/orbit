@@ -379,7 +379,7 @@ define: { "import.meta.env.CHANGELOG": JSON.stringify(readChangelog()) }
 >
 ```
 
-Orbit has no production or staging of its own: the project decides by what it passes. `comments={{ enabled: false, … }}` leaves the annotations only. Viewers read the changelog, so put what means nothing to them under `### Internal`: that section is left out. Outside Vite, use `parseChangelog()` from `@strakzat/orbit/server`.
+Orbit has no production or staging of its own: the project decides by what it passes. `comments={{ enabled: false, … }}` leaves the annotations only. Viewers read the changelog, so put what means nothing to them under `### Internal`: that section is left out. What a viewer has read is kept per browser, under `settings.projectName`: set it when projects share an origin, and renaming it starts over. Outside Vite, use `parseChangelog()` from `@strakzat/orbit/server`.
 
 ### 2. Annotations data in your project
 

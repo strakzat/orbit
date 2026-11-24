@@ -252,6 +252,11 @@ const CHROME = `
   .orbit-rail--centred .orbit-rail__item:not(.orbit-rail__item--avatar) {
     padding: 0 var(--orbit-space-2);
   }
+
+  /* Variants and Changes side by side: the words stay, the icons give way. */
+  .orbit-rail--centred:has([data-orbit-variants-toggle]) .orbit-rail__item:not(.orbit-rail__item--avatar) > svg {
+    display: none;
+  }
 }
 
 /* Without a frame: over the foot of the window, the page scrolling under it as before. */

@@ -22,7 +22,8 @@ export interface AnnotationSettings {
   keyboardShortcut?: boolean;
   /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
   tour?: boolean;
-  /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype". */
+  /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype".
+   * Also what the versions a viewer read are kept under, on this origin: unnamed projects share that. */
   projectName?: string;
 }
 
@@ -37,6 +38,8 @@ export interface AnnotationLabels {
   panelTitleAnnotations: string;
   /** The rail's button for what changed, and the pane's name. */
   changes: string;
+  /** One change of a version without sections: "1 change". */
+  changesOne: string;
   /** After the button's name, for a screen reader: "Changes, 3 new". */
   changesUnread: string;
   changesClose: string;
@@ -225,6 +228,8 @@ export interface AnnotationLabels {
   tourPanelBody: string;
   tourPanelBodyAnnotations: string;
   tourVariantsBody: string;
+  /** The same without feedback. */
+  tourVariantsBodyAnnotations: string;
   tourProfileBody: string;
   /** The same without feedback: there is no name to change. */
   tourProfileBodyAnnotations: string;
