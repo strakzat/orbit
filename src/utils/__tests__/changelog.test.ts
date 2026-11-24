@@ -29,7 +29,7 @@ Intro with [Unreleased].
 ### Fixed
 
 \`\`\`
-## [9.9.9] - not a version
+- not a change
 \`\`\`
 * Three
 
@@ -111,8 +111,9 @@ describe("lists", () => {
     expect(entries("- a\n\t- n")).toEqual(["a; n"]);
   });
 
-  it("skip a longer fence, with a shorter one in it", () => {
-    expect(entries("- a\n\n````md\n## 9.9.9\n```\n- leak\n````\n- b")).toEqual(["a", "b"]);
+  it("skip code, and stay hidden after a heading in it", () => {
+    expect(entries("- a\n\n````md\n## 9.9.9\n```\n- leak\n````\n- b")).toEqual(["a"]);
+    expect(entries("- a\n```js\nx\n```\n- b")).toEqual(["a", "b"]);
   });
 
   it("don't end at inline code in three backticks", () => {
@@ -144,14 +145,48 @@ describe("anything else", () => {
     ["## 2.0.0 - 2026-12-01 (planned)\n- x", [3]],
     ["## Version 2.0.0\n- x", [3]],
     ["# 2.0.0\n- x", [3]],
-    ["<!--\n- x\n### Added\n-->", []],
-    ["<!-- \n- x\n## 0.9.0\n- x", [3]],
+    ["<!--\n- x\n-->", []],
+    ["<!--\n### Internal\n-->\n- x", [4]],
+    ["<!-- \n- x\n## 0.9.0\n- x", [5]],
     ["<!-- x --> <!-- x\n- x -->", []],
     ["```\n```js\n## 9.9.9\n- x\n```", [3]],
     ["- ```\n  x\n  ```", [3]],
     ["```\n- x", [3, 3]],
+    ["## [1.2.0][Unreleased]\n- x", [3]],
+    ["## 1.2.0[Unreleased]\n- x", [3]],
+    ["## 1.2.0(unreleased)\n- x", [3]],
+    ["## [1.2.0](planned)\n- x", [3]],
+    ["  ```\n  x\n\n### Internal\n  ```\n- x", [3]],
+    ["  ```\n\n## [Unreleased]\n  ```\n### Added\n- x", [3]],
+    ["```\nx\n    ```\n## [9.9.9]\n- x\n```", [3]],
+    ["# Notes\n- x", [3]],
+    ["## 2.0.0 - handle unreleased locks\n- x", [3]],
+    ["### Internal\n[0.9.0] - 2025-01-01\n---\n### Added\n- x", [5]],
+    ["    ### Internal\n    x", []],
   ])("stays hidden: %j", (rest, lines) => {
-    expect(read(V + rest)).toEqual({ shown: ["a"], skipped: lines });
+    const { shown, skipped } = read(V + rest);
+    expect(shown).toEqual(["a"]);
+    // From the first line hidden; a hidden line after it is told of too.
+    expect(skipped.slice(0, 1)).toEqual(lines.slice(0, 1));
+  });
+
+  it("is told of line by line", () => {
+    expect(read("## 1.0.0\nSummary\n\n- a\n- b\n\n### Added\n- c")).toEqual({ shown: ["c"], skipped: [2, 4, 5] });
+  });
+
+  it("does not include what is in an item, or a byte order mark", () => {
+    expect(read("\uFEFF## 1.0.0\n1. a\n   [Note]: text\n- b \\` <!-- x --> \\` c").shown).toEqual([
+      "a [Note]: text",
+      "b \\`  \\` c",
+    ]);
+    expect(read("## 1.0.0\n1. a\n\n  Unreleased\n  ---\n- x").shown).toEqual(["a"]);
+  });
+
+  it("takes no time over a long line", () => {
+    const start = Date.now();
+    const spaces = " ".repeat(20_000);
+    for (const line of ["## a", "## 1.1", "- -", "`", "<!--"]) parseChangelog(`## 1.0.0\n${line}${spaces}x`);
+    expect(Date.now() - start).toBeLessThan(1000);
   });
 
   it("is over at the next heading", () => {

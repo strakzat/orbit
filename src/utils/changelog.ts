@@ -3,17 +3,33 @@ import type { OrbitRelease } from "../types";
 /** Keep a Changelog's sections. Only these show: what isn't recognised isn't known to be for the page. */
 export const CHANGE_SECTIONS = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"] as const;
 
-// "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)", and "[YANKED]" after it.
-// Nothing else may follow: "- Unreleased", "(planned)" and a title all mean it may not be released.
-const VERSION =
-  /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)\]?(?:\([^)\s]*\)|\[[^\]]*\])?(?:\s*[-–—]?\s*\(?(\d{4}-\d{2}-\d{2})\)?)?(?:\s*\[YANKED\])?\s*#*\s*$/i;
-const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
+const NUMBER = String.raw`v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)`;
+// A heading's text: "[1.1.0] - 2026-12-01", "1.1.0", "[1.1.0](https://…) (2026-12-01)", and "[YANKED]"
+// after it. Nothing else may follow: "- Unreleased", "(planned)" and a title all mean it may not be
+// released. Matched on the heading's text with its whitespace collapsed.
+const VERSION = new RegExp(
+  String.raw`^(?:\[${NUMBER}\](?:\((?:https?:/|\.{0,2})/[^)\s]*\))?|${NUMBER})(?: ?[-–—]? ?\(?(\d{4}-\d{2}-\d{2})\)?)?(?: \[YANKED\])?$`,
+  "i"
+);
+// "[Unreleased]", on its own or as a link.
+const UNRELEASED = /^\[?unreleased\]?(?:\([^)]*\))?$/i;
+// At any indent: in a list it would be an item's, which nothing here shows either.
+const HEADING = /^\s*(#{1,6})(?:\s|$)/;
 // A line between versions: ---, ***, _ _ _.
-const RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
+const RULE = /^([-*_])(?: ?\1){2,}$/;
 const UNDERLINE = /^ {0,3}(=+|-+)\s*$/;
-const ITEM = /^(\s*)(?:[-*+]|\d+[.)])\s+(.+)$/;
+const ITEM = /^\s*((?:[-*+]|\d+[.)])\s)\s*(\S.*)$/;
 const FENCE = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:(`{3,})[^`]*$|(~{3,}))/;
 const INTERNAL = "internal";
+
+/** A heading's level and text, its closing #s off and its whitespace collapsed. */
+function readHeading(line: string): { level: number; name: string } | null {
+  const marks = HEADING.exec(line)?.[1];
+  if (!marks) return null;
+  const words = line.trim().split(/\s+/).slice(1);
+  if (words.length && /^#+$/.test(words[words.length - 1])) words.pop();
+  return { level: marks.length, name: words.join(" ") };
+}
 
 /** A nested item or a next paragraph, folded into its item. */
 function fold(text: string, more: string): string {
@@ -27,18 +43,22 @@ export type SkippedLine = (line: number, text: string) => void;
  * A CHANGELOG.md in the Keep a Changelog format as data, in the file's order. Strict, because what
  * isn't approved yet must not reach the page: only `## [version] - date` headings start a version,
  * only Keep a Changelog's sections and lists right under a version show, and anything else stays
- * hidden, up to the next heading. `onSkip` hears of what was hidden and not meant to be:
- * [Unreleased] and `### Internal` are, and go without a word.
+ * hidden, up to the next heading. `onSkip` hears of every line hidden that wasn't meant to be (of a code
+ * block, the first): [Unreleased] and `### Internal` are, and go without a word.
  */
 export function parseChangelog(markdown: string, onSkip: SkippedLine = () => {}): OrbitRelease[] {
   const releases: OrbitRelease[] = [];
   let release: OrbitRelease | null = null;
   let title = "";
   let hidden = false;
+  // What is hidden now is meant to be: the intro, [Unreleased], Internal.
+  let quiet = true;
   let fence: string | null = null;
+  let fenceIndent = 0;
   let fenceLine = 0;
   let inComment = false;
   let commentLine = 0;
+  // Where the item's text starts: what is indented that far belongs to it.
   let itemIndent: number | null = null;
   // Text that isn't in a list, on the line before: underlined it is a heading.
   let loose = false;
@@ -53,18 +73,35 @@ export function parseChangelog(markdown: string, onSkip: SkippedLine = () => {})
     list[list.length - 1] = change(list[list.length - 1]);
   };
 
-  const lines = markdown.split(/\r?\n/);
+  const lines = markdown.replace(/^\uFEFF/, "").split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].replace(/\t/g, "    ");
-    const skip = () => onSkip(i + 1, lines[i].trim());
+    let line = lines[i].replace(/\t/g, "    ").trimEnd();
+    const indent = line.length - line.trimStart().length;
+    const skip = () => {
+      if (!quiet) onSkip(i + 1, lines[i].trim());
+    };
+
+    // A heading in a block or a comment: perhaps that was never closed, and it is one. Nothing under
+    // what was before it shows, then.
+    const closedOver = () => {
+      const level = readHeading(line)?.level;
+      if (!level) return;
+      hidden = true;
+      if (level <= 2) release = null;
+      quiet = releases.length === 0;
+      itemIndent = null;
+      skip();
+    };
 
     if (fence) {
       // Only a bare run of the same kind, at least as long, ends it.
-      const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)?.[1];
+      const close = indent <= fenceIndent + 3 && /^\s*(`{3,}|~{3,})$/.exec(line)?.[1];
+      closedOver();
       if (close && close[0] === fence[0] && close.length >= fence.length) fence = null;
       continue;
     }
     if (inComment) {
+      closedOver();
       const end = line.indexOf("-->");
       if (end < 0) continue;
       inComment = false;
@@ -74,12 +111,14 @@ export function parseChangelog(markdown: string, onSkip: SkippedLine = () => {})
     const opens = FENCE.exec(line);
     if (opens) {
       fence = opens[1] ?? opens[2];
+      fenceIndent = indent;
       fenceLine = i;
-      if (release && !hidden) skip();
+      quiet = quiet && (!release || hidden);
+      skip();
       continue;
     }
     // Comments go, also over several lines; `<!--` in inline code is text.
-    const commented = line.replace(/(`+)(?!`).*?[^`]\1(?!`)|<!--(?:.*?-->|.*$)/g, (found) => {
+    const commented = line.replace(/\\.|(`+)(?!`).*?[^`]\1(?!`)|<!--(?:.*?-->|.*$)/g, (found) => {
       if (!found.startsWith("<!--")) return found;
       if (!found.endsWith("-->")) {
         inComment = true;
@@ -94,56 +133,67 @@ export function parseChangelog(markdown: string, onSkip: SkippedLine = () => {})
       loose = false;
       continue;
     }
-    const heading = HEADING.exec(line);
+    const heading = readHeading(line);
     if (heading) {
+      const { level, name } = heading;
       loose = false;
       itemIndent = null;
-      const level = heading[1].length;
-      const name = heading[2];
       if (level <= 2) {
-        const match = VERSION.exec(line);
-        const isRelease = match && !/unreleased/i.test(match[1]);
-        release = isRelease ? { version: match[1], ...(match[2] ? { date: match[2] } : {}), sections: [] } : null;
+        const match = level === 2 && indent <= 3 ? VERSION.exec(name) : null;
+        const version = match && (match[1] ?? match[2]);
+        release =
+          version && !/unreleased/i.test(version)
+            ? { version, ...(match[3] ? { date: match[3] } : {}), sections: [] }
+            : null;
         if (release) releases.push(release);
-        else if (!/unreleased/i.test(name) && (level === 2 || /\d+\.\d+/.test(name))) skip();
         title = "";
         hidden = false;
+        // The file's own title, before any version, isn't a version gone wrong.
+        const isTitle = level === 1 && releases.length === 0 && !/\d+\.\d+/.test(name);
+        quiet = !release && (isTitle || UNRELEASED.test(name));
+        if (!release) skip();
       } else if (release) {
         const known = level === 3 && CHANGE_SECTIONS.find((s) => s.toLowerCase() === name.toLowerCase());
         title = known || "";
         hidden = !known;
-        if (!known && name.toLowerCase() !== INTERNAL) skip();
-      }
+        quiet = hidden && name.toLowerCase() === INTERNAL;
+        if (hidden) skip();
+      } else skip();
       continue;
     }
     if (loose && UNDERLINE.test(line)) {
       // A heading after all, of something else than a version.
       release = null;
       loose = false;
+      // Also under what was meant to be hidden: a version written this way is not.
+      quiet = releases.length === 0;
+      skip();
       continue;
     }
-    if (!release || /^ {0,3}\[[^\]]+\]:\s/.test(line)) continue;
-    if (RULE.test(line)) {
-      if (/^\S/.test(line)) itemIndent = null;
+    const inItem = itemIndent !== null && indent >= itemIndent;
+    if (!inItem && /^ {0,3}\[[^\]]+\]:\s/.test(line)) continue;
+    if (RULE.test(line.trim().replace(/\s+/g, " "))) {
+      if (indent === 0) itemIndent = null;
       continue;
     }
 
-    const indent = line.length - line.trimStart().length;
-    const inItem = itemIndent !== null && indent >= itemIndent + 2;
     const item = ITEM.exec(line);
     if (!item && !inItem) {
       // Not in a list: a pseudo-heading, or a summary. What follows may be about it.
       loose = true;
       itemIndent = null;
-      if (!hidden) skip();
-      hidden = true;
+      if (release && !hidden) {
+        hidden = true;
+        quiet = false;
+      }
+      skip();
       continue;
     }
     loose = false;
-    if (item && !inItem) itemIndent = indent;
-    if (hidden) continue;
-    if (item && !inItem) entries().push(item[2].trim());
-    else if (item) amend((text) => fold(text, item[2].trim()));
+    if (item && !inItem) itemIndent = indent + item[1].length;
+    if (!release || hidden) skip();
+    else if (item && !inItem) entries().push(item[2]);
+    else if (item) amend((text) => fold(text, item[2]));
     else if (!lines[i - 1]?.trim()) amend((text) => fold(text, line.trim()));
     else amend((text) => `${text} ${line.trim()}`);
   }
