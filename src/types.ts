@@ -23,7 +23,7 @@ export interface AnnotationSettings {
   /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
   tour?: boolean;
   /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype".
-   * Also what the versions a viewer read are kept under, on this origin: unnamed projects share that. */
+   * Without a `comments.project`, also what the versions a viewer read are kept under on this origin. */
   projectName?: string;
 }
 
@@ -47,8 +47,13 @@ export interface AnnotationLabels {
   changesNew: string;
   /** A version's name: "Version 1.1.0". */
   changesVersion: string;
-  /** Keep a Changelog's sections, by their lower-case name. Any other shows as written. */
-  changesSections: Record<string, string>;
+  /** Keep a Changelog's sections. */
+  changesAdded: string;
+  changesChanged: string;
+  changesFixed: string;
+  changesRemoved: string;
+  changesDeprecated: string;
+  changesSecurity: string;
   noResults: string;
   /** The rail's inspector toggle. */
   placeFeedback: string;
@@ -404,6 +409,8 @@ export interface AnnotationContextValue {
   labels: AnnotationLabels;
   settings: Required<AnnotationSettings>;
   commentsConfig: CommentsConfig | null;
+  /** The project's id, `comments.project`, also with feedback off. Empty without `comments`. */
+  project: string;
   allComments: Comment[];
   commentsLoading: boolean;
   commentsError: string | null;

@@ -6,7 +6,7 @@ import { mockCommentsApi } from "./mock-api";
 
 export default defineConfig({
   plugins: [react(), mockCommentsApi()],
-  define: { __CHANGELOG__: JSON.stringify(readChangelog(path.resolve(__dirname, "CHANGELOG.md"))) },
+  define: { __CHANGELOG__: JSON.stringify(readChangelog(new URL("./CHANGELOG.md", import.meta.url))) },
   // Node resolves "localhost" to ::1 alone on macOS, and a preview that opens 127.0.0.1
   // (Conductor's) then waits forever. IPv4 explicitly; "localhost" in a browser still works.
   server: { host: "127.0.0.1" },

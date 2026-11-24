@@ -36,7 +36,7 @@ Intro with [Unreleased].
 ## v1.0.0
 
 - Without a section
-over a lazy line
+  over a line
 
 ## [0.9.0](https://example.com) (2026-01-02)
 
@@ -59,7 +59,7 @@ describe("parseChangelog", () => {
           { title: "Fixed", entries: ["Three"] },
         ],
       },
-      { version: "1.0.0", sections: [{ title: "", entries: ["Without a section over a lazy line"] }] },
+      { version: "1.0.0", sections: [{ title: "", entries: ["Without a section over a line"] }] },
       { version: "0.9.0", date: "2026-01-02", sections: [] },
     ]);
   });
@@ -116,7 +116,61 @@ describe("lists", () => {
   });
 
   it("don't end at inline code in three backticks", () => {
-    expect(entries("- a\n```x``` text\n- b")).toEqual(["a ```x``` text", "b"]);
+    expect(entries("- a\n  ```x``` text\n- b")).toEqual(["a ```x``` text", "b"]);
+  });
+});
+
+describe("anything else", () => {
+  const read = (body: string) => {
+    const skipped: number[] = [];
+    const releases = parseChangelog(body, (line) => skipped.push(line));
+    const shown = releases.flatMap((r) => r.sections.flatMap((s) => s.entries));
+    return { shown, skipped };
+  };
+  const V = "## 1.0.0\n- a\n";
+
+  it.each([
+    ["### Unreleased\n- x", [3]],
+    ["### Internal tooling\n- x", [3]],
+    ["### **Internal**\n- x", [3]],
+    ["### Constructor\n- x", [3]],
+    ["### Internal\n- x\n#### More\n- x", [5]],
+    ["### Internal\n- x\n  - x\n\n  x", []],
+    ["\nUnreleased\n----------\n### Added\n- x", [4]],
+    ["Unreleased\n===\n- x", [3]],
+    ["\n**Unreleased**\n\n- x", [4]],
+    [" Unreleased\n- x", [3]],
+    ["## 2.0.0 - planned\n- x", [3]],
+    ["## 2.0.0 - 2026-12-01 (planned)\n- x", [3]],
+    ["## Version 2.0.0\n- x", [3]],
+    ["# 2.0.0\n- x", [3]],
+    ["<!--\n- x\n### Added\n-->", []],
+    ["<!-- \n- x\n## 0.9.0\n- x", [3]],
+    ["<!-- x --> <!-- x\n- x -->", []],
+    ["```\n```js\n## 9.9.9\n- x\n```", [3]],
+    ["- ```\n  x\n  ```", [3]],
+    ["```\n- x", [3, 3]],
+  ])("stays hidden: %j", (rest, lines) => {
+    expect(read(V + rest)).toEqual({ shown: ["a"], skipped: lines });
+  });
+
+  it("is over at the next heading", () => {
+    expect(read(`${V}Summary\n\n### Fixed\n- b\n## 0.9.0\n- c`).shown).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps a comment's marks in inline code, and the text around a comment", () => {
+    expect(read("## 1.0.0\n- Escape `<!--` <!-- x -->well\n- b\n<!-- x -->").shown).toEqual([
+      "Escape `<!--` well",
+      "b",
+    ]);
+  });
+
+  it("reads numbered lists, and a yanked version", () => {
+    expect(read("## [1.0.0] - 2026-01-01 [YANKED]\n1. a\n2. b").shown).toEqual(["a", "b"]);
+  });
+
+  it("says nothing about a plain Keep a Changelog file", () => {
+    expect(read(FILE.replace(/```[\s\S]*?```/, "")).skipped).toEqual([]);
   });
 });
 

@@ -4,7 +4,7 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { usePaged } from "../hooks/use-paged";
 import { ChevronLeftIcon, XIcon } from "../icons";
 import { fill } from "../labels";
-import { changeCount, inlineParts, plainText, type InlinePart } from "../utils/changelog";
+import { CHANGE_SECTIONS, changeCount, inlineParts, plainText, type InlinePart } from "../utils/changelog";
 import { cx } from "../utils/cx";
 import { formatDate } from "../utils/format";
 import { useStableId } from "../utils/use-stable-id";
@@ -12,7 +12,8 @@ import type { AnnotationLabels, OrbitRelease } from "../types";
 
 /** Keep a Changelog's own sections in the viewer's language; any other as the project wrote it. */
 function sectionTitle(title: string, labels: AnnotationLabels): string {
-  return labels.changesSections[title.toLowerCase()] ?? title;
+  const known = CHANGE_SECTIONS.find((s) => s.toLowerCase() === title.toLowerCase());
+  return known ? labels[`changes${known}`] : title;
 }
 
 /** "2 added, 1 fixed". Changes without a section are just changes. */

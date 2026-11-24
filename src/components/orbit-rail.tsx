@@ -52,6 +52,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
     inspectorActive,
     setInspectorActive,
     commentsConfig,
+    project,
     allComments,
     currentAnnotations,
     currentRoute,
@@ -78,7 +79,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
   const changesId = useStableId("orbit-changes");
 
   // Passing a changelog is the opt-in. Nothing to show in any version: no button.
-  const { unreadVersions, unreadCount, markRead } = useChanges(settings.projectName, changelog);
+  const { unreadVersions, unreadCount, markRead } = useChanges(project || settings.projectName, changelog);
   const hasChanges = changelog.some((r) => changeCount(r) > 0);
   const version = hasChanges ? `v${changelog[0].version}` : "";
 
@@ -138,6 +139,11 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
     setVariantsOpen(false);
     if (returnFocus) railRef.current?.querySelector<HTMLElement>("[data-orbit-variants-toggle]")?.focus();
   }, []);
+
+  // Gone with its button, so it doesn't come back open with it.
+  useEffect(() => {
+    if (!hasChanges) setChangesOpen(false);
+  }, [hasChanges]);
 
   const closeChanges = useCallback((returnFocus: boolean) => {
     setChangesOpen(false);
@@ -360,7 +366,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
           onAnnounce: setSpoken,
         })
       : null,
-    changesOpen
+    hasChanges && changesOpen
       ? React.createElement(ChangesPane, {
           id: changesId,
           releases: changelog,

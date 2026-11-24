@@ -7,7 +7,8 @@
   a card and opens as a page; opening it reads it. A first visit has nothing new. The tour has a step for it.
 - **`readChangelog()`** (`@strakzat/orbit/vite`) reads a Keep a Changelog file at build time, and
   `parseChangelog()` (`@strakzat/orbit/server`) does it outside Vite. `[Unreleased]` and `### Internal`
-  are left out, so they never reach the browser.
+  are left out, so they never reach the browser; so is anything else that isn't Keep a Changelog, with a
+  warning in the build.
 - **Without feedback, Orbit no longer mentions it.** With `comments` off the panel and its button are
   "Annotations", without the Feedback tab, and the profile has no name: it is Settings, with a gear.
 

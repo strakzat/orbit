@@ -1,14 +1,18 @@
 import type { OrbitRelease } from "../types";
 
-// "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)".
-const VERSION = /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)(?=[\s\]]|$)(.*)$/;
-const SECTION = /^ {0,3}###\s+(.+?)\s*#*$/;
-// Anywhere in a version's heading but a link's address, where a compare link may have it. Broad on
-// purpose: a released title with the word is left out sooner than unreleased work is shown.
-const isUnreleased = (heading: string) => /unreleased/i.test(heading.replace(/\(https?:[^)]*\)/gi, ""));
+/** Keep a Changelog's sections. Only these show: what isn't recognised isn't known to be for the page. */
+export const CHANGE_SECTIONS = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security"] as const;
+
+// "## [1.1.0] - 2026-12-01", "## 1.1.0", "## [1.1.0](https://…) (2026-12-01)", and "[YANKED]" after it.
+// Nothing else may follow: "- Unreleased", "(planned)" and a title all mean it may not be released.
+const VERSION =
+  /^ {0,3}##\s+\[?v?(\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z.+-]+)?)\]?(?:\([^)\s]*\)|\[[^\]]*\])?(?:\s*[-–—]?\s*\(?(\d{4}-\d{2}-\d{2})\)?)?(?:\s*\[YANKED\])?\s*#*\s*$/i;
+const HEADING = /^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/;
 // A line between versions: ---, ***, _ _ _.
-const RULE = /^ {0,3}([-*_])(\s*\1){2,}\s*$/;
-/** For what means nothing to who reads it on the page: docs, tooling. */
+const RULE = /^\s*([-*_])(\s*\1){2,}\s*$/;
+const UNDERLINE = /^ {0,3}(=+|-+)\s*$/;
+const ITEM = /^(\s*)(?:[-*+]|\d+[.)])\s+(.+)$/;
+const FENCE = /^\s*(?:(?:[-*+]|\d+[.)])\s+)?(?:(`{3,})[^`]*$|(~{3,}))/;
 const INTERNAL = "internal";
 
 /** A nested item or a next paragraph, folded into its item. */
@@ -16,94 +20,135 @@ function fold(text: string, more: string): string {
   return `${text}${/[.:;,!?]$/.test(text) ? " " : "; "}${more}`;
 }
 
+/** Called with the line, counted from 1, and its text. */
+export type SkippedLine = (line: number, text: string) => void;
+
 /**
- * A CHANGELOG.md in the Keep a Changelog format as data, in the file's order. Only released
- * versions: [Unreleased] is left out, so what isn't approved yet can't reach the page. A `###`
- * section called Internal is left out too. Items without a section, as in a plainer changelog, get
- * one without a title.
+ * A CHANGELOG.md in the Keep a Changelog format as data, in the file's order. Strict, because what
+ * isn't approved yet must not reach the page: only `## [version] - date` headings start a version,
+ * only Keep a Changelog's sections and lists right under a version show, and anything else stays
+ * hidden, up to the next heading. `onSkip` hears of what was hidden and not meant to be:
+ * [Unreleased] and `### Internal` are, and go without a word.
  */
-export function parseChangelog(markdown: string): OrbitRelease[] {
+export function parseChangelog(markdown: string, onSkip: SkippedLine = () => {}): OrbitRelease[] {
   const releases: OrbitRelease[] = [];
   let release: OrbitRelease | null = null;
   let title = "";
-  let entries: string[] | null = null;
+  let hidden = false;
   let fence: string | null = null;
-  let blank = false;
-  let inItem = false;
-  let itemIndent = 0;
+  let fenceLine = 0;
+  let inComment = false;
+  let commentLine = 0;
+  let itemIndent: number | null = null;
+  // Text that isn't in a list, on the line before: underlined it is a heading.
+  let loose = false;
 
-  const add = (text: string) => {
-    if (!release) return;
-    if (!entries) {
-      let section = release.sections.find((s) => s.title === title);
-      if (!section) release.sections.push((section = { title, entries: [] }));
-      entries = section.entries;
-    }
-    entries.push(text.trim());
+  const entries = () => {
+    let section = release!.sections.find((s) => s.title === title);
+    if (!section) release!.sections.push((section = { title, entries: [] }));
+    return section.entries;
   };
   const amend = (change: (text: string) => string) => {
-    if (entries?.length) entries[entries.length - 1] = change(entries[entries.length - 1]);
+    const list = entries();
+    list[list.length - 1] = change(list[list.length - 1]);
   };
 
-  for (const raw of markdown.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) {
-    const line = raw.replace(/\t/g, "    ");
-    const marker = /^\s*(?:(`{3,})[^`]*$|(~{3,}))/.exec(line)?.slice(1).find(Boolean);
-    if (fence || marker) {
-      if (!fence) fence = marker!;
-      else if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
-      continue;
-    }
-    if (!line.trim()) {
-      blank = true;
-      continue;
-    }
-    if (RULE.test(line)) {
-      blank = true;
-      if (/^\S/.test(line)) inItem = false;
-      continue;
-    }
-    const afterBlank = blank;
-    blank = false;
+  const lines = markdown.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].replace(/\t/g, "    ");
+    const skip = () => onSkip(i + 1, lines[i].trim());
 
-    if (/^ {0,3}#{1,2}\s/.test(line)) {
-      // "## [2.0.0] - Unreleased" has its number already, and is not released for it.
-      const match = isUnreleased(line) ? null : VERSION.exec(line);
-      const date = match && /\d{4}-\d{2}-\d{2}/.exec(match[2])?.[0];
-      release = match ? { version: match[1], ...(date ? { date } : {}), sections: [] } : null;
-      if (release) releases.push(release);
-      title = "";
-      entries = null;
-      inItem = false;
+    if (fence) {
+      // Only a bare run of the same kind, at least as long, ends it.
+      const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)?.[1];
+      if (close && close[0] === fence[0] && close.length >= fence.length) fence = null;
       continue;
     }
-    if (/^ {0,3}#{3,}\s/.test(line)) {
-      const section = SECTION.exec(line);
-      if (section) {
-        title = section[1];
-        entries = null;
+    if (inComment) {
+      const end = line.indexOf("-->");
+      if (end < 0) continue;
+      inComment = false;
+      line = line.slice(end + 3);
+      if (!line.trim()) continue;
+    }
+    const opens = FENCE.exec(line);
+    if (opens) {
+      fence = opens[1] ?? opens[2];
+      fenceLine = i;
+      if (release && !hidden) skip();
+      continue;
+    }
+    // Comments go, also over several lines; `<!--` in inline code is text.
+    const commented = line.replace(/(`+)(?!`).*?[^`]\1(?!`)|<!--(?:.*?-->|.*$)/g, (found) => {
+      if (!found.startsWith("<!--")) return found;
+      if (!found.endsWith("-->")) {
+        inComment = true;
+        commentLine = i;
       }
-      inItem = false;
+      return "";
+    });
+    if (commented !== line && !commented.trim()) continue;
+    line = commented;
+
+    if (!line.trim()) {
+      loose = false;
       continue;
     }
-    if (!release || title.toLowerCase() === INTERNAL || /^\[[^\]]+\]:\s/.test(line)) continue;
-
-    const item = /^(\s*)[-*+]\s+(.+)$/.exec(line);
-    // Nested is indented past its item's marker; a list may itself start indented.
-    if (item && !(inItem && item[1].length >= itemIndent + 2)) {
-      add(item[2]);
-      itemIndent = item[1].length;
-      inItem = true;
-    } else if (item) {
-      amend((text) => fold(text, item[2].trim()));
-    } else if (inItem && /^\s/.test(line) && afterBlank) {
-      amend((text) => fold(text, line.trim()));
-    } else if (entries && !afterBlank) {
-      amend((text) => `${text} ${line.trim()}`);
-    } else {
-      add(line);
-      inItem = false;
+    const heading = HEADING.exec(line);
+    if (heading) {
+      loose = false;
+      itemIndent = null;
+      const level = heading[1].length;
+      const name = heading[2];
+      if (level <= 2) {
+        const match = VERSION.exec(line);
+        const isRelease = match && !/unreleased/i.test(match[1]);
+        release = isRelease ? { version: match[1], ...(match[2] ? { date: match[2] } : {}), sections: [] } : null;
+        if (release) releases.push(release);
+        else if (!/unreleased/i.test(name) && (level === 2 || /\d+\.\d+/.test(name))) skip();
+        title = "";
+        hidden = false;
+      } else if (release) {
+        const known = level === 3 && CHANGE_SECTIONS.find((s) => s.toLowerCase() === name.toLowerCase());
+        title = known || "";
+        hidden = !known;
+        if (!known && name.toLowerCase() !== INTERNAL) skip();
+      }
+      continue;
     }
+    if (loose && UNDERLINE.test(line)) {
+      // A heading after all, of something else than a version.
+      release = null;
+      loose = false;
+      continue;
+    }
+    if (!release || /^ {0,3}\[[^\]]+\]:\s/.test(line)) continue;
+    if (RULE.test(line)) {
+      if (/^\S/.test(line)) itemIndent = null;
+      continue;
+    }
+
+    const indent = line.length - line.trimStart().length;
+    const inItem = itemIndent !== null && indent >= itemIndent + 2;
+    const item = ITEM.exec(line);
+    if (!item && !inItem) {
+      // Not in a list: a pseudo-heading, or a summary. What follows may be about it.
+      loose = true;
+      itemIndent = null;
+      if (!hidden) skip();
+      hidden = true;
+      continue;
+    }
+    loose = false;
+    if (item && !inItem) itemIndent = indent;
+    if (hidden) continue;
+    if (item && !inItem) entries().push(item[2].trim());
+    else if (item) amend((text) => fold(text, item[2].trim()));
+    else if (!lines[i - 1]?.trim()) amend((text) => fold(text, line.trim()));
+    else amend((text) => `${text} ${line.trim()}`);
   }
+  if (fence) onSkip(fenceLine + 1, "a code block that never ends: all after it is left out");
+  if (inComment) onSkip(commentLine + 1, "a comment that never ends: all after it is left out");
   return releases;
 }
 

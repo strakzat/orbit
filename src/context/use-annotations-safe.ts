@@ -21,6 +21,7 @@ const NOOP_CONTEXT: AnnotationContextValue = {
   labels: DEFAULT_LABELS,
   settings: DEFAULT_SETTINGS,
   commentsConfig: null,
+  project: "",
   allComments: [],
   commentsLoading: false,
   refreshComments: async () => {},
