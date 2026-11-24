@@ -4,16 +4,19 @@ import { ORBIT_UI_ATTR } from "../constants";
 import { cx } from "../utils/cx";
 import { isOnPage } from "../utils/route-matching";
 import { useStableId } from "../utils/use-stable-id";
-import { MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
+import { ClockRewindIcon, MessageChatSquareIcon, MessagePlusSquareIcon, SlidersIcon, UserIcon, XIcon } from "../icons";
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
+import { ChangesPane } from "./changes-pane";
 import { VariantsPane } from "./variants-pane";
 import { ProfilePane } from "./profile-pane";
 import { OrbitTour } from "./orbit-tour";
 import { isChanged, variantsHere } from "../utils/variants";
+import { changeCount } from "../utils/changelog";
 import { tourSteps } from "../utils/tour";
-import type { OrbitVariant, TourStepId } from "../types";
+import { useChanges } from "../hooks/use-changes";
+import type { OrbitRelease, OrbitVariant, TourStepId } from "../types";
 
 // The step that points at each button of the rail, and the buttons the viewer may press then.
 const TOUR_TARGET: Record<string, TourStepId> = {
@@ -23,22 +26,24 @@ const TOUR_TARGET: Record<string, TourStepId> = {
   profile: "profile",
 };
 const TOUR_PRESSABLE: TourStepId[] = ["feedback", "panel"];
+const NO_RELEASES: OrbitRelease[] = [];
 
 interface OrbitRailProps {
   variants?: OrbitVariant[];
+  changelog?: OrbitRelease[];
   /** Laid over the foot of the window, for a shell without a frame. */
   overlay: boolean;
 }
 
 /**
  * The rail: Orbit's controls in a bar under the project, in Radial's tertiary buttons. On the left
- * the project's variants, when it has any; on the right the inspector and the panel, under the
+ * the project's variants and what changed, when it has any, and in the centre the version; on the right the inspector and the panel, under the
  * corner the panel opens in, and at the end the viewer's profile. A toolbar: one stop for Tab, the arrow keys move between its buttons.
  */
 // Long enough for a screen reader to see the live region empty.
 const SPOKEN_DELAY_MS = 150;
 
-export function OrbitRail({ variants, overlay }: OrbitRailProps) {
+export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitRailProps) {
   const {
     labels,
     panelOpen,
@@ -62,12 +67,19 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
 
   const [variantsOpen, setVariantsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [changesOpen, setChangesOpen] = useState(false);
   const [spoken, setSpoken] = useState("");
   const [focusIndex, setFocusIndex] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
   const touring = tourStep !== null;
   const paneId = useStableId("orbit-variants");
   const profileId = useStableId("orbit-profile");
+  const changesId = useStableId("orbit-changes");
+
+  // Passing a changelog is the opt-in. A version without a change to show still has its number.
+  const { unreadVersions, unreadCount, markRead } = useChanges(settings.projectName, changelog);
+  const hasChanges = changelog.some((r) => changeCount(r) > 0);
+  const version = changelog[0]?.version;
 
   // Passing `variants` is the opt-in: the button stays in its place on every page, also where
   // there is nothing to switch.
@@ -77,7 +89,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const changed = here.filter(isChanged).length;
   // The toolbar's one tab stop, kept on a button that is there: the list shrinks when the
   // variants or the comments go.
-  const buttonCount = (hasVariants ? 1 : 0) + (commentsConfig ? 1 : 0) + 2;
+  const buttonCount = (hasVariants ? 1 : 0) + (hasChanges ? 1 : 0) + (commentsConfig ? 1 : 0) + 2;
   const tabStop = Math.min(focusIndex, buttonCount - 1);
 
   // What is open on this page: unresolved feedback, and the annotations here.
@@ -101,6 +113,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
     if (touring) {
       setVariantsOpen(false);
       setProfileOpen(false);
+      setChangesOpen(false);
     } else if (wasTouring.current) {
       railRef.current?.querySelector<HTMLElement>("[data-orbit-profile-toggle]")?.focus();
     }
@@ -121,6 +134,11 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
   const closeVariants = useCallback((returnFocus: boolean) => {
     setVariantsOpen(false);
     if (returnFocus) railRef.current?.querySelector<HTMLElement>("[data-orbit-variants-toggle]")?.focus();
+  }, []);
+
+  const closeChanges = useCallback((returnFocus: boolean) => {
+    setChangesOpen(false);
+    if (returnFocus) railRef.current?.querySelector<HTMLElement>("[data-orbit-changes-toggle]")?.focus();
   }, []);
 
   const closeProfile = useCallback((returnFocus: boolean) => {
@@ -177,12 +195,38 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           "aria-expanded": variantsOpen,
           "aria-controls": variantsOpen ? paneId : undefined,
           "aria-label": changed > 0 ? `${labels.variants}, ${changed} ${labels.variantsChanged}` : undefined,
-          onClick: () => setVariantsOpen((open) => !open),
+          onClick: () => {
+            // The two open in the same place.
+            setChangesOpen(false);
+            setVariantsOpen((open) => !open);
+          },
         },
         React.createElement(SlidersIcon, { size: 16 }),
         labels.variants,
         undefined,
         changed > 0
+      )
+    : null;
+
+  const changesButton = hasChanges
+    ? item(
+        "changes",
+        changesOpen,
+        {
+          "data-orbit-changes-toggle": "",
+          "aria-expanded": changesOpen,
+          "aria-controls": changesOpen ? changesId : undefined,
+          "aria-label":
+            unreadCount > 0 ? fill(labels.changesUnread, { name: labels.changes, count: unreadCount }) : undefined,
+          onClick: () => {
+            setVariantsOpen(false);
+            setProfileOpen(false);
+            setChangesOpen((open) => !open);
+          },
+        },
+        React.createElement(ClockRewindIcon, { size: 16 }),
+        labels.changes,
+        unreadCount
       )
     : null;
 
@@ -215,6 +259,8 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       )
     : null;
 
+  // Without feedback the panel is the annotations.
+  const panelTitle = commentsConfig ? labels.panelTitle : labels.panelTitleAnnotations;
   const panelButton = item(
     "panel",
     panelOpen,
@@ -222,16 +268,17 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
       // Where the panel gives the focus back when it closes.
       "data-annotation-button": "",
       "aria-expanded": panelOpen,
-      "aria-label": count > 0 ? `${labels.panelTitle}, ${fill(labels.onThisPage, { count })}` : undefined,
+      "aria-label": count > 0 ? `${panelTitle}, ${fill(labels.onThisPage, { count })}` : undefined,
       onClick: () => setPanelOpen(!panelOpen),
     },
     React.createElement(MessageChatSquareIcon, { size: 16 }),
-    labels.panelTitle,
+    panelTitle,
     count
   );
 
-  // The viewer as a monogram once they have a name, the profile icon until then.
-  const name = viewer.name.trim();
+  // The viewer as a monogram once they have a name, the profile icon until then. The name is for
+  // feedback: without it, the icon.
+  const name = commentsConfig ? viewer.name.trim() : "";
   const profileButton = item(
     "profile",
     profileOpen,
@@ -249,6 +296,7 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         setInspectorActive(false);
         setActiveAnnotationId(null);
         setVariantsOpen(false);
+        setChangesOpen(false);
         setProfileOpen(true);
       },
     },
@@ -287,10 +335,18 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
         lang: language,
         "aria-orientation": "horizontal",
         [ORBIT_UI_ATTR]: "",
-        className: cx("orbit-root", "orbit-rail", overlay && "orbit-rail--overlay"),
+        className: cx("orbit-root", "orbit-rail", version && "orbit-rail--centred", overlay && "orbit-rail--overlay"),
         onKeyDown,
       },
-      React.createElement("div", { className: "orbit-rail__group" }, variantsButton),
+      React.createElement("div", { className: "orbit-rail__group" }, variantsButton, changesButton),
+      version
+        ? React.createElement(
+            "span",
+            { className: "orbit-rail__version" },
+            React.createElement("span", { "aria-hidden": true }, version),
+            React.createElement("span", { className: "orbit-sr-only" }, fill(labels.changesVersion, { version }))
+          )
+        : null,
       React.createElement("div", { className: "orbit-rail__group" }, inspectorButton, panelButton, profileButton),
       React.createElement("p", { className: "orbit-sr-only", role: "status" }, spoken)
     ),
@@ -300,6 +356,15 @@ export function OrbitRail({ variants, overlay }: OrbitRailProps) {
           variants: variants!,
           onClose: closeVariants,
           onAnnounce: setSpoken,
+        })
+      : null,
+    changesOpen
+      ? React.createElement(ChangesPane, {
+          id: changesId,
+          releases: changelog,
+          unreadVersions,
+          onRead: markRead,
+          onClose: closeChanges,
         })
       : null,
     profileOpen

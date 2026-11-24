@@ -33,6 +33,19 @@ export interface AnnotationLabels {
   tabAll: string;
   searchPlaceholder: string;
   panelTitle: string;
+  /** The panel's name and its button's without feedback: `comments` off. */
+  panelTitleAnnotations: string;
+  /** The rail's button for what changed, and the pane's name. */
+  changes: string;
+  /** After the button's name, for a screen reader: "Changes, 3 new". */
+  changesUnread: string;
+  changesClose: string;
+  /** On a version the viewer has not opened. */
+  changesNew: string;
+  /** A version's name: "Version 1.1.0". */
+  changesVersion: string;
+  /** Keep a Changelog's sections, by their lower-case name. Any other shows as written. */
+  changesSections: Record<string, string>;
   noResults: string;
   /** The rail's inspector toggle. */
   placeFeedback: string;
@@ -175,6 +188,8 @@ export interface AnnotationLabels {
   threadBack: string;
   /** The profile's switch for the pins on the page: annotations and feedback. */
   profileMarkers: string;
+  /** The same without feedback. */
+  profileMarkersAnnotations: string;
   /** Under it, before the keys of its shortcut. */
   profileMarkersHint: string;
   /** The profile's button that plays the tour again. */
@@ -211,6 +226,8 @@ export interface AnnotationLabels {
   tourPanelBodyAnnotations: string;
   tourVariantsBody: string;
   tourProfileBody: string;
+  /** The same without feedback: there is no name to change. */
+  tourProfileBodyAnnotations: string;
   /** The sample annotation and feedback the tour shows. */
   tourSampleAuthor: string;
   tourSampleTitle: string;
@@ -328,12 +345,25 @@ export type OrbitVariant =
 /** What a variant's value can be: what `useVariant` keeps, and what a link carries. */
 export type OrbitVariantValue = string | boolean | number | readonly string[];
 
+/** One released version out of a project's CHANGELOG.md: `parseChangelog()`, `readChangelog()`. */
+export interface OrbitRelease {
+  version: string;
+  /** As the changelog has it: "2026-11-24". */
+  date?: string;
+  sections: { title: string; entries: string[] }[];
+}
+
 export interface OrbitShellProps {
   children: React.ReactNode;
   /**
    * The project's variants. Left out or empty, the rail has no Varianten button: the pane is opt-in.
    */
   variants?: OrbitVariant[];
+  /**
+   * The project's released versions, newest first. The rail then has Changes, with the number of
+   * changes new to the viewer, and the version in its centre. Left out or empty, it has neither.
+   */
+  changelog?: OrbitRelease[];
   /**
    * `true` (the default): the app sits in a frame above the rail, as if on top of it, and scrolls in
    * the frame. `false`: the rail is laid over the foot of the window and the page scrolls as before,

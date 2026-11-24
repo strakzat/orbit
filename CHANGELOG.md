@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.14.0
+
+- **Changes and the version on the rail.** Pass `changelog` to `OrbitShell` and the rail has Changes on
+  the left, with the number of changes new to the viewer, and the version in its centre. Each version is
+  a card and opens as a page; opening it reads it. A first visit has nothing new.
+- **`readChangelog()`** (`@strakzat/orbit/vite`) reads a Keep a Changelog file at build time, and
+  `parseChangelog()` (`@strakzat/orbit/server`) does it outside Vite. `[Unreleased]` and `### Internal`
+  are left out, so they never reach the browser.
+- **Without feedback, Orbit no longer mentions it.** With `comments` off the panel and its button are
+  "Annotations", without the Feedback tab, and the profile has no name.
+
 ## 4.13.1
 
 - **Resolved feedback is hidden by default.** Feedback whose comments are all resolved gets no pin until

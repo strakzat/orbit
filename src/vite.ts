@@ -10,6 +10,8 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { createCommentsHandler } from "./server";
+import { parseChangelog } from "./utils/changelog";
+import type { OrbitRelease } from "./types";
 
 const REQUIRED_ENV_VARS = [
   "NOTION_API_KEY",
@@ -40,6 +42,19 @@ function loadDotEnv(root: string) {
       process.env[key] = value;
     }
   }
+}
+
+/**
+ * The released versions in a CHANGELOG.md, for `OrbitShell`'s `changelog`. Read at build time, so
+ * what is under [Unreleased] never reaches the browser:
+ *
+ *   define: { "import.meta.env.CHANGELOG": JSON.stringify(readChangelog()) }
+ */
+export function readChangelog(path = "CHANGELOG.md"): OrbitRelease[] {
+  const file = resolve(process.cwd(), path);
+  const releases = existsSync(file) ? parseChangelog(readFileSync(file, "utf-8")) : [];
+  if (releases.length === 0) console.warn(`\n  ⚠ [readChangelog] No released versions found in ${file}\n`);
+  return releases;
 }
 
 export function annotationsDevApi(): {

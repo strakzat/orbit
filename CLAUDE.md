@@ -35,6 +35,7 @@ AnnotationProvider (context + state, één poller voor alle comments)
 ├── OrbitShell              — de app in een frame bovenop, de rail eronder op zwart
 │   ├── OrbitRail           — Varianten (opt-in) links; Feedback plaatsen en Annotaties en feedback rechts
 │   │   ├── VariantsPane    — de varianten van het project, onder een titel: tabs Deze pagina en Alle pagina's
+│   │   ├── ChangesPane     — wat er veranderde, per versie (opt-in met changelog)
 │   │   ├── ProfilePane     — de avatar rechts op de rail: naam, taal en pins van de kijker
 │   │   └── OrbitTour       — de rondleiding: eenmalig per kijker, op voorbeelddata
 │   └── AnnotationPanel     — paneel rechtsonder boven de rail; de tabs Annotaties / Feedback zijn de bovenste rij
@@ -137,6 +138,7 @@ src/
 │   ├── orbit-shell.tsx                — Het frame met de app en de rail eronder; rendert het paneel
 │   ├── orbit-rail.tsx                 — De rail: Varianten, Feedback plaatsen, Annotaties en feedback
 │   ├── variants-pane.tsx              — Het variantenpaneel: titel, tabs Deze pagina / Alle pagina's
+│   ├── changes-pane.tsx              — Wijzigingen: een kaart per versie, de versie als pagina
 │   ├── profile-pane.tsx               — Het profiel: naam voor feedback, taal
 │   ├── orbit-tour.tsx                 — De rondleiding: kaart, scrim, focus; de stappen zetten het toneel
 │   ├── tour-stars.tsx                 — De sterren van de tour: het canvas, het veld rond de kaart, de boot (uit)
@@ -168,6 +170,8 @@ src/
 │   ├── use-variant.ts                 — useVariant(): een variant bewaard voor de tab en uit een link
 │   ├── use-viewer.ts                  — Naam, taal en pins van de kijker, in localStorage
 │   ├── use-seen.ts                    — Wat de kijker per thread gelezen heeft, in localStorage
+│   ├── use-changes.ts                — Welke versies nieuw zijn voor de kijker, in localStorage
+│   ├── use-paged.ts                  — Een lijst met een pagina eroverheen: paneel en Wijzigingen
 │   ├── use-own-comments.ts            — De comments die deze browser schreef, met hun delete-token
 │   ├── use-pin-morph.ts               — De popover van een pin groeit uit die pin, en terug
 │   └── use-all-comments.ts            — Fetch alle comments voor project (polls 30s)
@@ -180,6 +184,7 @@ src/
     ├── find-element.ts                — findElementByAnnotationId() 3-tier lookup + highlight overlays
     ├── popover-position.ts            — Smart popover positioning (fixed + absolute varianten)
     ├── route-matching.ts              — Route matching, breadcrumb en navigatie
+    ├── changelog.ts                  — CHANGELOG.md naar data, versies vergelijken, inline markdown
     ├── variants.ts                    — Groepen, standaardwaarden, beschrijving en link-serialisatie van varianten
     ├── send-failure.ts                — Waarom een comment niet verstuurd is, en de zin voor de kijker
     ├── screenshot.ts                  — De screenshot bij feedback: vastleggen, bijsnijden, element omlijnen
@@ -378,6 +383,19 @@ De attribuutnaam is geëxporteerd als `THEME_ATTR`.
 - **`useVariant(id, default)`** is de enige plek waar Orbit iets bewaart: in `sessionStorage` voor de tab, en uit een link (`?orbit.<id>=…`, gelezen bij de eerste hook en dan van het adres gehaald). Link kopiëren schrijft alleen de varianten die zo bewaard worden, en alleen als ze van hun standaard af staan.
 - **Feedback krijgt de varianten mee.** `OrbitShell` registreert z'n varianten bij de provider (een ref, geen state); `useComments` stuurt bij een POST `varianten` mee: de varianten op deze pagina, een regel elk: `Rol: Administratie (orbit.rol=admin, changed)` (`describeVariants()`, gelezen met `parseVariantLines()`). De tekst is om te lezen en blijft staan, want een project registreert alleen de varianten van de pagina waar het op is: een label is later niet op te zoeken. Erachter wat Orbit toepast, in het formaat van Link kopiëren; `changed` staat voor van z'n standaard af. Een variant zonder `defaultValue` is een voorkeur van de kijker (thema, pins) en krijgt geen id: toegepast zou `pins: uit` de thread sluiten die net openging. `CommentCard` toont alleen "Varianten toegepast" als er een `changed` is, met die regels in een tooltip. Een comment zonder ids (ouder dan 4.13, of alleen voorkeuren) past niets toe: daar heet de chip Varianten en toont hij alle regels.
 - **Een thread openen past z'n varianten toe.** Op een pin of in het paneel (`setPanelThreadId()`): de varianten van de oudste comment die ze heeft (`threadVariants()`), niet in de tour. Ze blijven staan na sluiten; de stip op Varianten en Standaard herstellen zeggen het. Wat nog niet geregistreerd is (een andere route of tab, of een variant die pas na een andere bestaat) blijft wachten in `pendingVariantsRef` tot `registerVariants` hem ziet, zolang de thread open is, en wordt één keer toegepast, zodat de kijker hem daarna zelf kan wijzigen. Eén tegelijk, de volgende pas als de vorige in de varianten te zien is (`holdsValue()`, hooguit een seconde): een `onChange` kent alleen z'n eigen render, en twee achter elkaar overschreven elkaars URL. Een thread past één keer toe zolang hij open is: een pin sluiten over de thread in het paneel zet niets terug. Een routewissel sluit de thread op een pin, behalve als de thread daar zelf om vroeg (`openThreadOnPage()`), en wat hij nog moest toepassen vervalt (`pendingPinRouteRef`, ook gelezen bij het toepassen, want de shell registreert vóór het effect van de provider). `applyVariant()` slaat over wat de variant niet meer kent. `threadVariantsApplied` telt mee, voor de status-regio van de rail en het element van de spotlight, dat misschien alleen in die variant bestaat. Oude comments zonder ids passen niets toe.
+
+### Wijzigingen en de versie
+
+`changelog` op `OrbitShell` is opt-in, zoals `variants`: links op de rail Wijzigingen, in het midden de versie. Orbit kent geen productie of staging: een project kiest door `comments`, `variants` en `changelog` wel of niet mee te geven.
+
+- **Bij de build gelezen.** `readChangelog()` (`@strakzat/orbit/vite`) maakt van een `CHANGELOG.md` (Keep a Changelog) `OrbitRelease[]`, voor Vite's `define`; buiten Vite `parseChangelog()` (`/server`). Niet `?raw`: dan staat `[Unreleased]` in de bundel van productie. `[Unreleased]` en `### Internal` vallen weg (`utils/changelog.ts`). Nested items worden in hun item gevouwen.
+- **Een versie is een kaart en een pagina** (`changes-pane.tsx`), over de lijst geschoven zoals een thread; `usePaged()` is voor beide. Kopjes van Keep a Changelog volgen de taal (`labels.changesSections`), de rest blijft zoals geschreven. Code, vet en http(s)-links worden React-elementen, nooit HTML.
+- **Nieuw** is per browser (`useChanges()`, `@strakzat/orbit:changes`, per `projectName`): `since` is de versie van het eerste bezoek, dus dan is er niets nieuw; `read` zijn de versies die daarna geopend zijn. Het getal telt de wijzigingen in ongelezen versies. Alleen een versie openen leest hem, de lijst openen niet.
+- **De versie** staat in het midden (`.orbit-rail--centred`) en valt onder 480px weg.
+
+### Zonder feedback
+
+Met `comments` uit heet het paneel Annotaties (`panelTitleAnnotations`), zonder de tabs, en toont het profiel geen naam: die is alleen voor feedback.
 
 ### Taal en naam
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { useAnnotationStyles } from "../styles/inject";
+import { usePaged } from "../hooks/use-paged";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
@@ -18,9 +19,6 @@ import type { Comment, AnnotationType } from "../types";
 const ALL_TYPES: AnnotationType[] = [
   "documentation", "pro", "question", "con", "suggestion", "critical", "user-insight",
 ];
-// The thread's slide out (.orbit-panel__page, --orbit-duration-slow), and a little room.
-const THREAD_EXIT_MS = 300;
-
 const ALL_STATUSES: Comment["status"][] = ["Open", "In behandeling", "Opgelost"];
 const UNRESOLVED: Comment["status"][] = ["Open", "In behandeling"];
 
@@ -39,6 +37,7 @@ export function AnnotationPanel() {
     allAnnotations,
     labels,
     settings,
+    commentsConfig,
     allComments: allFeedback,
     commentsLoading: feedbackLoading,
     commentsError: feedbackError,
@@ -53,7 +52,9 @@ export function AnnotationPanel() {
   // A project that writes no annotations uses Orbit for its feedback: open there.
   // Until the viewer picks one, it follows the annotations: a project may load them after mount.
   const [pickedView, setView] = useState<"annotations" | "feedback" | null>(null);
-  const view = pickedView ?? (allAnnotations.length > 0 ? "annotations" : "feedback");
+  const view = !commentsConfig
+    ? "annotations"
+    : pickedView ?? (allAnnotations.length > 0 ? "annotations" : "feedback");
   const [tab, setTab] = useState<"page" | "all">("page");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<Set<AnnotationType>>(new Set());
@@ -62,12 +63,15 @@ export function AnnotationPanel() {
   const activeCardRef = useRef<HTMLDivElement>(null);
   const searchId = useStableId("orbit-search");
 
-  // A thread opened from a card is a page of the panel, pushed over the list. It stays rendered
-  // after Back until it has slid out; `threadOpen` says which page is in view.
-  const [thread, setThread] = useState<PanelThread | null>(null);
-  const [threadOpen, setThreadOpen] = useState(false);
-  const backRef = useRef<HTMLButtonElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
+  // A thread opened from a card is a page of the panel, pushed over the list.
+  const {
+    page: thread,
+    isOpen: threadOpen,
+    backRef,
+    open: openPage,
+    replace: setThread,
+    back,
+  } = usePaged<PanelThread>(panelRef);
 
   // The spotlight the inspector picks with: on the card under the mouse, and on the open thread's
   // element for as long as it is open. "This one" looks the same wherever it is said. The hovered
@@ -76,36 +80,12 @@ export function AnnotationPanel() {
   const [hover, setHover] = useState<{ key: string; el: HTMLElement | null } | null>(null);
   const [threadEl, setThreadEl] = useState<HTMLElement | null>(null);
 
-  // The card's own button, from the click: Safari does not focus a button it clicks, so the
-  // focused element would not say which card it was.
   const openThread = (next: PanelThread, opener: HTMLElement) => {
-    openerRef.current = opener;
     setHover(null);
     // One place to read it: a popover open on the page closes.
     setActiveAnnotationId(null);
-    setThread(next);
-    setThreadOpen(true);
+    openPage(next, opener);
   };
-
-  const back = useCallback(() => setThreadOpen(false), []);
-
-  // Slid out, the thread goes: its comments stop polling, and the next one starts fresh.
-  useEffect(() => {
-    if (threadOpen || !thread) return;
-    const timer = window.setTimeout(() => setThread(null), THREAD_EXIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [threadOpen, thread]);
-
-  // The focus goes with the page: onto Back once the thread is in, and back to the card that
-  // opened it once the list is. After the render, when the page is no longer hidden.
-  const wasThreadOpen = useRef(false);
-  useEffect(() => {
-    if (threadOpen) backRef.current?.focus({ preventScroll: true });
-    else if (wasThreadOpen.current && panelRef.current?.contains(openerRef.current)) {
-      openerRef.current?.focus({ preventScroll: true });
-    }
-    wasThreadOpen.current = threadOpen;
-  }, [threadOpen, thread]);
 
   // In the tour the panel opens on the sample annotation, and after it on what it usually does.
   // The panel stays mounted while it's closed, so what was filtered before a replay would hide it.
@@ -123,7 +103,7 @@ export function AnnotationPanel() {
   // A closed panel opens on the list again.
   useEffect(() => {
     if (!panelOpen) {
-      setThreadOpen(false);
+      back();
       setHover(null);
     }
   }, [panelOpen]);
@@ -231,27 +211,35 @@ export function AnnotationPanel() {
   const header = React.createElement(
     "div",
     { className: "orbit-panel__header" },
-    React.createElement(
-      "div",
-      { className: "orbit-tabs" },
-      ...(["annotations", "feedback"] as const).map((v) =>
-        React.createElement(
-          "button",
-          {
-            key: v,
-            type: "button",
-            className: cx("orbit-tab", view === v && "orbit-tab--active"),
-            onClick: () => setView(v),
-            "aria-pressed": view === v,
-          },
-          v === "annotations" ? labels.viewAnnotations : labels.viewFeedback,
-          // Both counters are page-filtered, so the two tabs answer the same
-          // question: how much is there to look at right here.
-          tabCounts[v] > 0 &&
-            React.createElement("span", { className: "orbit-count" }, tabCounts[v])
+    // Without feedback there is one view, and nothing to switch between.
+    !commentsConfig
+      ? React.createElement(
+          "h2",
+          { className: "orbit-panel__title" },
+          labels.panelTitleAnnotations,
+          tabCounts.annotations > 0 && React.createElement("span", { className: "orbit-count" }, tabCounts.annotations)
         )
-      )
-    ),
+      : React.createElement(
+          "div",
+          { className: "orbit-tabs" },
+          ...(["annotations", "feedback"] as const).map((v) =>
+            React.createElement(
+              "button",
+              {
+                key: v,
+                type: "button",
+                className: cx("orbit-tab", view === v && "orbit-tab--active"),
+                onClick: () => setView(v),
+                "aria-pressed": view === v,
+              },
+              v === "annotations" ? labels.viewAnnotations : labels.viewFeedback,
+              // Both counters are page-filtered, so the two tabs answer the same
+              // question: how much is there to look at right here.
+              tabCounts[v] > 0 &&
+                React.createElement("span", { className: "orbit-count" }, tabCounts[v])
+            )
+          )
+        ),
     React.createElement(
       "button",
       {
@@ -492,7 +480,7 @@ export function AnnotationPanel() {
         // Bottom right above the rail, by the stylesheet; only the project's size is inline.
         style: { width: panelWidth, height: panelHeight },
         role: "complementary",
-        "aria-label": labels.panelTitle,
+        "aria-label": commentsConfig ? labels.panelTitle : labels.panelTitleAnnotations,
         lang: language,
       },
       // Two pages over each other: the list, and the thread pushed over it. The one out of view is

@@ -218,6 +218,42 @@ const CHROME = `
   color: var(--orbit-text-primary);
 }
 
+/* With the version: in the centre of the rail, whatever is on either side. The sides keep their
+   width, so on a narrow rail the version gives way. */
+.orbit-rail--centred {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+}
+
+.orbit-rail--centred .orbit-rail__group:last-of-type {
+  justify-self: end;
+}
+
+.orbit-rail__version {
+  position: relative;
+  overflow: hidden;
+  color: var(--orbit-text-tertiary);
+  font-size: var(--orbit-text-sm);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* No room on a phone; the version is on the newest card of Changes too. */
+@media (max-width: 480px) {
+  .orbit-rail--centred {
+    display: flex;
+  }
+
+  .orbit-root .orbit-rail__version {
+    display: none;
+  }
+
+  .orbit-rail--centred .orbit-rail__item:not(.orbit-rail__item--avatar) {
+    padding: 0 var(--orbit-space-2);
+  }
+}
+
 /* Without a frame: over the foot of the window, the page scrolling under it as before. */
 .orbit-rail--overlay {
   position: fixed;
@@ -594,6 +630,11 @@ const CHROME = `
   gap: var(--orbit-space-4);
   /* As the variants pane's body: titles sit in from the controls, on the controls' text. */
   padding: var(--orbit-space-5) var(--orbit-space-3) var(--orbit-space-4);
+}
+
+/* Without the name the first row is a title: clear of the close in the corner. */
+.orbit-profile__body--bare {
+  padding-top: var(--orbit-space-3);
 }
 
 /* The monogram, centred, with the name under it: what the rail and a comment will show. */
@@ -1595,6 +1636,93 @@ const PANEL = `
   }
 }
 
+/* What changed: a card for each version, and the version as the pane's next page. */
+.orbit-changes__new {
+  flex: none;
+  padding: 0 var(--orbit-space-1-5);
+  border-radius: var(--orbit-radius-full);
+  background: var(--orbit-bg-brand-solid);
+  color: var(--orbit-text-primary_on-brand);
+  font-size: var(--orbit-text-xs);
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.orbit-changes__preview {
+  -webkit-line-clamp: 3;
+}
+
+.orbit-changes__page:focus-visible {
+  outline-offset: -3px;
+}
+
+.orbit-changes__head {
+  padding: var(--orbit-space-4) var(--orbit-space-5) 0;
+}
+
+.orbit-changes__version {
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-lg);
+  font-weight: 600;
+}
+
+.orbit-changes__date {
+  color: var(--orbit-text-quaternary);
+  font-size: var(--orbit-text-sm);
+}
+
+.orbit-changes__section {
+  padding: var(--orbit-space-5) var(--orbit-space-5) 0;
+}
+
+.orbit-changes__section:last-child {
+  padding-bottom: var(--orbit-space-5);
+}
+
+.orbit-changes__title {
+  margin-bottom: var(--orbit-space-2);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-md);
+  font-weight: 600;
+}
+
+.orbit-changes__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orbit-space-2);
+  padding-left: var(--orbit-space-4);
+}
+
+.orbit-changes__item {
+  display: list-item;
+  list-style: disc;
+  color: var(--orbit-text-secondary);
+  font-size: var(--orbit-text-md);
+  line-height: var(--orbit-leading-normal);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.orbit-changes__item::marker {
+  color: var(--orbit-text-quaternary);
+}
+
+.orbit-changes__code {
+  font-family: var(--orbit-font-mono);
+  font-size: var(--orbit-text-sm);
+}
+
+.orbit-changes__bold {
+  color: var(--orbit-text-primary);
+  font-weight: 600;
+}
+
+.orbit-changes__link {
+  color: var(--orbit-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* The thread scrolls under its header, as the list does. */
 .orbit-thread-page {
   flex: 1;
@@ -1631,6 +1759,18 @@ const PANEL = `
   gap: var(--orbit-space-1);
   padding: var(--orbit-space-2);
   border-bottom: 1px solid var(--orbit-glass-hairline);
+}
+
+/* The panel without feedback: its name, where the two views are otherwise. */
+.orbit-panel__title {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--orbit-space-2);
+  padding-left: var(--orbit-space-2);
+  color: var(--orbit-text-primary);
+  font-size: var(--orbit-text-md);
+  font-weight: 600;
 }
 
 .orbit-panel__header .orbit-icon-button {

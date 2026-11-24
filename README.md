@@ -362,6 +362,25 @@ says there is nothing to switch. Elements of your own that belong to
 Orbit's interface, rather than the page, carry `ORBIT_UI_ATTR` so the inspector lets a
 click on them through.
 
+#### Changes and the version
+
+Pass a `changelog` and the rail shows Changes, with the number of changes new to the viewer, and the version in its centre. Read it at build time, so `[Unreleased]` never reaches the browser:
+
+```ts
+// vite.config.ts
+import { readChangelog } from "@strakzat/orbit/vite";
+define: { "import.meta.env.CHANGELOG": JSON.stringify(readChangelog()) }
+```
+
+```tsx
+<OrbitShell
+  variants={isProduction ? undefined : variants}
+  changelog={isProduction ? import.meta.env.CHANGELOG : undefined}
+>
+```
+
+Orbit has no production or staging of its own: the project decides by what it passes. `comments={{ enabled: false, … }}` leaves the annotations only. Viewers read the changelog, so put what means nothing to them under `### Internal`: that section is left out. Outside Vite, use `parseChangelog()` from `@strakzat/orbit/server`.
+
 ### 2. Annotations data in your project
 
 ```ts
