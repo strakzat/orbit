@@ -14,13 +14,22 @@ const ANNOTATION_ID = "orbit-tour-annotation";
 const FEEDBACK_ID = "orbit-tour-feedback";
 
 /** The steps for what this project has. Step 1 is always the welcome card, the last the profile. */
-export function tourSteps({ hasVariants, hasComments }: { hasVariants: boolean; hasComments: boolean }): TourStepId[] {
+export function tourSteps({
+  hasVariants,
+  hasChanges,
+  hasComments,
+}: {
+  hasVariants: boolean;
+  hasChanges: boolean;
+  hasComments: boolean;
+}): TourStepId[] {
   return [
     "welcome",
     "pins",
     ...(hasComments ? (["feedback"] as const) : []),
     "panel",
     ...(hasVariants ? (["variants"] as const) : []),
+    ...(hasChanges ? (["changes"] as const) : []),
     "profile",
   ];
 }
@@ -136,7 +145,7 @@ interface Size {
 export function tourCardPosition(
   place:
     | { at: "center" | "corner"; area: Pick<DOMRect, "left" | "top" | "width" | "height"> }
-    | { at: "above" | "left"; target: Pick<DOMRect, "left" | "top" | "width" | "bottom"> },
+    | { at: "above" | "left" | "right"; target: Pick<DOMRect, "left" | "top" | "width" | "bottom"> },
   card: Size,
   viewport: Size
 ): { left: number; top: number } {
@@ -151,6 +160,9 @@ export function tourCardPosition(
         : area.top + area.height - card.height - EDGE;
   } else if (place.at === "left") {
     left = place.target.left - card.width - GAP;
+    top = place.target.bottom - card.height;
+  } else if (place.at === "right") {
+    left = place.target.left + place.target.width + GAP;
     top = place.target.bottom - card.height;
   } else {
     left = place.target.left + place.target.width / 2 - card.width / 2;

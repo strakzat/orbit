@@ -6,9 +6,21 @@ import {
   useAnnotations,
   useOrbitLanguage,
   useVariant,
+  type OrbitRelease,
   type OrbitVariant,
 } from "@strakzat/orbit";
 import { annotations } from "./annotations";
+
+declare const __CHANGELOG__: OrbitRelease[];
+
+// ?stage=production shows what a project's production does: no feedback, no variants, but Changes.
+// With &release=1.0.0 the older version, to see what is new once it goes. &variants=1, &frame=0.
+const query = new URLSearchParams(window.location.search);
+const isProduction = query.get("stage") === "production";
+const withVariants = query.get("variants") === "1";
+const frame = query.get("frame") !== "0";
+const firstRelease = __CHANGELOG__.findIndex((r) => r.version === query.get("release"));
+const releases = __CHANGELOG__.slice(Math.max(0, firstRelease));
 
 // ── Simple client-side router ───────────────────────────────────────────────
 
@@ -332,7 +344,7 @@ export function App() {
       annotations={annotations}
       currentRoute={route}
       comments={{
-        enabled: true,
+        enabled: !isProduction,
         apiBase: "",
         project: "demo-dashboard",
       }}
@@ -502,5 +514,10 @@ function Shell({ children }: { children: React.ReactNode }) {
     pages: (r) => r === CLIENT_PATH,
   });
 
-  return <OrbitShell variants={variants}>{children}</OrbitShell>;
+  const variantsHere = !isProduction || withVariants ? variants : undefined;
+  return (
+    <OrbitShell variants={variantsHere} changelog={isProduction ? releases : undefined} frame={frame}>
+      {children}
+    </OrbitShell>
+  );
 }

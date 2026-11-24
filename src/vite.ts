@@ -8,8 +8,11 @@
  */
 
 import { readFileSync, existsSync } from "fs";
-import { resolve } from "path";
+import { isAbsolute, resolve } from "path";
+import { fileURLToPath } from "url";
 import { createCommentsHandler } from "./server";
+import { parseChangelog } from "./utils/changelog";
+import type { OrbitRelease } from "./types";
 
 const REQUIRED_ENV_VARS = [
   "NOTION_API_KEY",
@@ -40,6 +43,32 @@ function loadDotEnv(root: string) {
       process.env[key] = value;
     }
   }
+}
+
+/**
+ * The released versions in a CHANGELOG.md, for `OrbitShell`'s `changelog`. Read at build time, so
+ * what is under [Unreleased] never reaches the browser:
+ *
+ *   define: { "import.meta.env.CHANGELOG": JSON.stringify(readChangelog(new URL("./CHANGELOG.md", import.meta.url))) }
+ *
+ * A URL or an absolute path: a relative one depends on where the build was started, and in a
+ * monorepo that can be another project's changelog. Warns about every line it leaves out.
+ */
+export function readChangelog(path: string | URL): OrbitRelease[] {
+  const isUrl = typeof path !== "string" || path.startsWith("file:");
+  const file = isUrl ? fileURLToPath(path) : path;
+  if (!isAbsolute(file)) {
+    throw new Error(`[readChangelog] "${file}" is relative. Pass new URL("./CHANGELOG.md", import.meta.url).`);
+  }
+  const skipped: string[] = [];
+  const releases = existsSync(file)
+    ? parseChangelog(readFileSync(file, "utf-8"), (line, text) => skipped.push(`    ${line}: ${text}`))
+    : [];
+  if (skipped.length > 0) {
+    console.warn(`\n  ⚠ [readChangelog] Left out of Changes, in ${file}:\n${skipped.join("\n")}\n`);
+  }
+  if (releases.length === 0) console.warn(`\n  ⚠ [readChangelog] No released versions found in ${file}\n`);
+  return releases;
 }
 
 export function annotationsDevApi(): {

@@ -3,6 +3,7 @@ import { useAnnotations } from "../context/use-annotations";
 import { NO_AUTOFILL, ORBIT_UI_ATTR } from "../constants";
 import { LABELS, LANGUAGE_NAMES } from "../labels";
 import { UserIcon, XIcon } from "../icons";
+import { cx } from "../utils/cx";
 import { initials } from "../utils/format";
 import { useStableId } from "../utils/use-stable-id";
 import { ORBIT_VERSION } from "../version";
@@ -87,7 +88,11 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const paneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    paneRef.current?.querySelector<HTMLElement>("input")?.focus();
+    // The name, or without feedback the language: there is no name then.
+    (
+      paneRef.current?.querySelector<HTMLElement>("input") ??
+      paneRef.current?.querySelector<HTMLElement>("[role=radio][aria-checked=true]")
+    )?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -113,7 +118,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
   const markersSwitch: OrbitSwitchVariant = {
     type: "switch",
     id: "orbit-markers",
-    title: labels.profileMarkers,
+    title: commentsConfig ? labels.profileMarkers : labels.profileMarkersAnnotations,
     value: annotationMode,
     onChange: setAnnotationMode,
   };
@@ -148,7 +153,7 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       ref: paneRef,
       id,
       role: "dialog",
-      "aria-label": labels.profileTitle,
+      "aria-label": commentsConfig ? labels.profileTitle : labels.settings,
       lang: language,
       [ORBIT_UI_ATTR]: "",
       className: "orbit-root orbit-profile orbit-glass-pane orbit-animate-in",
@@ -158,15 +163,16 @@ export function ProfilePane({ id, onClose, onAnnounce }: ProfilePaneProps) {
       {
         type: "button",
         className: "orbit-icon-button orbit-profile__close",
-        "aria-label": labels.profileClose,
+        "aria-label": commentsConfig ? labels.profileClose : labels.settingsClose,
         onClick: () => onClose(true),
       },
       React.createElement(XIcon, { size: 16 })
     ),
     React.createElement(
       "div",
-      { className: "orbit-profile__body" },
-      React.createElement(ViewerIdentity),
+      { className: cx("orbit-profile__body", !commentsConfig && "orbit-profile__body--bare") },
+      // The name goes out with feedback, and nowhere else.
+      commentsConfig && React.createElement(ViewerIdentity),
       React.createElement(LanguageChoice, { onAnnounce }),
       React.createElement(Switch, { variant: markersSwitch, onAnnounce, hint: markersHint }),
       // Only with feedback: without it there is nothing to resolve.

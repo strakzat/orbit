@@ -22,7 +22,7 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
  * that depends on the window's scroll passes `frame={false}`: the rail is then laid over the foot
  * of the window and the page is left as it was.
  */
-export function OrbitShell({ children, variants, frame = true }: OrbitShellProps) {
+export function OrbitShell({ children, variants, changelog, frame = true }: OrbitShellProps) {
   useAnnotationStyles();
 
   // Feedback says which variants it was written in: the provider reads them as it is sent.
@@ -39,7 +39,7 @@ export function OrbitShell({ children, variants, frame = true }: OrbitShellProps
 
   const chrome = mounted
     ? [
-        React.createElement(OrbitRail, { key: "rail", variants, overlay: !frame }),
+        React.createElement(OrbitRail, { key: "rail", variants, changelog, overlay: !frame }),
         React.createElement(AnnotationPanel, { key: "panel" }),
       ]
     : [];

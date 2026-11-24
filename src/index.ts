@@ -39,6 +39,7 @@ export type {
   ScreenshotCapture,
   ScreenshotOptions,
   OrbitShellProps,
+  OrbitRelease,
   OrbitVariant,
   OrbitVariantOption,
   OrbitVariantValue,

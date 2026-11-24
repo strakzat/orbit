@@ -6,6 +6,8 @@
 import { MAX_COMMENT_LENGTH } from "./limits";
 import type { Comment } from "./types";
 
+export { parseChangelog } from "./utils/changelog";
+
 interface CommentInput {
   annotationId: string;
   auteur?: string;

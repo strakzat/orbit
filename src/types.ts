@@ -22,7 +22,8 @@ export interface AnnotationSettings {
   keyboardShortcut?: boolean;
   /** Whether the tour starts by itself for a viewer who has not seen it. It stays in the profile. */
   tour?: boolean;
-  /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype". */
+  /** The project as a client knows it, for the tour's welcome. Left out, it says "this prototype".
+   * Without a `comments.project`, also what the versions a viewer read are kept under on this origin. */
   projectName?: string;
 }
 
@@ -33,6 +34,26 @@ export interface AnnotationLabels {
   tabAll: string;
   searchPlaceholder: string;
   panelTitle: string;
+  /** The panel's name and its button's without feedback: `comments` off. */
+  panelTitleAnnotations: string;
+  /** The rail's button for what changed, and the pane's name. */
+  changes: string;
+  /** One change of a version without sections: "1 change". */
+  changesOne: string;
+  /** After the button's name, for a screen reader: "Changes, 3 new". */
+  changesUnread: string;
+  changesClose: string;
+  /** On a version the viewer has not opened. */
+  changesNew: string;
+  /** A version's name: "Version 1.1.0". */
+  changesVersion: string;
+  /** Keep a Changelog's sections. */
+  changesAdded: string;
+  changesChanged: string;
+  changesFixed: string;
+  changesRemoved: string;
+  changesDeprecated: string;
+  changesSecurity: string;
   noResults: string;
   /** The rail's inspector toggle. */
   placeFeedback: string;
@@ -162,6 +183,9 @@ export interface AnnotationLabels {
   componentNamed: string;
   /** The rail's button for the profile with no name set, and its name with one: "Jij: {name}". */
   profile: string;
+  /** The profile without feedback: no name, only settings. */
+  settings: string;
+  settingsClose: string;
   profileNamed: string;
   /** The profile pane's title. */
   profileTitle: string;
@@ -175,6 +199,8 @@ export interface AnnotationLabels {
   threadBack: string;
   /** The profile's switch for the pins on the page: annotations and feedback. */
   profileMarkers: string;
+  /** The same without feedback. */
+  profileMarkersAnnotations: string;
   /** Under it, before the keys of its shortcut. */
   profileMarkersHint: string;
   /** The profile's button that plays the tour again. */
@@ -209,8 +235,13 @@ export interface AnnotationLabels {
   tourFeedbackNote: string;
   tourPanelBody: string;
   tourPanelBodyAnnotations: string;
+  tourChangesBody: string;
   tourVariantsBody: string;
+  /** The same without feedback. */
+  tourVariantsBodyAnnotations: string;
   tourProfileBody: string;
+  /** The same without feedback: there is no name to change. */
+  tourProfileBodyAnnotations: string;
   /** The sample annotation and feedback the tour shows. */
   tourSampleAuthor: string;
   tourSampleTitle: string;
@@ -223,7 +254,7 @@ export interface AnnotationLabels {
 /** The languages Orbit speaks: its own interface, not the project's content. */
 export type OrbitLanguage = "nl" | "en";
 
-export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "profile";
+export type TourStepId = "welcome" | "pins" | "feedback" | "panel" | "variants" | "changes" | "profile";
 
 /** Why a comment didn't go out, in words the viewer can act on. */
 export type SendFailure = "offline" | "network" | "timeout" | "setup" | "tooLarge" | "busy" | "server";
@@ -328,12 +359,25 @@ export type OrbitVariant =
 /** What a variant's value can be: what `useVariant` keeps, and what a link carries. */
 export type OrbitVariantValue = string | boolean | number | readonly string[];
 
+/** One released version out of a project's CHANGELOG.md: `parseChangelog()`, `readChangelog()`. */
+export interface OrbitRelease {
+  version: string;
+  /** As the changelog has it: "2026-11-24". */
+  date?: string;
+  sections: { title: string; entries: string[] }[];
+}
+
 export interface OrbitShellProps {
   children: React.ReactNode;
   /**
    * The project's variants. Left out or empty, the rail has no Varianten button: the pane is opt-in.
    */
   variants?: OrbitVariant[];
+  /**
+   * The project's released versions, newest first. The rail then has Changes, with the version
+   * and the number of changes new to the viewer. Left out or empty, it has not.
+   */
+  changelog?: OrbitRelease[];
   /**
    * `true` (the default): the app sits in a frame above the rail, as if on top of it, and scrolls in
    * the frame. `false`: the rail is laid over the foot of the window and the page scrolls as before,
@@ -365,6 +409,8 @@ export interface AnnotationContextValue {
   labels: AnnotationLabels;
   settings: Required<AnnotationSettings>;
   commentsConfig: CommentsConfig | null;
+  /** The project's id, `comments.project`, also with feedback off. Empty without `comments`. */
+  project: string;
   allComments: Comment[];
   commentsLoading: boolean;
   commentsError: string | null;
