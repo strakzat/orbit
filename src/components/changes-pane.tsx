@@ -123,7 +123,7 @@ interface ChangesPaneProps {
  * version reads it. A non-modal dialog, as the variants pane: Escape goes back a page and then
  * closes it, a press outside closes it.
  */
-export function ChangesPane({ id, releases, unreadVersions, onRead, onClose, memory }: ChangesPaneProps) {
+export function ChangesPane({ id, releases, unreadVersions, onRead, onClose, memory: kept }: ChangesPaneProps) {
   const { labels, settings, language, tourStep } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const titleId = useStableId("orbit-changes-title");
@@ -132,8 +132,9 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose, mem
   // In the tour the focus is on its card, and the card and the scrim around the pane aren't outside it.
   const touring = tourStep !== null;
   // It opens where it was left: on the version that was open, scrolled as it was. Not in the tour,
-  // whose step is about the list.
-  const [restored] = useState(() => (touring ? null : listed.find((r) => r.version === memory.version) ?? null));
+  // whose step is about the list: opened there, it has a memory of its own, and the rail's stays as it was.
+  const [memory] = useState(() => (touring ? createChangesMemory() : kept));
+  const [restored] = useState(() => listed.find((r) => r.version === memory.version) ?? null);
   const { page: release, isOpen, backRef, openerRef, open, back } = usePaged<OrbitRelease>(paneRef, restored);
   const listScroll = useRememberedScroll<HTMLDivElement>(memory.list);
   const pageScroll = useRememberedScroll<HTMLDivElement>(memory.page);

@@ -604,12 +604,15 @@ export function VariantsPane({ id, variants, onClose, onAnnounce, memory }: Vari
   // Nothing on this page and nothing for every page: no tabs to choose between, no footer.
   const nothingHere = pageItems.length + allItems.length === 0;
   const hasPageItems = pageItems.length > 0;
+  // On the route it was left on, where it was: the tab picked, else the one it opens on, and the
+  // scroll either way. On another, fresh.
   const [scope, setScopeState] = useState<Scope>(() => {
-    if (memory.route === currentRoute && memory.scope) return memory.scope;
-    memory.route = currentRoute;
-    memory.scope = null;
-    memory.scroll.top = 0;
-    return hasPageItems ? "page" : "all";
+    if (memory.route !== currentRoute) {
+      memory.route = currentRoute;
+      memory.scope = null;
+      memory.scroll.top = 0;
+    }
+    return memory.scope ?? (hasPageItems ? "page" : "all");
   });
   const setScope = (next: Scope) => {
     memory.scope = next;
@@ -632,12 +635,15 @@ export function VariantsPane({ id, variants, onClose, onAnnounce, memory }: Vari
     const pane = paneRef.current;
     const body = pane?.querySelector<HTMLElement>(".orbit-variants__body")?.getBoundingClientRect();
     const controls = Array.from(pane?.querySelectorAll<HTMLElement>(FIRST_CONTROL) ?? []);
-    const inView = controls.find((el) => {
+    const within = (partly: boolean) => (el: HTMLElement) => {
       const r = el.getBoundingClientRect();
-      return !body || (r.top >= body.top && r.bottom <= body.bottom);
-    });
-    if (inView) inView.focus({ preventScroll: true });
-    else (controls[0] ?? pane?.querySelector<HTMLElement>(".orbit-icon-button"))?.focus();
+      if (!body) return true;
+      return partly ? r.bottom > body.top && r.top < body.bottom : r.top >= body.top && r.bottom <= body.bottom;
+    };
+    const close = pane?.querySelector<HTMLElement>(".orbit-icon-button");
+    if (memory.scroll.top === 0) (controls[0] ?? close)?.focus();
+    // Scrolled, nothing may scroll it back: a control in view, else one partly in view, else the close.
+    else (controls.find(within(false)) ?? controls.find(within(true)) ?? close)?.focus({ preventScroll: true });
 
     // Only its own Escape: one in the project's dialog, or for the inspector, is theirs.
     const onKeyDown = (e: KeyboardEvent) => {
