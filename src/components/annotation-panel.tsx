@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { useAnnotationStyles } from "../styles/inject";
 import { usePaged } from "../hooks/use-paged";
+import { useRememberedScroll, type ScrollMemory } from "../hooks/use-remembered-scroll";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { findElementByAnnotationId } from "../utils/find-element";
@@ -60,6 +61,12 @@ export function AnnotationPanel() {
   const [typeFilter, setTypeFilter] = useState<Set<AnnotationType>>(new Set());
   const [statusFilter, setStatusFilter] = useState<Set<Comment["status"]>>(new Set(UNRESOLVED));
   const panelRef = useRef<HTMLDivElement>(null);
+  // Where each list stood, kept while the panel is closed: it opens there again. Each view and tab
+  // its own, and "Deze pagina" per route, as it is another list on another page.
+  const scrolls = useRef(new Map<string, ScrollMemory>());
+  const scrollKey = tab === "page" ? `${view}:page:${currentRoute}` : `${view}:all`;
+  if (!scrolls.current.has(scrollKey)) scrolls.current.set(scrollKey, { top: 0 });
+  const listScroll = useRememberedScroll<HTMLDivElement>(scrolls.current.get(scrollKey)!);
   const activeCardRef = useRef<HTMLDivElement>(null);
   const searchId = useStableId("orbit-search");
 
@@ -364,7 +371,7 @@ export function AnnotationPanel() {
 
   const annotationList = React.createElement(
     "div",
-    { className: "orbit-list" },
+    { ref: listScroll.ref, onScroll: listScroll.onScroll, className: "orbit-list" },
     filtered.length === 0
       ? React.createElement("p", { className: "orbit-empty", role: "status" }, labels.noResults)
       : filtered.map((annotation) =>
@@ -414,7 +421,7 @@ export function AnnotationPanel() {
 
   const feedbackList = React.createElement(
     "div",
-    { className: "orbit-list orbit-list--comments" },
+    { ref: listScroll.ref, onScroll: listScroll.onScroll, className: "orbit-list orbit-list--comments" },
     feedbackEmpty
       ? React.createElement(
           "p",

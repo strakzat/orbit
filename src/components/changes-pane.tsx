@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { usePaged } from "../hooks/use-paged";
+import { useRememberedScroll, type ScrollMemory } from "../hooks/use-remembered-scroll";
 import { ChevronLeftIcon, XIcon } from "../icons";
 import { fill } from "../labels";
 import { CHANGE_SECTIONS, changeCount, inlineParts, plainText, type InlinePart } from "../utils/changelog";
@@ -47,6 +48,20 @@ function inline(parts: InlinePart[]): React.ReactNode[] {
   });
 }
 
+/**
+ * Where the pane was left, kept by the rail while it is closed: the open version, and how far the
+ * list and that version were scrolled. Until a reload.
+ */
+export interface ChangesMemory {
+  version: string | null;
+  list: ScrollMemory;
+  page: ScrollMemory;
+}
+
+export function createChangesMemory(): ChangesMemory {
+  return { version: null, list: { top: 0 }, page: { top: 0 } };
+}
+
 interface ReleaseCardProps {
   release: OrbitRelease;
   isNew: boolean;
@@ -62,6 +77,8 @@ function ReleaseCard({ release, isNew, onOpen }: ReleaseCardProps) {
     React.createElement("button", {
       type: "button",
       className: "orbit-card__target",
+      // What Back focuses after a version the pane opened on.
+      "data-orbit-release": release.version,
       onClick: onOpen,
       "aria-labelledby": isNew ? `${id}-title ${id}-new` : `${id}-title`,
       "aria-describedby": `${id}-foot`,
@@ -97,6 +114,7 @@ interface ChangesPaneProps {
   onRead: (version: string) => void;
   /** `true` when the focus should go back to the rail's button: Escape or the close button. */
   onClose: (returnFocus: boolean) => void;
+  memory: ChangesMemory;
 }
 
 /**
@@ -105,17 +123,34 @@ interface ChangesPaneProps {
  * version reads it. A non-modal dialog, as the variants pane: Escape goes back a page and then
  * closes it, a press outside closes it.
  */
-export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: ChangesPaneProps) {
+export function ChangesPane({ id, releases, unreadVersions, onRead, onClose, memory }: ChangesPaneProps) {
   const { labels, settings, language, tourStep } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const titleId = useStableId("orbit-changes-title");
   const pageTitleId = useStableId("orbit-changes-page");
-  const { page: release, isOpen, backRef, open, back } = usePaged<OrbitRelease>(paneRef);
   const listed = releases.filter((r) => changeCount(r) > 0);
-
   // In the tour the focus is on its card, and the card and the scrim around the pane aren't outside it.
   const touring = tourStep !== null;
+  // It opens where it was left: on the version that was open, scrolled as it was. Not in the tour,
+  // whose step is about the list.
+  const [restored] = useState(() => (touring ? null : listed.find((r) => r.version === memory.version) ?? null));
+  const { page: release, isOpen, backRef, openerRef, open, back } = usePaged<OrbitRelease>(paneRef, restored);
+  const listScroll = useRememberedScroll<HTMLDivElement>(memory.list);
+  const pageScroll = useRememberedScroll<HTMLDivElement>(memory.page);
+
+  const goBack = () => {
+    memory.version = null;
+    back();
+  };
+
   useEffect(() => {
+    if (restored) {
+      // On its version, the focus is on Back (`usePaged`), and Back goes to its card.
+      openerRef.current = paneRef.current?.querySelector<HTMLElement>(
+        `[data-orbit-release="${CSS.escape(restored.version)}"]`
+      ) ?? null;
+      return;
+    }
     if (touring) return;
     paneRef.current?.querySelector<HTMLElement>(".orbit-icon-button")?.focus();
   }, []);
@@ -128,7 +163,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
       if (!inside && !active?.closest("[data-orbit-changes-toggle]")) return;
       // Handled: closing moves the focus, and the tour must not take the same key to end.
       e.preventDefault();
-      if (inside && isOpen) back();
+      if (inside && isOpen) goBack();
       else onClose(true);
     };
     const onPointerDown = (e: PointerEvent) => {
@@ -144,7 +179,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown, true);
     };
-  }, [onClose, isOpen, back, touring]);
+  }, [onClose, isOpen, back, touring, memory]);
 
   const close = React.createElement(
     "button",
@@ -181,13 +216,15 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
       ),
       React.createElement(
         "div",
-        { className: "orbit-list" },
+        { ref: listScroll.ref, onScroll: listScroll.onScroll, className: "orbit-list" },
         ...listed.map((r) =>
           React.createElement(ReleaseCard, {
             key: r.version,
             release: r,
             isNew: unreadVersions.has(r.version),
             onOpen: (e: React.MouseEvent<HTMLElement>) => {
+              memory.version = r.version;
+              memory.page.top = 0;
               open(r, e.currentTarget);
               onRead(r.version);
             },
@@ -211,7 +248,7 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
                 ref: backRef,
                 type: "button",
                 className: "orbit-back",
-                onClick: back,
+                onClick: goBack,
                 "aria-label": fill(labels.threadBack, { view: labels.changes }),
               },
               React.createElement(ChevronLeftIcon, { size: 16 }),
@@ -223,6 +260,8 @@ export function ChangesPane({ id, releases, unreadVersions, onRead, onClose }: C
             "div",
             {
               key: release.version,
+              ref: pageScroll.ref,
+              onScroll: pageScroll.onScroll,
               className: "orbit-thread-page orbit-changes__page",
               role: "region",
               "aria-labelledby": pageTitleId,

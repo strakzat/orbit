@@ -8,9 +8,10 @@ const PAGE_EXIT_MS = 300;
  * slid out; `isOpen` says which of the two is in view. The focus goes with the page: onto Back once
  * it is in, and back to what opened it once the list is.
  */
-export function usePaged<T>(containerRef: RefObject<HTMLElement | null>) {
-  const [page, setPage] = useState<T | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+export function usePaged<T>(containerRef: RefObject<HTMLElement | null>, initial: T | null = null) {
+  // A pane that remembers its page opens on it, without the slide.
+  const [page, setPage] = useState<T | null>(initial);
+  const [isOpen, setIsOpen] = useState(initial !== null);
   const backRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
@@ -42,5 +43,6 @@ export function usePaged<T>(containerRef: RefObject<HTMLElement | null>) {
   }, [isOpen, page]);
 
   /** `replace` goes from one page to another, with the same list behind it. */
-  return { page, isOpen, backRef, open, replace: setPage, back };
+  /** `openerRef` is where Back puts the focus: a page it opened on was opened by no click. */
+  return { page, isOpen, backRef, openerRef, open, replace: setPage, back };
 }
