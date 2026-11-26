@@ -3,6 +3,7 @@ import { useAnnotations } from "../context/use-annotations";
 import { ORBIT_UI_ATTR } from "../constants";
 import { CheckIcon, ChevronDownIcon, LinkIcon, RefreshIcon, XIcon } from "../icons";
 import { hasLinkedVariants, variantLink } from "../hooks/use-variant";
+import { useRememberedScroll, type ScrollMemory } from "../hooks/use-remembered-scroll";
 import { cx } from "../utils/cx";
 import { useStableId } from "../utils/use-stable-id";
 import { formatRange, isChanged, resetVariant, variantScopes, variantsHere } from "../utils/variants";
@@ -555,6 +556,21 @@ interface VariantsPaneProps {
   onClose: (returnFocus: boolean) => void;
   /** Said by the rail's live region once a variant changed. */
   onAnnounce: Announce;
+  memory: VariantsMemory;
+}
+
+/**
+ * Where the pane was left, kept by the rail while it is closed: the tab and how far it was
+ * scrolled, on the route it was left on. Another page has other variants, so it opens fresh there.
+ */
+export interface VariantsMemory {
+  route: string | null;
+  scope: Scope | null;
+  scroll: ScrollMemory;
+}
+
+export function createVariantsMemory(): VariantsMemory {
+  return { route: null, scope: null, scroll: { top: 0 } };
 }
 
 /** The first control in the pane, as the focus lands on it: a group's current option, not its first. */
@@ -579,7 +595,7 @@ type Scope = "page" | "all";
  * with the focus on its first control, Escape closes it and gives the focus back to the rail, and a
  * press outside it closes it.
  */
-export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPaneProps) {
+export function VariantsPane({ id, variants, onClose, onAnnounce, memory }: VariantsPaneProps) {
   const { labels, settings, currentRoute, language } = useAnnotations();
   const paneRef = useRef<HTMLDivElement>(null);
   const titleId = useStableId("orbit-variants-title");
@@ -587,22 +603,47 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
   const { page: pageItems, all: allItems } = variantScopes(variants, currentRoute);
   // Nothing on this page and nothing for every page: no tabs to choose between, no footer.
   const nothingHere = pageItems.length + allItems.length === 0;
-  const [scope, setScope] = useState<Scope>(() => (pageItems.length > 0 ? "page" : "all"));
-  // On another page, the tab it opens on again: this page's when it has any.
   const hasPageItems = pageItems.length > 0;
+  // On the route it was left on, where it was: the tab picked, else the one it opens on, and the
+  // scroll either way. On another, fresh.
+  const [scope, setScopeState] = useState<Scope>(() => {
+    if (memory.route !== currentRoute) {
+      memory.route = currentRoute;
+      memory.scope = null;
+      memory.scroll.top = 0;
+    }
+    return memory.scope ?? (hasPageItems ? "page" : "all");
+  });
+  const setScope = (next: Scope) => {
+    memory.scope = next;
+    setScopeState(next);
+  };
+  const bodyScroll = useRememberedScroll<HTMLDivElement>(memory.scroll);
+  // On another page, the tab it opens on again: this page's when it has any.
   const routeRef = useRef(currentRoute);
   useEffect(() => {
     if (routeRef.current === currentRoute) return;
     routeRef.current = currentRoute;
-    setScope(hasPageItems ? "page" : "all");
-  }, [currentRoute, hasPageItems]);
+    memory.route = currentRoute;
+    memory.scope = null;
+    setScopeState(hasPageItems ? "page" : "all");
+  }, [currentRoute, hasPageItems, memory]);
 
   useEffect(() => {
-    // With no control, the close: the focus is in the dialog either way.
-    (
-      paneRef.current?.querySelector<HTMLElement>(FIRST_CONTROL) ??
-      paneRef.current?.querySelector<HTMLElement>(".orbit-icon-button")
-    )?.focus();
+    // The first control in view: opened where it was scrolled, the focus would scroll it back to
+    // the top. With no control, the close: the focus is in the dialog either way.
+    const pane = paneRef.current;
+    const body = pane?.querySelector<HTMLElement>(".orbit-variants__body")?.getBoundingClientRect();
+    const controls = Array.from(pane?.querySelectorAll<HTMLElement>(FIRST_CONTROL) ?? []);
+    const within = (partly: boolean) => (el: HTMLElement) => {
+      const r = el.getBoundingClientRect();
+      if (!body) return true;
+      return partly ? r.bottom > body.top && r.top < body.bottom : r.top >= body.top && r.bottom <= body.bottom;
+    };
+    const close = pane?.querySelector<HTMLElement>(".orbit-icon-button");
+    if (memory.scroll.top === 0) (controls[0] ?? close)?.focus();
+    // Scrolled, nothing may scroll it back: a control in view, else one partly in view, else the close.
+    else (controls.find(within(false)) ?? controls.find(within(true)) ?? close)?.focus({ preventScroll: true });
 
     // Only its own Escape: one in the project's dialog, or for the inspector, is theirs.
     const onKeyDown = (e: KeyboardEvent) => {
@@ -683,7 +724,7 @@ export function VariantsPane({ id, variants, onClose, onAnnounce }: VariantsPane
     nothingHere ? null : tabRow,
     React.createElement(
       "div",
-      { className: "orbit-variants__body" },
+      { ref: bodyScroll.ref, onScroll: bodyScroll.onScroll, className: "orbit-variants__body" },
       nothingHere ? null : React.createElement("p", { className: "orbit-variants__intro" }, shown.hint),
       shown.items.length > 0
         ? React.createElement(

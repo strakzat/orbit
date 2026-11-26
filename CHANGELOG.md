@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.14.1
+
+- **Variants, Changes and the panel open where you left them.** Close one to see what is behind it,
+  open it again, and it is on the same tab, version and scroll position. Variants only on the same
+  page, as another page has other variants. The panel still opens on its list, not on a thread, but
+  the list keeps its scroll position. Until a reload.
+
 ## 4.14.0
 
 - **Changes and the version on the rail.** Pass `changelog` to `OrbitShell` and the rail has Changes on

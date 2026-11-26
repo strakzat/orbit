@@ -8,8 +8,8 @@ import { ClockRewindIcon, MessageChatSquareIcon, MessagePlusSquareIcon, Settings
 import { fill } from "../labels";
 import { initials } from "../utils/format";
 import { INSPECTOR_TOGGLE_ATTR } from "./inspector";
-import { ChangesPane } from "./changes-pane";
-import { VariantsPane } from "./variants-pane";
+import { ChangesPane, createChangesMemory } from "./changes-pane";
+import { VariantsPane, createVariantsMemory } from "./variants-pane";
 import { ProfilePane } from "./profile-pane";
 import { OrbitTour } from "./orbit-tour";
 import { isChanged, variantsHere } from "../utils/variants";
@@ -70,6 +70,9 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
   const [variantsOpen, setVariantsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
+  // Closed, a pane is gone; the rail keeps where it was, so it opens there again. Until a reload.
+  const [variantsMemory] = useState(createVariantsMemory);
+  const [changesMemory] = useState(createChangesMemory);
   const [spoken, setSpoken] = useState("");
   const [focusIndex, setFocusIndex] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
@@ -364,6 +367,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
           variants: variants!,
           onClose: closeVariants,
           onAnnounce: setSpoken,
+          memory: variantsMemory,
         })
       : null,
     hasChanges && changesOpen
@@ -373,6 +377,7 @@ export function OrbitRail({ variants, changelog = NO_RELEASES, overlay }: OrbitR
           unreadVersions,
           onRead: markRead,
           onClose: closeChanges,
+          memory: changesMemory,
         })
       : null,
     profileOpen
